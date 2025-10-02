@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ItemTradeApp.LoginFeature;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,6 +45,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("read:offers",
         policy => policy.RequireClaim("permissions", "read:trips"));
 });
+builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection("Auth0"));
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
@@ -57,5 +60,4 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.Run();
