@@ -13,12 +13,12 @@ public interface ILoginAPIClient
     string BaseUrl { get; }
 }
 
-public class LoginAPIClient : ILoginAPIClient
+public class AuthZeroAPIClient : ILoginAPIClient
 {
     private readonly IHttpClientFactory _httpFactory;
     public string BaseUrl { get; }
     
-    public LoginAPIClient(IHttpClientFactory httpFactory, IOptions<ItemTradeApp.LoginFeature.Auth0Options> opts)
+    public AuthZeroAPIClient(IHttpClientFactory httpFactory, IOptions<ItemTradeApp.LoginFeature.Auth0Options> opts)
     {
         _httpFactory = httpFactory;
         var domain = opts.Value.Domain?.Trim().TrimEnd('/')

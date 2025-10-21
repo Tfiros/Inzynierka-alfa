@@ -14,7 +14,7 @@ public interface ILoginService
     Task<Result<RawBodyResponseDto>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default);
     Task<Result<RefreshResponseDto>> RefreshAsync(RefreshTokenRequest req, CancellationToken ct = default);
 }
-public class LoginService(IOptions<Auth0Options> config, ILoginAPIClient apiClient) : ILoginService
+public class AuthService(IOptions<Auth0Options> config, ILoginAPIClient apiClient) : ILoginService
 {
     private readonly Auth0Options _config = config.Value;
     
