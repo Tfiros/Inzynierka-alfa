@@ -9,9 +9,9 @@ public static class Auth0DetailsMapper
     /// Buduje RawBodyResponseDto z wiadomością i surowym body z Auth0 (JSON lub text).
     /// Rozpoznaje: _id, email, error, error_description. Resztę wrzuca do 'extra'.
     /// </summary>
-    public static RawBodyResponseDto Build(string message, string rawBody)
+    public static RawBodyResponse Build(string message, string rawBody)
     {
-        return new RawBodyResponseDto
+        return new RawBodyResponse
         {
             Message = message,
             Details = ParseDetails(rawBody)

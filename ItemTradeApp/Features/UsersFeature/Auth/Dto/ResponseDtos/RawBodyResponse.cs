@@ -2,7 +2,7 @@
 
 namespace ItemTradeApp.LoginFeature.Dto.ResponseDtos;
 
-public sealed class RawBodyResponseDto
+public sealed class RawBodyResponse
 {
     [JsonPropertyName("message")]
     public string Message { get; init; } = default!;

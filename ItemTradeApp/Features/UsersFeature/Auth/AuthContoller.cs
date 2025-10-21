@@ -1,20 +1,16 @@
-﻿// src/ItemTradeApp/LoginFeature/LoginController.cs
-
-using System.Text;
-using System.Text.Json;
+﻿
 using ItemTradeApp.ExceptionsHandling;
+using ItemTradeApp.Features.UsersFeature.Auth.Dto.RequestDtos;
+using ItemTradeApp.LoginFeature.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Mappers;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.LoginFeature;
 
-public record LoginRequest(string Username, string Password);
 
 [ApiController]
 [Route("[controller]")]
-public class LoginController(ILoginService loginService) : ControllerBase
+public class LoginController(IAuthService loginService) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest? req)
@@ -101,6 +97,27 @@ public class LoginController(ILoginService loginService) : ControllerBase
         return result.Matching(
             ok => Ok(ok),
             err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_refresh_failed", err.Body))
+        );
+    }
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? req)
+    {
+        if (req is null)
+        {
+            ModelState.AddModelError(string.Empty, "Body is required.");
+            return ValidationProblem(ModelState);
+        }
+        if (string.IsNullOrWhiteSpace(req.RefreshToken))
+        {
+            ModelState.AddModelError(nameof(req.RefreshToken), "RefreshToken is required.");
+            return ValidationProblem(ModelState);
+        }
+
+        var result = await loginService.LogoutAsync(req);
+
+        return result.Matching(
+            _   => StatusCode(StatusCodes.Status204NoContent),
+            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_revoke_failed", err.Body))
         );
     }
 }

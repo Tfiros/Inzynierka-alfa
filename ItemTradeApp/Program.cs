@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.LoginFeature;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddHttpClient();
+builder.Services.RegisterUserFeatureDi();
 
 var app = builder.Build();
 
