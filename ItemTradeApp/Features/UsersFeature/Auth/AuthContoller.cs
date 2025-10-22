@@ -44,8 +44,8 @@ public class LoginController(IAuthService loginService) : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        if (string.IsNullOrWhiteSpace(req.Username))
-            ModelState.AddModelError(nameof(req.Username), "Username is required.");
+        if (string.IsNullOrWhiteSpace(req.Email))
+            ModelState.AddModelError(nameof(req.Email), "Username is required.");
         if (string.IsNullOrWhiteSpace(req.Password))
             ModelState.AddModelError(nameof(req.Password), "Password is required.");
         if (!ModelState.IsValid)
@@ -85,20 +85,13 @@ public class LoginController(IAuthService loginService) : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest? req)
+    public async Task<IActionResult> Refresh()
     {
-        if (req is null)
-        {
-            ModelState.AddModelError(string.Empty, "Body is required.");
-            return ValidationProblem(ModelState);
-        }
+        var rt = Request.Cookies["rt"];
+        if (string.IsNullOrEmpty(rt))
+            return Unauthorized();
 
-        if (string.IsNullOrWhiteSpace(req.RefreshToken))
-            ModelState.AddModelError(nameof(req.RefreshToken), "RefreshToken is required.");
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var result = await loginService.RefreshAsync(req);
+        var result = await loginService.RefreshAsync(rt);
         return result.Matching(
             ok =>
             {
@@ -109,54 +102,59 @@ public class LoginController(IAuthService loginService) : ControllerBase
             err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_refresh_failed", err.Body))
         );
     }
+
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest? req)
+    public async Task<IActionResult> Logout()
     {
-        var refreshFromCookie = Request.Cookies[RefreshCookieName];
-        var refresh = req?.RefreshToken ?? refreshFromCookie;
+        var rt = Request.Cookies[RefreshCookieName];
 
-        if (string.IsNullOrWhiteSpace(refresh))
+        if (!string.IsNullOrWhiteSpace(rt))
         {
-            ModelState.AddModelError(nameof(req.RefreshToken), "RefreshToken is required (cookie or body).");
-            return ValidationProblem(ModelState);
+            var result = await loginService.LogoutAsync(rt);
+            DeleteRefreshCookie();
+
+            return result.Matching(
+                _   => NoContent(), // 204
+                err => StatusCode(err.StatusCode, new { message = "revoke_failed", details = err.Body })
+            );
         }
-
-        var result = await loginService.LogoutAsync(new LogoutRequest(refresh));
         DeleteRefreshCookie();
-
-        return result.Matching(
-            _   => StatusCode(StatusCodes.Status204NoContent),
-            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_revoke_failed", err.Body))
-        );
+        return NoContent();
     }
 
 
     #region HELPERS
 
     private const string RefreshCookieName = "rt";
-
-    private CookieOptions BuildRefreshCookieOptions()
+    private void SetRefreshCookie(string refreshToken) =>
+        SetRefreshCookie(refreshToken, DateTimeOffset.UtcNow.AddDays(7));
+    private void SetRefreshCookie(string refreshToken, DateTimeOffset? expiresUtc)
     {
-        return new CookieOptions
+        var opts = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // tylko HTTPS
-            SameSite = SameSiteMode.Lax, // Lax dla SPA pod tym samym hostem; dla cross-site: None
-            Path = "/", // dostępne w całej aplikacji
-            Expires = DateTimeOffset.UtcNow.AddDays(14),
-            // Domain = ".naszadomena.pl",
+            Secure   = true,
+            SameSite = SameSiteMode.Strict,
+            Path     = "/",
+            Expires  = expiresUtc 
+            // Domain = ".twojadomena.pl"
         };
-    }
-
-    private void SetRefreshCookie(string refreshToken)
-    {
-        Response.Cookies.Append(RefreshCookieName, refreshToken, BuildRefreshCookieOptions());
+        Response.Cookies.Append(RefreshCookieName, refreshToken, opts);
     }
 
     private void DeleteRefreshCookie()
     {
-        // Path musi być takie samo jak przy ustawieniu
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/" });
+        Response.Cookies.Append(
+            RefreshCookieName,
+            "",
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure   = true,
+                SameSite = SameSiteMode.Strict,
+                Path     = "/",
+                Expires  = DateTimeOffset.UnixEpoch
+            });
     }
     #endregion
 }

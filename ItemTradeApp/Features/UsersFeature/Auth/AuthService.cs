@@ -14,8 +14,8 @@ public interface IAuthService
     Task<Result<RawBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default);
     Task<Result<LoginResponse>>   LoginAsync(LoginRequest req, CancellationToken ct = default);
     Task<Result<RawBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default);
-    Task<Result<RefreshResponse>> RefreshAsync(RefreshTokenRequest req, CancellationToken ct = default);
-    Task<Result<RawBodyResponse>> LogoutAsync(LogoutRequest req, CancellationToken ct = default);
+    Task<Result<RefreshResponse>> RefreshAsync(string req, CancellationToken ct = default);
+    Task<Result<RawBodyResponse>> LogoutAsync(string req, CancellationToken ct = default);
 }
 public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiClient) : IAuthService
 {
@@ -44,7 +44,7 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
         ArgumentNullException.ThrowIfNull(req);
 
         var res = await apiClient.PasswordRealmTokenAsync(
-            username: req.Username,
+            username: req.Email,
             password: req.Password,
             realm: _config.Realm,
             clientId: _config.ClientId,
@@ -82,15 +82,15 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             : Result<RawBodyResponse>.Fail(res.Error!.Value);
     }
 
-    public async Task<Result<RefreshResponse>> RefreshAsync(RefreshTokenRequest req, CancellationToken ct = default)
+    public async Task<Result<RefreshResponse>> RefreshAsync(string req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
 
         var res = await apiClient.RefreshTokenAsync(
-            refreshToken: req.RefreshToken,
+            refreshToken: req,
             clientId: _config.ClientId,
             clientSecret: _config.ClientSecret,
-            scope: req.Scope,
+            scope: null,
             ct);
 
         if (!res.IsSuccess) return Result<RefreshResponse>.Fail(res.Error!.Value);
@@ -107,12 +107,12 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
         return Result<RefreshResponse>.Ok(new RefreshResponse(accessToken!, expiresIn, refreshToken, idToken));
     }
 
-    public async Task<Result<RawBodyResponse>> LogoutAsync(LogoutRequest req, CancellationToken ct = default)
+    public async Task<Result<RawBodyResponse>> LogoutAsync(string req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
 
         var res = await apiClient.RevokeRefreshTokenAsync(
-            refreshToken: req.RefreshToken,
+            refreshToken: req,
             clientId: _config.ClientId,
             clientSecret: _config.ClientSecret,
             ct);
