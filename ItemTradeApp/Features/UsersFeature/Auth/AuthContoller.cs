@@ -45,7 +45,7 @@ public class LoginController(IAuthService loginService) : ControllerBase
         }
 
         if (string.IsNullOrWhiteSpace(req.Email))
-            ModelState.AddModelError(nameof(req.Email), "Username is required.");
+            ModelState.AddModelError(nameof(req.Email), "Email is required.");
         if (string.IsNullOrWhiteSpace(req.Password))
             ModelState.AddModelError(nameof(req.Password), "Password is required.");
         if (!ModelState.IsValid)
@@ -87,7 +87,7 @@ public class LoginController(IAuthService loginService) : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh()
     {
-        var rt = Request.Cookies["rt"];
+        var rt = Request.Cookies[RefreshCookieName];
         if (string.IsNullOrEmpty(rt))
             return Unauthorized();
 
@@ -115,7 +115,7 @@ public class LoginController(IAuthService loginService) : ControllerBase
 
             return result.Matching(
                 _   => NoContent(), // 204
-                err => StatusCode(err.StatusCode, new { message = "revoke_failed", details = err.Body })
+                err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_revoke_failed", err.Body))
             );
         }
         DeleteRefreshCookie();
