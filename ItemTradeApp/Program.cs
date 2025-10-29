@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.LoginFeature;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,17 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireClaim("permissions", "read:trips"));
 });
 builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection("Auth0"));
+builder.Services.AddCors(opts =>
+{
+    opts.AddPolicy("AppCors", p => p
+        .WithOrigins("http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()); 
+});
+
 builder.Services.AddHttpClient();
+builder.Services.RegisterUserFeatureDi();
 
 var app = builder.Build();
 
@@ -58,6 +69,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors("AppCors");
 
 app.MapControllers();
 app.Run();

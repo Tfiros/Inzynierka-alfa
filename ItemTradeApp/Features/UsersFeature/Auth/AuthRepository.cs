@@ -1,6 +1,6 @@
 ﻿namespace ItemTradeApp.LoginFeature;
 
-public class LoginRepository
+public class AuthRepository
 {
     // to implement once db available
 }
