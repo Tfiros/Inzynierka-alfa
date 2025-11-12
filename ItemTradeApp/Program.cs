@@ -1,12 +1,15 @@
 using System.Security.Claims;
 using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.LoginFeature;
+using ItemTradeApp.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<AppDbContext>(options =>
+   options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

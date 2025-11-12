@@ -12,260 +12,219 @@ public partial class AppDbContext : DbContext
     {
     }
 
-    public virtual DbSet<Level> Levels { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
-    public virtual DbSet<counteroffer> counteroffers { get; set; }
+    public virtual DbSet<CounterOffer> counter_offers { get; set; }
 
-    public virtual DbSet<game> games { get; set; }
+    public virtual DbSet<CounterOfferStatus> counter_offer_statuses { get; set; }
 
-    public virtual DbSet<genre> genres { get; set; }
+    public virtual DbSet<Game> games { get; set; }
 
-    public virtual DbSet<item> items { get; set; }
+    public virtual DbSet<Genre> genres { get; set; }
 
-    public virtual DbSet<listingitem> listingitems { get; set; }
+    public virtual DbSet<Item> items { get; set; }
 
-    public virtual DbSet<listingofferitem> listingofferitems { get; set; }
+    public virtual DbSet<ListingCounterOfferItem> listing_counter_offer_items { get; set; }
 
-    public virtual DbSet<offer> offers { get; set; }
+    public virtual DbSet<listing_item> listing_items { get; set; }
 
-    public virtual DbSet<offerstatus> offerstatuses { get; set; }
+    public virtual DbSet<Offer> offers { get; set; }
 
-    public virtual DbSet<profileinfo> profileinfos { get; set; }
+    public virtual DbSet<offer_status> offer_statuses { get; set; }
 
-    public virtual DbSet<trade> trades { get; set; }
+    public virtual DbSet<profile_info> profile_infos { get; set; }
 
-    public virtual DbSet<tradestatus> tradestatuses { get; set; }
+    public virtual DbSet<Trade> trades { get; set; }
 
-    public virtual DbSet<userrole> userroles { get; set; }
+    public virtual DbSet<trade_status> trade_statuses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Level>(entity =>
-        {
-            entity.HasKey(e => e.id).HasName("level_pk");
-
-            entity.ToTable("Level");
-
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.name).HasMaxLength(50);
-
-            entity.HasOne(d => d.user).WithMany(p => p.Levels)
-                .HasForeignKey(d => d.user_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("level_user");
-        });
-
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("user_pk");
+            entity.HasKey(e => e.ID).HasName("user_pk");
 
             entity.ToTable("User");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.auth0userid).HasMaxLength(128);
-            entity.Property(e => e.email).HasMaxLength(100);
-            entity.Property(e => e.stripecustomerid).HasMaxLength(128);
-            entity.Property(e => e.tokenexpdate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.Auth0UserID).HasMaxLength(128);
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
+            entity.Property(e => e.TokenExpDate).HasColumnType("timestamp without time zone");
         });
 
-        modelBuilder.Entity<counteroffer>(entity =>
+        modelBuilder.Entity<CounterOffer>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("listingoffer_pk");
+            entity.HasKey(e => e.ID).HasName("listingoffer_pk");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.creationdate).HasColumnType("timestamp without time zone");
+            entity.ToTable("counter_offer");
 
-            entity.HasOne(d => d.offer).WithMany(p => p.counteroffers)
-                .HasForeignKey(d => d.offer_id)
+            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
+
+            entity.HasOne(d => d.Offer).WithMany(p => p.CounterOffers)
+                .HasForeignKey(d => d.Offer_Id)
                 .HasConstraintName("counteroffers_offer");
 
-            entity.HasOne(d => d.offerstatus).WithMany(p => p.counteroffers)
-                .HasForeignKey(d => d.offerstatus_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("listingoffer_offerstatus");
+            entity.HasOne(d => d.OfferStatus).WithMany(p => p.CounterOffers)
+                .HasForeignKey(d => d.OfferStatus_Id)
+                .HasConstraintName("counter_offer_status_co");
 
-            entity.HasOne(d => d.user).WithMany(p => p.counteroffers)
-                .HasForeignKey(d => d.user_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.User).WithMany(p => p.CounterOffers)
+                .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("listingoffer_user");
         });
 
-        modelBuilder.Entity<game>(entity =>
+        modelBuilder.Entity<CounterOfferStatus>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("game_pk");
+            entity.HasKey(e => e.ID).HasName("co_status_pk");
+
+            entity.ToTable("counter_offer_status");
+
+            entity.Property(e => e.StatusName).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<Game>(entity =>
+        {
+            entity.HasKey(e => e.ID).HasName("game_pk");
 
             entity.ToTable("game");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.name).HasMaxLength(50);
-            entity.Property(e => e.photourl).HasMaxLength(200);
+            entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.Photo_URL).HasMaxLength(200);
 
-            entity.HasOne(d => d.genre).WithMany(p => p.games)
-                .HasForeignKey(d => d.genre_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.Genre).WithMany(p => p.Games)
+                .HasForeignKey(d => d.Genre_ID)
                 .HasConstraintName("game_genre");
         });
 
-        modelBuilder.Entity<genre>(entity =>
+        modelBuilder.Entity<Genre>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("genre_pk");
+            entity.HasKey(e => e.ID).HasName("genre_pk");
 
             entity.ToTable("genre");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
+            entity.Property(e => e.Name).HasMaxLength(20);
         });
 
-        modelBuilder.Entity<item>(entity =>
+        modelBuilder.Entity<Item>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("item_pk");
+            entity.HasKey(e => e.ID).HasName("item_pk");
 
             entity.ToTable("item");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.name).HasMaxLength(50);
-            entity.Property(e => e.photourl).HasMaxLength(200);
+            entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.Photo_URL).HasMaxLength(200);
 
-            entity.HasOne(d => d.game).WithMany(p => p.items)
-                .HasForeignKey(d => d.game_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.Game).WithMany(p => p.Items)
+                .HasForeignKey(d => d.Game_ID)
                 .HasConstraintName("item_game");
         });
 
-        modelBuilder.Entity<listingitem>(entity =>
+        modelBuilder.Entity<ListingCounterOfferItem>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("listingitems_pk");
+            entity.HasKey(e => e.ID).HasName("listingofferitems_pk");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
+            entity.HasOne(d => d.CounterOffer).WithMany(p => p.ListingCounterOfferItems)
+                .HasForeignKey(d => d.CounterOffers_ID)
+                .HasConstraintName("listingofferitems_listingoffer");
 
-            entity.HasOne(d => d.item).WithMany(p => p.listingitems)
-                .HasForeignKey(d => d.item_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.Item).WithMany(p => p.ListingCounterOfferItems)
+                .HasForeignKey(d => d.Item_ID)
+                .HasConstraintName("listingofferitems_item");
+        });
+
+        modelBuilder.Entity<listing_item>(entity =>
+        {
+            entity.HasKey(e => e.ID).HasName("listingitems_pk");
+
+            entity.HasOne(d => d.Item).WithMany(p => p.ListingItems)
+                .HasForeignKey(d => d.Item_ID)
                 .HasConstraintName("listingitems_item");
 
-            entity.HasOne(d => d.offer).WithMany(p => p.listingitems)
-                .HasForeignKey(d => d.offer_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.Offer).WithMany(p => p.ListingItems)
+                .HasForeignKey(d => d.Offer_ID)
                 .HasConstraintName("listingitems_listing");
         });
 
-        modelBuilder.Entity<listingofferitem>(entity =>
+        modelBuilder.Entity<Offer>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("listingofferitems_pk");
-
-            entity.Property(e => e.id).ValueGeneratedNever();
-
-            entity.HasOne(d => d.item).WithMany(p => p.listingofferitems)
-                .HasForeignKey(d => d.item_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("listingofferitems_item");
-
-            entity.HasOne(d => d.listingoffer).WithMany(p => p.listingofferitems)
-                .HasForeignKey(d => d.listingoffer_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("listingofferitems_listingoffer");
-        });
-
-        modelBuilder.Entity<offer>(entity =>
-        {
-            entity.HasKey(e => e.id).HasName("listing_pk");
+            entity.HasKey(e => e.ID).HasName("listing_pk");
 
             entity.ToTable("offer");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.expdate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.ExpDate).HasColumnType("timestamp without time zone");
 
-            entity.HasOne(d => d.user).WithMany(p => p.offers)
-                .HasForeignKey(d => d.user_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.OfferStatus).WithMany(p => p.Offers)
+                .HasForeignKey(d => d.OfferStatus_ID)
+                .HasConstraintName("offer_offer_status");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Offers)
+                .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("listing_user");
         });
 
-        modelBuilder.Entity<offerstatus>(entity =>
+        modelBuilder.Entity<offer_status>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("status_pk");
+            entity.HasKey(e => e.ID).HasName("offer_status_pk");
 
-            entity.ToTable("offerstatus");
-
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.status).HasMaxLength(50);
+            entity.ToTable("offer_status");
         });
 
-        modelBuilder.Entity<profileinfo>(entity =>
+        modelBuilder.Entity<profile_info>(entity =>
         {
-            entity.HasKey(e => e.user_id).HasName("profileinfo_pk");
+            entity.HasKey(e => e.User_ID).HasName("profile_info_pk");
 
-            entity.ToTable("profileinfo");
+            entity.ToTable("profile_info");
 
-            entity.Property(e => e.user_id).ValueGeneratedNever();
-            entity.Property(e => e.description).HasMaxLength(500);
-            entity.Property(e => e.nickname).HasMaxLength(20);
+            entity.Property(e => e.User_ID).ValueGeneratedNever();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.NickName).HasMaxLength(20);
 
-            entity.HasOne(d => d.user).WithOne(p => p.profileinfo)
-                .HasForeignKey<profileinfo>(d => d.user_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.User).WithOne(p => p.ProfileInfo)
+                .HasForeignKey<profile_info>(d => d.User_ID)
                 .HasConstraintName("profileinfo_user");
         });
 
-        modelBuilder.Entity<trade>(entity =>
+        modelBuilder.Entity<Trade>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("trade_pk");
+            entity.HasKey(e => e.ID).HasName("trade_pk");
 
             entity.ToTable("trade");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.buyerfeedback).HasMaxLength(200);
-            entity.Property(e => e.completitiondate).HasColumnType("timestamp without time zone");
-            entity.Property(e => e.creationdate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.BuyerFeedback).HasMaxLength(200);
+            entity.Property(e => e.CompletitionDate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
 
-            entity.HasOne(d => d.customer).WithMany(p => p.tradecustomers)
-                .HasForeignKey(d => d.customer_id)
+            entity.HasOne(d => d.Customer).WithMany(p => p.CustomerTrades)
+                .HasForeignKey(d => d.Customer_ID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("trade_user");
 
-            entity.HasOne(d => d.middlemanuser).WithMany(p => p.trademiddlemanusers)
-                .HasForeignKey(d => d.middlemanuser_id)
+            entity.HasOne(d => d.MiddlemanUser).WithMany(p => p.TrademiddlemanUsers)
+                .HasForeignKey(d => d.MiddlemanUser_ID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("trade_middleman");
 
-            entity.HasOne(d => d.offer).WithMany(p => p.trades)
-                .HasForeignKey(d => d.offer_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.Offer).WithMany(p => p.Trades)
+                .HasForeignKey(d => d.Offer_ID)
                 .HasConstraintName("trade_listing");
 
-            entity.HasOne(d => d.tradestatus).WithMany(p => p.trades)
-                .HasForeignKey(d => d.tradestatus_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.HasOne(d => d.TradeStatus).WithMany(p => p.Trades)
+                .HasForeignKey(d => d.TradeStatus_ID)
                 .HasConstraintName("trade_tradestatus");
 
-            entity.HasOne(d => d.user).WithMany(p => p.tradeusers)
-                .HasForeignKey(d => d.user_id)
+            entity.HasOne(d => d.User).WithMany(p => p.OwningTrades)
+                .HasForeignKey(d => d.User_ID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("user_buyer");
         });
 
-        modelBuilder.Entity<tradestatus>(entity =>
+        modelBuilder.Entity<trade_status>(entity =>
         {
-            entity.HasKey(e => e.id).HasName("tradestatus_pk");
+            entity.HasKey(e => e.ID).HasName("tradestatus_pk");
 
-            entity.ToTable("tradestatus");
+            entity.ToTable("trade_status");
 
-            entity.Property(e => e.id).ValueGeneratedNever();
-            entity.Property(e => e.status).HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<userrole>(entity =>
-        {
-            entity.HasKey(e => e.user_id).HasName("admin_pk");
-
-            entity.Property(e => e.user_id).ValueGeneratedNever();
-            entity.Property(e => e.rolename).HasMaxLength(20);
-
-            entity.HasOne(d => d.user).WithOne(p => p.userrole)
-                .HasForeignKey<userrole>(d => d.user_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("userroles_user");
+            entity.Property(e => e.StatusName).HasMaxLength(50);
         });
 
         OnModelCreatingPartial(modelBuilder);

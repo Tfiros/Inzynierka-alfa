@@ -1,41 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
-
+[Table("User")]
 public partial class User
 {
-    public int id { get; set; }
+    [Column("id")]
+    public int ID { get; set; }
+    [Column("auth0_userid")]
+    public string Auth0UserID { get; set; } = null!;
+    [Column("stripe_customer_id")]
+    public string StripeCustomerID { get; set; } = null!;
+    [Column("email")]
+    public string Email { get; set; } = null!;
+    [Column("date_of_birth")]
+    public DateOnly DateOfBirth { get; set; }
+    [Column("tokens")]
+    public int Tokens { get; set; }
+    [Column("exp")]
+    public int Exp { get; set; }
+    [Column("token_exp_date")]
+    public DateTime TokenExpDate { get; set; }
+    [Column("registration_date")]
+    public DateOnly RegistrationDate { get; set; }
 
-    public string auth0userid { get; set; } = null!;
+    public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
-    public string stripecustomerid { get; set; } = null!;
+    public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
-    public string email { get; set; } = null!;
+    public virtual profile_info? ProfileInfo { get; set; }
 
-    public DateOnly dateofbirth { get; set; }
+    public virtual ICollection<Trade> CustomerTrades { get; set; } = new List<Trade>();
 
-    public int tokens { get; set; }
+    public virtual ICollection<Trade> TrademiddlemanUsers { get; set; } = new List<Trade>();
 
-    public int exp { get; set; }
-
-    public DateTime tokenexpdate { get; set; }
-
-    public DateOnly registrationdate { get; set; }
-
-    public virtual ICollection<Level> Levels { get; set; } = new List<Level>();
-
-    public virtual ICollection<counteroffer> counteroffers { get; set; } = new List<counteroffer>();
-
-    public virtual ICollection<offer> offers { get; set; } = new List<offer>();
-
-    public virtual profileinfo? profileinfo { get; set; }
-
-    public virtual ICollection<trade> tradecustomers { get; set; } = new List<trade>();
-
-    public virtual ICollection<trade> trademiddlemanusers { get; set; } = new List<trade>();
-
-    public virtual ICollection<trade> tradeusers { get; set; } = new List<trade>();
-
-    public virtual userrole? userrole { get; set; }
+    public virtual ICollection<Trade> OwningTrades { get; set; } = new List<Trade>();
 }
