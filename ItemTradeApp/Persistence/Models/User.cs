@@ -18,8 +18,8 @@ public partial class User
     public DateOnly DateOfBirth { get; set; }
     [Column("tokens")]
     public int Tokens { get; set; }
-    [Column("exp")]
-    public int Exp { get; set; }
+    [Column("experience")]
+    public int Experience { get; set; }
     [Column("token_exp_date")]
     public DateTime TokenExpDate { get; set; }
     [Column("registration_date")]

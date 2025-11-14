@@ -177,7 +177,7 @@ public partial class AppDbContext : DbContext
 
             entity.Property(e => e.User_ID).ValueGeneratedNever();
             entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.NickName).HasMaxLength(20);
+            entity.Property(e => e.Nickname).HasMaxLength(20);
 
             entity.HasOne(d => d.User).WithOne(p => p.ProfileInfo)
                 .HasForeignKey<profile_info>(d => d.User_ID)

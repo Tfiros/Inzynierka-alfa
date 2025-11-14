@@ -8,8 +8,8 @@ public partial class profile_info
 {
     [Column("id")]
     public int User_ID { get; set; }
-    [Column("nick_name")]
-    public string NickName { get; set; } = null!;
+    [Column("nickname")]
+    public string Nickname { get; set; } = null!;
     [Column("description")]
     public string Description { get; set; } = null!;
 
