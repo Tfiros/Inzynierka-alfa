@@ -201,7 +201,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.MiddlemanUser).WithMany(p => p.TrademiddlemanUsers)
                 .HasForeignKey(d => d.MiddlemanUser_ID)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("trade_middleman");
 
             entity.HasOne(d => d.Offer).WithMany(p => p.Trades)
