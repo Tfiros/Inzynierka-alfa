@@ -17,7 +17,8 @@ public interface IAuthService
     Task<Result<RefreshResponse>> RefreshAsync(string req, CancellationToken ct = default);
     Task<Result<RawBodyResponse>> LogoutAsync(string req, CancellationToken ct = default);
 }
-public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiClient) : IAuthService
+public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiClient,
+    IAuthRepository authRepository) : IAuthService
 {
     private readonly Auth0Options _config = config.Value;
 
@@ -30,10 +31,11 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             password: req.Password,
             connection: _config.Realm,
             clientId: _config.ClientId,
-            userMetadata: req.Metadata,
-            name: req.Name,
+            name: req.Username,
             ct);
-
+        var doc = JsonDocument.Parse(res.Value?.ToString());
+        var auth0Id = doc.RootElement.GetProperty("_id").GetString() ?? string.Empty;
+        await authRepository.Register(req, auth0Id);
         return res.IsSuccess
             ? Result<RawBodyResponse>.Ok(Auth0DetailsMapper.Build("registration_success", res.Value!))
             : Result<RawBodyResponse>.Fail(res.Error!.Value);

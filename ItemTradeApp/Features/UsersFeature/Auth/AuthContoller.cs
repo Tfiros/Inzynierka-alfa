@@ -3,6 +3,7 @@ using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.UsersFeature.Auth.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Mappers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.LoginFeature;
@@ -107,14 +108,13 @@ public class LoginController(IAuthService loginService) : ControllerBase
     public async Task<IActionResult> Logout()
     {
         var rt = Request.Cookies[RefreshCookieName];
-
         if (!string.IsNullOrWhiteSpace(rt))
         {
             var result = await loginService.LogoutAsync(rt);
             DeleteRefreshCookie();
 
             return result.Matching(
-                _   => NoContent(), // 204
+                _   => NoContent(),
                 err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_revoke_failed", err.Body))
             );
         }

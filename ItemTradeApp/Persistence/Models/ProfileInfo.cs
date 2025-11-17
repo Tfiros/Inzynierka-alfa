@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("profile_info")]
-public partial class profile_info
+public partial class ProfileInfo
 {
-    [Column("id")]
+    [Column("user_id")]
     public int User_ID { get; set; }
     [Column("nickname")]
     public string Nickname { get; set; } = null!;

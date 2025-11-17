@@ -35,7 +35,7 @@ public partial class Trade
 
     public virtual Offer Offer { get; set; } = null!;
 
-    public virtual trade_status TradeStatus { get; set; } = null!;
+    public virtual TradeStatus TradeStatus { get; set; } = null!;
     // offer posting user
     public virtual User User { get; set; } = null!;
 }

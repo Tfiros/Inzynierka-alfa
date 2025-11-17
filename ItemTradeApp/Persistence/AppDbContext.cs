@@ -14,29 +14,29 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-    public virtual DbSet<CounterOffer> counter_offers { get; set; }
+    public virtual DbSet<CounterOffer> CounterOffers { get; set; }
 
-    public virtual DbSet<CounterOfferStatus> counter_offer_statuses { get; set; }
+    public virtual DbSet<CounterOfferStatus> CounterOfferStatuses { get; set; }
 
-    public virtual DbSet<Game> games { get; set; }
+    public virtual DbSet<Game> Games { get; set; }
 
-    public virtual DbSet<Genre> genres { get; set; }
+    public virtual DbSet<Genre> Genres { get; set; }
 
-    public virtual DbSet<Item> items { get; set; }
+    public virtual DbSet<Item> Items { get; set; }
 
-    public virtual DbSet<ListingCounterOfferItem> listing_counter_offer_items { get; set; }
+    public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
 
-    public virtual DbSet<listing_item> listing_items { get; set; }
+    public virtual DbSet<ListingItem> ListingItems { get; set; }
 
-    public virtual DbSet<Offer> offers { get; set; }
+    public virtual DbSet<Offer> Offers { get; set; }
 
-    public virtual DbSet<offer_status> offer_statuses { get; set; }
+    public virtual DbSet<OfferStatus> OfferStatuses { get; set; }
 
-    public virtual DbSet<profile_info> profile_infos { get; set; }
+    public virtual DbSet<ProfileInfo> ProfileInfos { get; set; }
 
-    public virtual DbSet<Trade> trades { get; set; }
+    public virtual DbSet<Trade> Trades { get; set; }
 
-    public virtual DbSet<trade_status> trade_statuses { get; set; }
+    public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -132,7 +132,7 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("listingofferitems_item");
         });
 
-        modelBuilder.Entity<listing_item>(entity =>
+        modelBuilder.Entity<ListingItem>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("listingitems_pk");
 
@@ -162,14 +162,14 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("listing_user");
         });
 
-        modelBuilder.Entity<offer_status>(entity =>
+        modelBuilder.Entity<OfferStatus>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("offer_status_pk");
 
             entity.ToTable("offer_status");
         });
 
-        modelBuilder.Entity<profile_info>(entity =>
+        modelBuilder.Entity<ProfileInfo>(entity =>
         {
             entity.HasKey(e => e.User_ID).HasName("profile_info_pk");
 
@@ -180,7 +180,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Nickname).HasMaxLength(20);
 
             entity.HasOne(d => d.User).WithOne(p => p.ProfileInfo)
-                .HasForeignKey<profile_info>(d => d.User_ID)
+                .HasForeignKey<ProfileInfo>(d => d.User_ID)
                 .HasConstraintName("profileinfo_user");
         });
 
@@ -218,7 +218,7 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("user_buyer");
         });
 
-        modelBuilder.Entity<trade_status>(entity =>
+        modelBuilder.Entity<TradeStatus>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("tradestatus_pk");
 

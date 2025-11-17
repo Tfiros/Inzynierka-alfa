@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace ItemTradeApp.LoginFeature;
 public interface IAuthZeroAPIClient
 {
-    Task<Result<string>> SignupAsync(string email, string password, string connection, string clientId, object? userMetadata, string? name, CancellationToken ct = default);
+    Task<Result<string>> SignupAsync(string email, string password, string connection, string clientId, string? name, CancellationToken ct = default);
     Task<Result<string>> PasswordRealmTokenAsync(string username, string password, string realm, string clientId, string clientSecret, string audience, string scope, CancellationToken ct = default);
     Task<Result<string>> ChangePasswordAsync(string email, string connection, string clientId, CancellationToken ct = default);
     Task<Result<string>> RefreshTokenAsync(string refreshToken, string clientId, string clientSecret, string? scope, CancellationToken ct = default);
@@ -37,7 +37,6 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         string password,
         string connection,
         string clientId,
-        object? userMetadata,
         string? name,
         CancellationToken ct = default)
     {
@@ -47,7 +46,6 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
             email,
             password,
             connection,
-            user_metadata = userMetadata,
             name
         };
         return PostJsonAsync("/dbconnections/signup", payload, ct);
