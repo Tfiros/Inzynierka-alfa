@@ -8,6 +8,7 @@ public static class DI
     {
         serviceCollection.AddScoped<IAuthZeroAPIClient, AuthZeroAPIClient>();
         serviceCollection.AddScoped<IAuthService, AuthService>();
+        serviceCollection.AddScoped<IAuthRepository, AuthRepository>();
         return serviceCollection;
     }
 }

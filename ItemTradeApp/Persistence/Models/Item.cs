@@ -19,5 +19,5 @@ public partial class Item
 
     public virtual ICollection<ListingCounterOfferItem> ListingCounterOfferItems { get; set; } = new List<ListingCounterOfferItem>();
 
-    public virtual ICollection<listing_item> ListingItems { get; set; } = new List<listing_item>();
+    public virtual ICollection<ListingItem> ListingItems { get; set; } = new List<ListingItem>();
 }

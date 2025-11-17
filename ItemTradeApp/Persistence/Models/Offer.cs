@@ -19,9 +19,9 @@ public partial class Offer
 
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
-    public virtual ICollection<listing_item> ListingItems { get; set; } = new List<listing_item>();
+    public virtual ICollection<ListingItem> ListingItems { get; set; } = new List<ListingItem>();
 
-    public virtual offer_status OfferStatus { get; set; } = null!;
+    public virtual OfferStatus OfferStatus { get; set; } = null!;
 
     public virtual ICollection<Trade> Trades { get; set; } = new List<Trade>();
 

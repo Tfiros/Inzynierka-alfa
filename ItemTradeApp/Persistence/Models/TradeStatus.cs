@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("trade_status")]
-public partial class trade_status
+public partial class TradeStatus
 {
     [Column("id")]
     public int ID { get; set; }

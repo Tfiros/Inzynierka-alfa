@@ -25,17 +25,17 @@ public partial class Trade
     [Column("customer_id")]
     public int Customer_ID { get; set; }
     [Column("middleman_user_id")]
-    public int MiddlemanUser_ID { get; set; }
+    public int? MiddlemanUser_ID { get; set; }
     [Column("user_id")]
     public int User_ID { get; set; }
 
     public virtual User Customer { get; set; } = null!;
 
-    public virtual User MiddlemanUser { get; set; } = null!;
+    public virtual User? MiddlemanUser { get; set; } = null!;
 
     public virtual Offer Offer { get; set; } = null!;
 
-    public virtual trade_status TradeStatus { get; set; } = null!;
+    public virtual TradeStatus TradeStatus { get; set; } = null!;
     // offer posting user
     public virtual User User { get; set; } = null!;
 }

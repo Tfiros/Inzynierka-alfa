@@ -29,7 +29,7 @@ public partial class User
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
-    public virtual profile_info? ProfileInfo { get; set; }
+    public virtual ProfileInfo? ProfileInfo { get; set; }
 
     public virtual ICollection<Trade> CustomerTrades { get; set; } = new List<Trade>();
 
