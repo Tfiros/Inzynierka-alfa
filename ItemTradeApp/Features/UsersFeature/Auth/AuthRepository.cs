@@ -1,11 +1,13 @@
 ﻿using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.LoginFeature;
 
 public interface IAuthRepository
 {
     Task Register(RegisterRequest request, string auth0Id);
+    Task<User> GetUserIdByEmail(string email);
 }
 
 public class AuthRepository(AppDbContext dbContext) : IAuthRepository
@@ -35,5 +37,10 @@ public class AuthRepository(AppDbContext dbContext) : IAuthRepository
         dbContext.Users.Add(user);
 
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<User> GetUserIdByEmail(string email)
+    {
+        return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);   
     }
 }

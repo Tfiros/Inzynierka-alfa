@@ -58,7 +58,7 @@ public class LoginController(IAuthService loginService) : ControllerBase
             {
                 if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
                     SetRefreshCookie(ok.RefreshToken!);
-                return Ok(new { ok.AccessToken, ok.ExpiresIn, ok.IdToken });
+                return Ok(new { ok.Id, ok.AccessToken, ok.ExpiresIn, ok.IdToken });
             },
             err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_token_failed", err.Body))
         );
