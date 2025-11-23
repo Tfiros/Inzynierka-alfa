@@ -62,11 +62,11 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
         var expiresIn    = doc.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 0;
         var refreshToken = doc.RootElement.TryGetProperty("refresh_token", out var r) ? r.GetString() : null;
         var idToken      = doc.RootElement.TryGetProperty("id_token", out var idt) ? idt.GetString() : null;
-
+        
         if (string.IsNullOrEmpty(accessToken))
             return Result<LoginResponse>.Fail(new AppError(502, res.Value!, "no_access_token_from_auth0"));
-
-        return Result<LoginResponse>.Ok(new LoginResponse(accessToken!, expiresIn, refreshToken, idToken));
+        var user = await authRepository.GetUserIdByEmail(req.Email);
+        return Result<LoginResponse>.Ok(new LoginResponse(user.ID, accessToken!, expiresIn, refreshToken, idToken));
     }
 
     public async Task<Result<RawBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default)
