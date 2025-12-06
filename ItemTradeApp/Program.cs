@@ -1,6 +1,6 @@
 using System.Security.Claims;
+using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.UsersFeature;
-using ItemTradeApp.LoginFeature;
 using ItemTradeApp.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;

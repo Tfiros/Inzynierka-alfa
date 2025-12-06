@@ -1,6 +1,8 @@
-﻿using ItemTradeApp.ExceptionsHandling;
+﻿using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
+using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Response;
+using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Request;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.UsersFeature.UserInfo;
@@ -9,17 +11,18 @@ public interface IUserInfoService
 {
     Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default);
     Task<Result<UserProfileInfoResponse>> GetProfileInfoAsync(int userId, CancellationToken ct = default);
+    Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct);
+
 }
 
 public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IUserInfoService
 {
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
-        var user = await userInfoRepository.GetUserAsync(userId, ct);
+        var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
         if (user is null)
         {
-            return Result<UserNavbarInfoResponse>.Fail(
-                new AppError(404, "User not found", "user_not_found"));
+            return Result<UserNavbarInfoResponse>.NotFound("user_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(user.Experience);
 
@@ -31,16 +34,15 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.Experience,
             level
         );
-        return Result<UserNavbarInfoResponse>.Ok(dto);
+        return Result<UserNavbarInfoResponse>.Success(dto);
     }
-
     public async Task<Result<UserProfileInfoResponse>> GetProfileInfoAsync(int userId, CancellationToken ct = default)
     {
-        var user = await userInfoRepository.GetUserAsync(userId, ct);
-        if (user is null)
+        var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
+        if (user is null || user.ProfileInfo is null)
         {
-            return Result<UserProfileInfoResponse>.Fail(
-                new AppError(404, "User not found", "user_not_found"));
+            return Result<UserProfileInfoResponse>.NotFound(
+                "user_or_profile_info_not_found: User or profile info not found");
         }
 
 
@@ -50,7 +52,6 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.ID,
             user.Email,
             user.DateOfBirth,
-            user.Tokens,
             user.Experience,
             level,
             user.RegistrationDate,
@@ -58,6 +59,34 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.ProfileInfo.Description
         );
 
-        return Result<UserProfileInfoResponse>.Ok(dto);
+        return Result<UserProfileInfoResponse>.Success(dto);
+    }
+
+    public async Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct)
+    {
+        var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(auth0UserId, ct);
+
+        if (user is null || user.ProfileInfo is null)
+            return Result<UserProfileInfoResponse>.NotFound(
+                "user_or_profile_info_not_found: User or profile info not found");
+
+        user.ProfileInfo.Nickname = request.Nickname ?? user.ProfileInfo.Nickname;
+        user.ProfileInfo.Description = request.Description ?? user.ProfileInfo.Description;
+        
+        await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
+        var level = UserLevelCalculator.CalculateLevel(user.Experience);
+
+        var dto = new UserProfileInfoResponse(
+            user.ID,
+            user.Email,
+            user.DateOfBirth,
+            user.Experience,
+            level,
+            user.RegistrationDate,
+            user.ProfileInfo.Nickname,
+            user.ProfileInfo.Description
+        );
+
+        return Result<UserProfileInfoResponse>.Success(dto);
     }
 }

@@ -7,7 +7,7 @@ namespace ItemTradeApp.LoginFeature;
 public interface IAuthRepository
 {
     Task Register(RegisterRequest request, string auth0Id);
-    Task<User> GetUserIdByEmail(string email);
+    Task<User> GetUserByEmail(string email);
 }
 
 public class AuthRepository(AppDbContext dbContext) : IAuthRepository
@@ -39,7 +39,7 @@ public class AuthRepository(AppDbContext dbContext) : IAuthRepository
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task<User> GetUserIdByEmail(string email)
+    public async Task<User> GetUserByEmail(string email)
     {
         return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);   
     }
