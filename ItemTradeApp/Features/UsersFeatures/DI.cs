@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.UsersFeature.UserInfo;
+using ItemTradeApp.Features.UsersFeature.UserSettings;
 using ItemTradeApp.LoginFeature;
 
 namespace ItemTradeApp.Features.UsersFeature;
@@ -13,6 +14,9 @@ public static class DI
         serviceCollection.AddScoped<IAuthRepository, AuthRepository>();
         serviceCollection.AddScoped<IUserInfoService, UserInfoService>();
         serviceCollection.AddScoped<IUserInfoRepository,UserInfoRepository>();
+        serviceCollection.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+        serviceCollection.AddScoped<IUserSettingsService, UserSettingsService>();
+        serviceCollection.AddScoped<IAuthZeroManagementClient, AuthZeroAPIManagement>();
         return serviceCollection;
     }
 }
