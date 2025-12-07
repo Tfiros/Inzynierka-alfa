@@ -11,7 +11,7 @@ namespace ItemTradeApp.Features.UsersFeature.UserInfo;
 [Authorize]
 public class UserInfoController(IUserInfoService service) : ControllerBase
 {
-    [HttpGet("/profileInfo/{id:int}")]
+    [HttpGet("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> GetProfileInfo(
         int id,
         CancellationToken ct = default)
@@ -19,16 +19,16 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
         var result = await service.GetProfileInfoAsync(id, ct);
         return result.ToActionResult();
     }
-
-    [HttpGet("/userInfo/{id:int}")]
-    public async Task<ActionResult<Result<UserNavbarInfoResponse>>> GetUserInfo(
+    [Authorize(Policy = "OwnResource")]
+    [HttpGet("navbarInfo/{id:int}")]
+    public async Task<ActionResult<Result<UserNavbarInfoResponse>>> GetUserNavbarInfo(
         int id,
         CancellationToken ct = default)
     {
         var result = await service.GetNavbarInfoAsync(id, ct);
         return result.ToActionResult();
     }
-
+    [Authorize(Policy = "OwnResource")]
     [HttpPut("profile")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,

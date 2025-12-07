@@ -37,5 +37,7 @@ public partial class Trade
 
     public virtual TradeStatus TradeStatus { get; set; } = null!;
     // offer posting user
-    public virtual User User { get; set; } = null!;
+    public virtual User PostingUser { get; set; } = null!;
+    public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
+
 }

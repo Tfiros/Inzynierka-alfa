@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
@@ -12,6 +13,9 @@ public partial class ProfileInfo
     public string Nickname { get; set; } = null!;
     [Column("description")]
     public string Description { get; set; } = null!;
+    [Column("image_url")]
+    [StringLength(2048)]
+    public string? ImageUrl { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

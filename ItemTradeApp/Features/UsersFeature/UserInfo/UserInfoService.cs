@@ -50,8 +50,6 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
 
         var dto = new UserProfileInfoResponse(
             user.ID,
-            user.Email,
-            user.DateOfBirth,
             user.Experience,
             level,
             user.RegistrationDate,
@@ -78,8 +76,6 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
 
         var dto = new UserProfileInfoResponse(
             user.ID,
-            user.Email,
-            user.DateOfBirth,
             user.Experience,
             level,
             user.RegistrationDate,

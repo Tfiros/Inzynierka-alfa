@@ -9,11 +9,12 @@ public interface IUserInfoRepository
     Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
     Task UpdateUserWithProfileInfoAsync(ProfileInfo profile, CancellationToken ct);
-
-
+    Task<bool> ExistsByAuth0IdAsync(string auth0UserId, CancellationToken ct);
 }
 public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
 {
+    public async Task<bool> ExistsByAuth0IdAsync(string auth0UserId, CancellationToken ct) =>
+       await dbContext.Users.AnyAsync(u => u.Auth0UserID == auth0UserId, ct);
     public async Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct)
     {
         var user = await dbContext.Users
