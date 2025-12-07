@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.LoginFeature;
+﻿namespace ItemTradeApp.AuthZeroCommunication;
 
 public sealed class Auth0Options
 {

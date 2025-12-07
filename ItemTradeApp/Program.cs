@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.UsersFeature;
-using ItemTradeApp.LoginFeature;
+using ItemTradeApp.Middlewares;
+using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -46,9 +49,15 @@ builder.Services
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("read:offers",
-        policy => policy.RequireClaim("permissions", "read:trips"));
+    options.AddPolicy("OwnResource", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.Requirements.Add(new OwnResourceRequirement());
+    });
 });
+
+builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
+
 builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddCors(opts =>
 {

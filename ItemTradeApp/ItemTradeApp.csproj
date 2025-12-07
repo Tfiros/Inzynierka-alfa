@@ -23,7 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Features\UsersFeature\Shared\" />
     <Folder Include="Features\UsersFeature\UserManagement\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>

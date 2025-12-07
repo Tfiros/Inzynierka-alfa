@@ -1,8 +1,10 @@
 ﻿
+using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
 using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.UsersFeature.Auth.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Dto.RequestDtos;
-using ItemTradeApp.LoginFeature.Mappers;
+using ItemTradeApp.AuthZeroCommunication.Mappers;
+using ItemTradeApp.LoginFeature.Dto.ResponseDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,38 +13,39 @@ namespace ItemTradeApp.LoginFeature;
 
 [ApiController]
 [Route("[controller]")]
-public class LoginController(IAuthService loginService) : ControllerBase
+public class LoginController(IAuthService authService) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest? req)
+    public async Task<ActionResult<Result<AuthZeroBodyResponse>>> Register([FromBody] RegisterRequest? req)
     {
         if (req is null)
         {
-            ModelState.AddModelError(string.Empty, "Body is required.");
-            return ValidationProblem(ModelState);
-        }
+            var error = Result<AuthZeroBodyResponse>.BadRequest("Body is required.");
+            return error.ToActionResult();        }
 
         if (string.IsNullOrWhiteSpace(req.Email))
             ModelState.AddModelError(nameof(req.Email), "Email is required.");
         if (string.IsNullOrWhiteSpace(req.Password))
             ModelState.AddModelError(nameof(req.Password), "Password is required.");
         if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
+        {
+            var msg = string.Join(" | ",
+                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
+            var error = Result<AuthZeroBodyResponse>.BadRequest(msg);
+            return error.ToActionResult();
+        }
 
-        var result = await loginService.RegisterAsync(req);
-        return result.Matching(
-            ok => StatusCode(StatusCodes.Status201Created, ok),
-            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_signup_failed", err.Body))
-        );
+        var result = await authService.RegisterAsync(req);
+        return result.ToActionResult();
     }
 
     [HttpPost]
-    public async Task<IActionResult> Login([FromBody] LoginRequest? req)
+    public async Task<ActionResult<Result<LoginResponse>>> Login([FromBody] LoginRequest? req)
     {
         if (req is null)
         {
-            ModelState.AddModelError(string.Empty, "Body is required.");
-            return ValidationProblem(ModelState);
+            var error = Result<LoginResponse>.BadRequest("Body is required.");
+            return error.ToActionResult();
         }
 
         if (string.IsNullOrWhiteSpace(req.Email))
@@ -50,74 +53,111 @@ public class LoginController(IAuthService loginService) : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Password))
             ModelState.AddModelError(nameof(req.Password), "Password is required.");
         if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var result = await loginService.LoginAsync(req);
-        return result.Matching(
-            ok =>
-            {
-                if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
-                    SetRefreshCookie(ok.RefreshToken!);
-                return Ok(new { ok.Id, ok.AccessToken, ok.ExpiresIn, ok.IdToken });
-            },
-            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_token_failed", err.Body))
+        {
+            var msg = string.Join(" | ",
+                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
+            var error = Result<LoginResponse>.BadRequest(msg);
+            return error.ToActionResult();
+        }
+        var result = await authService.LoginAsync(req);
+        if (!result.IsSuccess || result.Data is null)
+        {
+            return result.ToActionResult();
+        }
+        var resultData = result.Data;
+        if (!string.IsNullOrWhiteSpace(resultData.RefreshToken))
+        {
+            SetRefreshCookie(resultData.RefreshToken!);
+        }
+        // not sending a refreshToken in response
+        var dto = new LoginResponse(
+            resultData.Id,
+            resultData.AccessToken,
+            resultData.ExpiresIn,
+            resultData.IdToken
         );
+
+        var success = Result<LoginResponse>.Success(dto);
+        return success.ToActionResult();
     }
 
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest? req)
+    public async Task<ActionResult<Result<AuthZeroBodyResponse>>> ForgotPassword([FromBody] ForgotPasswordRequest? req)
     {
         if (req is null)
         {
-            ModelState.AddModelError(string.Empty, "Body is required.");
-            return ValidationProblem(ModelState);
+            var error = Result<AuthZeroBodyResponse>.BadRequest("Body is required.");
+            return error.ToActionResult();
         }
 
         if (string.IsNullOrWhiteSpace(req.Email))
             ModelState.AddModelError(nameof(req.Email), "Email is required.");
         if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
+        {
+            var msg = string.Join(" | ",
+                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
+            var error = Result<AuthZeroBodyResponse>.BadRequest(msg);
+            return error.ToActionResult();
+        }
 
-        var result = await loginService.ForgotPasswordAsync(req);
-        return result.Matching(
-            ok => Ok(ok),
-            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_change_password_failed", err.Body))
-        );
+        var result = await authService.ForgotPasswordAsync(req);
+        return result.ToActionResult();
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh()
+    [Authorize]
+    public async Task<ActionResult<Result<RefreshResponse>>> Refresh()
     {
         var rt = Request.Cookies[RefreshCookieName];
         if (string.IsNullOrEmpty(rt))
-            return Unauthorized();
+        {
+            var error = Result<RefreshResponse>.Unauthorized("Missing refresh token cookie.");
+            return error.ToActionResult();
+        }
 
-        var result = await loginService.RefreshAsync(rt);
-        return result.Matching(
-            ok =>
-            {
-                if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
-                    SetRefreshCookie(ok.RefreshToken!);
-                return Ok(new { ok.AccessToken, ok.ExpiresIn, ok.IdToken });
-            },
-            err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_refresh_failed", err.Body))
+        var result = await authService.RefreshAsync(rt);
+
+        if (!result.IsSuccess || result.Data is null)
+        {
+            return result.ToActionResult();
+        }
+
+        var ok = result.Data;
+
+        if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
+        {
+            SetRefreshCookie(ok.RefreshToken!);
+        }
+
+        var dto = new RefreshResponse(
+            ok.AccessToken,
+            ok.ExpiresIn,
+            ok.IdToken
         );
+
+        var success = Result<RefreshResponse>.Success(dto);
+        return success.ToActionResult();
     }
 
     [HttpPost("logout")]
+    [Authorize]
     public async Task<IActionResult> Logout()
     {
         var rt = Request.Cookies[RefreshCookieName];
+
         if (!string.IsNullOrWhiteSpace(rt))
         {
-            var result = await loginService.LogoutAsync(rt);
+            var result = await authService.LogoutAsync(rt);
             DeleteRefreshCookie();
 
-            return result.Matching(
-                _   => NoContent(),
-                err => StatusCode(err.StatusCode, Auth0DetailsMapper.Build("auth0_revoke_failed", err.Body))
-            );
+            if (!result.IsSuccess)
+            {
+                return StatusCode((int)result.Status, result.Message);
+            }
+
+            return NoContent();
         }
+
         DeleteRefreshCookie();
         return NoContent();
     }

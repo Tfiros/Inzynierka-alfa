@@ -212,7 +212,7 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.TradeStatus_ID)
                 .HasConstraintName("trade_tradestatus");
 
-            entity.HasOne(d => d.User).WithMany(p => p.OwningTrades)
+            entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
                 .HasForeignKey(d => d.User_ID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("user_buyer");
@@ -225,6 +225,35 @@ public partial class AppDbContext : DbContext
             entity.ToTable("trade_status");
 
             entity.Property(e => e.StatusName).HasMaxLength(50);
+        });
+        modelBuilder.Entity<Rate>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.TradeId })
+                .HasName("PK_Rate");
+
+            entity.ToTable("Rate");
+
+            entity.Property(e => e.Mark)
+                .HasColumnType("decimal(3,1)");
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500);
+
+            entity.HasOne(d => d.User)
+                .WithMany(p => p.Rates)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Rate_User");
+
+            entity.HasOne(d => d.Trade)
+                .WithMany(p => p.Rates)
+                .HasForeignKey(d => d.TradeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Rate_Trade");
+
+            entity.HasCheckConstraint(
+                "CK_Rate_Mark_1_10",
+                "[Mark] >= 1.0 AND [Mark] <= 10.0");
         });
 
         OnModelCreatingPartial(modelBuilder);

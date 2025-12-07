@@ -1,28 +1,32 @@
 ﻿using System.Text.Json;
+using ItemTradeApp.AuthZeroCommunication;
+using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
+using ItemTradeApp.AuthZeroCommunication.Mappers;
 using ItemTradeApp.ExceptionsHandling;
-using ItemTradeApp.Features.UsersFeature.Auth.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Dto;
 using ItemTradeApp.LoginFeature.Dto.RequestDtos;
 using ItemTradeApp.LoginFeature.Dto.ResponseDtos;
-using ItemTradeApp.LoginFeature.Mappers;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.LoginFeature;
 
 public interface IAuthService
 {
-    Task<Result<RawBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default);
-    Task<Result<LoginResponse>>   LoginAsync(LoginRequest req, CancellationToken ct = default);
-    Task<Result<RawBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default);
-    Task<Result<RefreshResponse>> RefreshAsync(string req, CancellationToken ct = default);
-    Task<Result<RawBodyResponse>> LogoutAsync(string req, CancellationToken ct = default);
+    Task<Result<AuthZeroBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default);
+    Task<Result<LoginResponse>>       LoginAsync(LoginRequest req, CancellationToken ct = default);
+    Task<Result<AuthZeroBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default);
+    Task<Result<RefreshResponse>>     RefreshAsync(string req, CancellationToken ct = default);
+    Task<Result<AuthZeroBodyResponse>> LogoutAsync(string req, CancellationToken ct = default);
 }
-public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiClient,
+
+public class AuthService(
+    IOptions<Auth0Options> config,
+    IAuthZeroAPIClient apiClient,
     IAuthRepository authRepository) : IAuthService
 {
     private readonly Auth0Options _config = config.Value;
 
-    public async Task<Result<RawBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default)
+    public async Task<Result<AuthZeroBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
 
@@ -33,12 +37,28 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             clientId: _config.ClientId,
             name: req.Username,
             ct);
-        var doc = JsonDocument.Parse(res.Value?.ToString());
+
+        if (!res.IsSuccess)
+        {
+            var msg = "Registration failed! There is a user alredy with such credentials.";
+            return res.Status switch
+            {
+                ResultStatus.BadRequest      => Result<AuthZeroBodyResponse>.BadRequest(msg),
+                ResultStatus.Unauthorized    => Result<AuthZeroBodyResponse>.Unauthorized(msg),
+                ResultStatus.Conflict        => Result<AuthZeroBodyResponse>.Conflict(msg),
+                ResultStatus.NotFound        => Result<AuthZeroBodyResponse>.NotFound(msg),
+                ResultStatus.InternalServerError => Result<AuthZeroBodyResponse>.InternalServerError(msg),
+                _ => Result<AuthZeroBodyResponse>.BadRequest(msg)
+            };
+        }
+
+        using var doc = JsonDocument.Parse(res.Data.Details.RawResponse);
         var auth0Id = doc.RootElement.GetProperty("_id").GetString() ?? string.Empty;
+
         await authRepository.Register(req, auth0Id);
-        return res.IsSuccess
-            ? Result<RawBodyResponse>.Ok(Auth0DetailsMapper.Build("registration_success", res.Value!))
-            : Result<RawBodyResponse>.Fail(res.Error!.Value);
+        res.Message = "Registration successful";
+        
+        return res;
     }
 
     public async Task<Result<LoginResponse>> LoginAsync(LoginRequest req, CancellationToken ct = default)
@@ -55,21 +75,48 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             scope: "openid profile email offline_access",
             ct);
 
-        if (!res.IsSuccess) return Result<LoginResponse>.Fail(res.Error!.Value);
+        if (!res.IsSuccess)
+        {
+            res.Message = "Login failed due to error: " + res.Data.Details.ErrorDescription;
+            return res.Status switch
+            {
+                ResultStatus.BadRequest      => Result<LoginResponse>.BadRequest(res.Message),
+                ResultStatus.Unauthorized    => Result<LoginResponse>.Unauthorized(res.Message),
+                ResultStatus.NotFound        => Result<LoginResponse>.NotFound(res.Message),
+                ResultStatus.Conflict        => Result<LoginResponse>.Conflict(res.Message),
+                ResultStatus.InternalServerError => Result<LoginResponse>.InternalServerError(res.Message),
+                _ => Result<LoginResponse>.BadRequest(res.Message)
+            };
+        }
 
-        using var doc = JsonDocument.Parse(res.Value!);
+        using var doc = JsonDocument.Parse(res.Data.Details.RawResponse);
         var accessToken  = doc.RootElement.GetProperty("access_token").GetString();
         var expiresIn    = doc.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 0;
         var refreshToken = doc.RootElement.TryGetProperty("refresh_token", out var r) ? r.GetString() : null;
         var idToken      = doc.RootElement.TryGetProperty("id_token", out var idt) ? idt.GetString() : null;
         
         if (string.IsNullOrEmpty(accessToken))
-            return Result<LoginResponse>.Fail(new AppError(502, res.Value!, "no_access_token_from_auth0"));
-        var user = await authRepository.GetUserIdByEmail(req.Email);
-        return Result<LoginResponse>.Ok(new LoginResponse(user.ID, accessToken!, expiresIn, refreshToken, idToken));
+        {
+            return Result<LoginResponse>.InternalServerError("no_access_token_from_auth0");
+        }
+
+        var user = await authRepository.GetUserByEmail(req.Email);
+        if (user is null)
+        {
+            return Result<LoginResponse>.NotFound("user_not_found_in_local_db");
+        }
+
+        var dto = new LoginResponse(
+            user.ID,
+            accessToken!,
+            expiresIn,
+            refreshToken,
+            idToken);
+
+        return Result<LoginResponse>.Success(dto, "Login Successful");
     }
 
-    public async Task<Result<RawBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default)
+    public async Task<Result<AuthZeroBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
 
@@ -79,9 +126,22 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             clientId: _config.ClientId,
             ct);
 
-        return res.IsSuccess
-            ? Result<RawBodyResponse>.Ok(Auth0DetailsMapper.Build("reset_email_sent", res.Value!))
-            : Result<RawBodyResponse>.Fail(res.Error!.Value);
+        if (!res.IsSuccess)
+        {
+            var msg = "Reseting password failed due to: " + res.Data.Details.ErrorDescription;
+            return res.Status switch
+            {
+                ResultStatus.BadRequest      => Result<AuthZeroBodyResponse>.BadRequest(msg),
+                ResultStatus.Unauthorized    => Result<AuthZeroBodyResponse>.Unauthorized(msg),
+                ResultStatus.NotFound        => Result<AuthZeroBodyResponse>.NotFound(msg),
+                ResultStatus.Conflict        => Result<AuthZeroBodyResponse>.Conflict(msg),
+                ResultStatus.InternalServerError => Result<AuthZeroBodyResponse>.InternalServerError(msg),
+                _ => Result<AuthZeroBodyResponse>.BadRequest(msg)
+            };
+        }
+        res.Data.Message = "Reset email sent";
+
+        return res;
     }
 
     public async Task<Result<RefreshResponse>> RefreshAsync(string req, CancellationToken ct = default)
@@ -95,21 +155,36 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             scope: null,
             ct);
 
-        if (!res.IsSuccess) return Result<RefreshResponse>.Fail(res.Error!.Value);
+        if (!res.IsSuccess || res.Data is null)
+        {
+            var msg = "Refresh failed due to: " + res.Data.Details.ErrorDescription;
+            return res.Status switch
+            {
+                ResultStatus.BadRequest      => Result<RefreshResponse>.BadRequest(msg),
+                ResultStatus.Unauthorized    => Result<RefreshResponse>.Unauthorized(msg),
+                ResultStatus.NotFound        => Result<RefreshResponse>.NotFound(msg),
+                ResultStatus.Conflict        => Result<RefreshResponse>.Conflict(msg),
+                ResultStatus.InternalServerError => Result<RefreshResponse>.InternalServerError(msg),
+                _ => Result<RefreshResponse>.BadRequest(msg)
+            };
+        }
 
-        using var doc = JsonDocument.Parse(res.Value!);
+        using var doc = JsonDocument.Parse(res.Data.Details.RawResponse);
         var accessToken  = doc.RootElement.GetProperty("access_token").GetString();
         var expiresIn    = doc.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 0;
         var refreshToken = doc.RootElement.TryGetProperty("refresh_token", out var r) ? r.GetString() : null;
         var idToken      = doc.RootElement.TryGetProperty("id_token", out var idt) ? idt.GetString() : null;
 
         if (string.IsNullOrEmpty(accessToken))
-            return Result<RefreshResponse>.Fail(new AppError(502, res.Value!, "no_access_token_from_auth0"));
+        {
+            return Result<RefreshResponse>.InternalServerError("no_access_token_from_auth0");
+        }
 
-        return Result<RefreshResponse>.Ok(new RefreshResponse(accessToken!, expiresIn, refreshToken, idToken));
+        var dto = new RefreshResponse(accessToken!, expiresIn, refreshToken, idToken);
+        return Result<RefreshResponse>.Success(dto, "Refresh successful");
     }
 
-    public async Task<Result<RawBodyResponse>> LogoutAsync(string req, CancellationToken ct = default)
+    public async Task<Result<AuthZeroBodyResponse>> LogoutAsync(string req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
 
@@ -119,8 +194,20 @@ public class AuthService(IOptions<Auth0Options> config, IAuthZeroAPIClient apiCl
             clientSecret: _config.ClientSecret,
             ct);
 
-        return res.IsSuccess
-            ? Result<RawBodyResponse>.Ok(Auth0DetailsMapper.Build("auth0_revoke_success", res.Value ?? string.Empty))
-            : Result<RawBodyResponse>.Fail(res.Error!.Value);
+        if (!res.IsSuccess)
+        {
+            var msg = "Logout failed due to: "+ res.Data.Details.ErrorDescription;
+            return res.Status switch
+            {
+                ResultStatus.BadRequest      => Result<AuthZeroBodyResponse>.BadRequest(msg),
+                ResultStatus.Unauthorized    => Result<AuthZeroBodyResponse>.Unauthorized(msg),
+                ResultStatus.NotFound        => Result<AuthZeroBodyResponse>.NotFound(msg),
+                ResultStatus.Conflict        => Result<AuthZeroBodyResponse>.Conflict(msg),
+                ResultStatus.InternalServerError => Result<AuthZeroBodyResponse>.InternalServerError(msg),
+                _ => Result<AuthZeroBodyResponse>.BadRequest(msg)
+            };
+        }
+        res.Data.Message = "Logout successful";
+        return res;
     }
 }
