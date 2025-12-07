@@ -13,7 +13,7 @@ namespace ItemTradeApp.LoginFeature;
 
 [ApiController]
 [Route("[controller]")]
-public class LoginController(IAuthService authService) : ControllerBase
+public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<Result<AuthZeroBodyResponse>>> Register([FromBody] RegisterRequest? req)
@@ -39,7 +39,7 @@ public class LoginController(IAuthService authService) : ControllerBase
         return result.ToActionResult();
     }
 
-    [HttpPost]
+    [HttpPost("login")]
     public async Task<ActionResult<Result<LoginResponse>>> Login([FromBody] LoginRequest? req)
     {
         if (req is null)

@@ -194,7 +194,6 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
                 "http_request_failed");
         }
     }
-
     private async Task<Result<AuthZeroBodyResponse>> PostFormAsync(
         string path,
         Dictionary<string, string> form,
