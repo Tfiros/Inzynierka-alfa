@@ -43,7 +43,8 @@ builder.Services
         options.Audience  = audience;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            NameClaimType = ClaimTypes.NameIdentifier
+            NameClaimType = ClaimTypes.NameIdentifier,
+            RoleClaimType = "https://inzynierka.com/roles"
         };
     });
 

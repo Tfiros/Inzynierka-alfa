@@ -12,6 +12,9 @@ public interface IAuthZeroManagementClient
         string auth0UserId,
         object payload,
         CancellationToken ct = default);
+    Task<Result<AuthZeroBodyResponse>> DeleteUserAsync(
+        string auth0UserId,
+        CancellationToken ct = default);
 }
 public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 {
@@ -81,7 +84,59 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         
         return Result<AuthZeroBodyResponse>.Success(mappedDetails, "auth0_user_updated");
     }
+    public async Task<Result<AuthZeroBodyResponse>> DeleteUserAsync(
+        string auth0UserId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+        {
+            return Result<AuthZeroBodyResponse>.BadRequest("auth0_user_id_required");
+        }
 
+        var tokenResult = await GetManagementTokenAsync(ct);
+        if (!tokenResult.IsSuccess || string.IsNullOrWhiteSpace(tokenResult.Data))
+        {
+            return Result<AuthZeroBodyResponse>.Unauthorized(
+                tokenResult.Message ?? "auth0_mgmt_token_error");
+        }
+
+        var token   = tokenResult.Data;
+        var baseUrl = $"https://{_options.Domain}/api/v2";
+        var encodedUserId = Uri.EscapeDataString(auth0UserId);
+
+        var http = _httpFactory.CreateClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"{baseUrl}/users/{encodedUserId}");
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await http.SendAsync(request, ct);
+        var responseContent = await response.Content.ReadAsStringAsync(ct);
+
+        var mappedDetails = Auth0DetailsMapper.Build("Auth0", responseContent);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized =>
+                    Result<AuthZeroBodyResponse>.Unauthorized("auth0_mgmt_unauthorized"),
+
+                System.Net.HttpStatusCode.Forbidden =>
+                    Result<AuthZeroBodyResponse>.Unauthorized("auth0_mgmt_forbidden"),
+
+                System.Net.HttpStatusCode.NotFound =>
+                    Result<AuthZeroBodyResponse>.NotFound("auth0_user_not_found"),
+
+                _ => Result<AuthZeroBodyResponse>.BadRequest(
+                    $"auth0_mgmt_delete_error_{(int)response.StatusCode}: {responseContent}")
+            };
+        }
+
+        return Result<AuthZeroBodyResponse>.NoContent("auth0_user_deleted");
+    }
     private async Task<Result<string>> GetManagementTokenAsync(CancellationToken ct)
     {
         var mgmt = _options.Management;
