@@ -5,6 +5,7 @@ using ItemTradeApp.Features.UsersFeature.UserManagement.DTOs;
 using ItemTradeApp.Features.UsersFeature.UserManagement.DTOs.Response;
 using ItemTradeApp.Features.UsersFeature.UserManagement.Enums;
 using ItemTradeApp.Features.UsersFeature.UserSettings;
+using ItemTradeApp.Persistence.Models;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.UsersFeature.UserManagement;
@@ -27,98 +28,100 @@ public class UserManagementService(
         IUserManagementRepository userManagementRepository,
         IOptions<Auth0Options> auth0Options) : IUserManagementService
     {
-        public async Task<Result<string>> UpdateUserAsync(
-            UpdateUserRequest request,
-            CancellationToken ct = default)
+       public async Task<Result<string>> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default)
+{
+    if (request is null)
+        return Result<string>.BadRequest("body_required");
+
+    if (string.IsNullOrWhiteSpace(request.AuthZeroUserId))
+        return Result<string>.BadRequest("auth0_user_id_required");
+
+    var trimmedAuth0UserId = request.AuthZeroUserId.StartsWith("auth0|", StringComparison.Ordinal)
+        ? request.AuthZeroUserId["auth0|".Length..]
+        : request.AuthZeroUserId;
+
+    var user = await userManagementRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
+    if (user is null)
+        return Result<string>.NotFound("user_not_found_local_db");
+
+    var hasEmailChange = !string.IsNullOrWhiteSpace(request.Email);
+    var hasPasswordChange = !string.IsNullOrWhiteSpace(request.NewPassword);
+    var hasRolesChange = request.Roles is not null;
+    var hasNicknameChange = !string.IsNullOrWhiteSpace(request.Nickname);
+
+    if (!hasEmailChange && !hasPasswordChange && !hasRolesChange && !hasNicknameChange)
+        return Result<string>.NoContent("no_changes");
+
+    var payload = new Dictionary<string, object>();
+
+    if (hasEmailChange)
+    {
+        payload["email"] = request.Email!;
+        payload["verify_email"] = true;
+        payload["email_verified"] = false;
+    }
+
+    if (hasPasswordChange)
+    {
+        payload["password"] = request.NewPassword!;
+        payload["connection"] = auth0Options.Value.Realm;
+    }
+
+    if (hasRolesChange)
+    {
+        payload["app_metadata"] = new Dictionary<string, object?>
         {
-            if (string.IsNullOrWhiteSpace(request.AuthZeroUserId))
-            {
-                return Result<string>.BadRequest("auth0_user_id_required");
-            }
+            ["roles"] = request.Roles
+        };
+    }
 
-            if (request is null)
-            {
-                return Result<string>.BadRequest("body_required");
-            }
+    if (hasNicknameChange)
+    {
+        payload["nickname"] = request.Nickname!;
+        payload["name"] = request.Nickname!;
+    }
+    var fullAuthZeroUserId = request.AuthZeroUserId.StartsWith("auth0|", StringComparison.Ordinal)
+        ? request.AuthZeroUserId
+        :  "auth0|" + request.AuthZeroUserId;
+    var auth0Result = await authZeroManagementClient.PatchUserAsync(fullAuthZeroUserId, payload, ct);
 
-            string trimmedAuth0UserId = request.AuthZeroUserId.StartsWith("auth0|")
-                ? request.AuthZeroUserId.Substring("auth0|".Length)
-                : request.AuthZeroUserId;
-            var user = await userManagementRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
-            if (user is null)
-            {
-                return Result<string>.NotFound("user_not_found_local_db");
-            }
+    if (!auth0Result.IsSuccess)
+    {
+        var msg =
+            auth0Result.Data?.Details?.ErrorDescription
+            ?? auth0Result.Data?.Details?.Text
+            ?? auth0Result.Message
+            ?? "auth0_admin_update_user_failed";
 
-            var hasEmailChange = !string.IsNullOrWhiteSpace(request.Email);
-            var hasPasswordChange = !string.IsNullOrWhiteSpace(request.NewPassword);
-            var hasRolesChange = request.Roles is { Count: > 0 };
+        return new Result<string>(
+            isSuccess: false,
+            status: auth0Result.Status,
+            data: default,
+            message: msg);
+    }
 
-            if (!hasEmailChange && !hasPasswordChange && !hasRolesChange)
-            {
-                return Result<string>.NoContent("no_changes");
-            }
+    if (hasEmailChange)
+        user.Email = request.Email!;
 
-            var payload = new Dictionary<string, object>();
+    if (hasNicknameChange)
+    {
+        user.ProfileInfo.Nickname = request.Nickname!;
+    }
 
-            if (hasEmailChange)
-            {
-                payload["email"] = request.Email!;
-                payload["verify_email"] = true;
-                payload["email_verified"] = false;
-            }
+    await userManagementRepository.UpdateUserAsync(user, ct);
 
-            if (hasPasswordChange)
-            {
-                payload["password"] = request.NewPassword!;
-                payload["connection"] = auth0Options.Value.Realm;
-            }
+    return Result<string>.Success(null, "admin_user_updated");
+}
 
-            if (hasRolesChange)
-            {
-                payload["app_metadata"] = new
-                {
-                    roles = request.Roles
-                };
-            }
-
-            var auth0Result = await authZeroManagementClient.PatchUserAsync(request.AuthZeroUserId, payload, ct);
-
-            if (!auth0Result.IsSuccess)
-            {
-                var msg =
-                    auth0Result.Data?.Details?.ErrorDescription
-                    ?? auth0Result.Data?.Details?.Text
-                    ?? auth0Result.Message
-                    ?? "auth0_admin_update_user_failed";
-
-                return new Result<string>(
-                    isSuccess: false,
-                    status: auth0Result.Status,
-                    data: default,
-                    message: msg);
-            }
-
-
-            if (hasEmailChange)
-            {
-                user.Email = request.Email!;
-            }
-
-
-            await userManagementRepository.UpdateUserAsync(user, ct);
-
-            return Result<string>.Success(null, "admin_user_updated");
-        }
 
         public async Task<Result<string>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(auth0UserId))
                 return Result<string>.BadRequest("auth0_user_id_required");
-            string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-                ? auth0UserId.Substring("auth0|".Length)
-                : auth0UserId;
-            var auth0Result = await authZeroManagementClient.DeleteUserAsync(auth0UserId, ct);
+            var fullAuthZeroUserId = auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
+                ? auth0UserId
+                :  "auth0|" + auth0UserId;
+            var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuthZeroUserId, ct);
 
             if (!auth0Result.IsSuccess)
             {
@@ -135,9 +138,9 @@ public class UserManagementService(
                     message: msg);
             }
 
-            await userManagementRepository.DeleteUserByAuth0IdAsync(trimmedAuth0UserId, ct);
+            await userManagementRepository.DeleteUserByAuth0IdAsync(auth0UserId, ct);
 
-            return Result<string>.NoContent("admin_user_deleted");
+            return Result<string>.NoContent("user_deleted");
         }
         
         private const string MiddlemanRoleName = "Middleman";

@@ -27,7 +27,7 @@ public class UserManagementController(IUserManagementService userManagementServi
     }
     [HttpDelete]
     public async Task<ActionResult<Result<string>>> DeleteUser(
-        DeleteUserRequest request,
+        [FromBody] DeleteUserRequest request,
         CancellationToken ct = default)
     {
         var result = await userManagementService.DeleteUserAsync(request.AuthZeroUserId, ct);

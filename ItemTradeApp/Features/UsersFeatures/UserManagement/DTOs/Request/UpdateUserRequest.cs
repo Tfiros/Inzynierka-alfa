@@ -2,6 +2,7 @@
 
 public class UpdateUserRequest
 {
+    public string? Nickname { get; set; }
     public string? AuthZeroUserId { get; set; }
     public string? Email { get; set; }
     public string? NewPassword { get; set; }

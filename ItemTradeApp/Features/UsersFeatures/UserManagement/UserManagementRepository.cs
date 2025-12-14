@@ -30,6 +30,7 @@ public class UserManagementRepository (AppDbContext dbContext) : IUserManagement
             return null;
 
         return await dbContext.Users
+            .Include(u => u.ProfileInfo)
             .SingleOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
     }
 
@@ -60,13 +61,10 @@ public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLa
     var page = query.Page < 1 ? 1 : query.Page;
     var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
-    // 1) Filtry (BEZ sortowania)
     var filteredQuery = BuildBaseQuery(query, auth0IdFilter);
 
-    // 2) TotalCount (bez ORDER BY)
     var totalCount = await filteredQuery.CountAsync(ct);
 
-    // 3) Items (z ORDER BY + paging)
     var orderedQuery = ApplyOrdering(filteredQuery, (UserListOrderBy)query.OrderBy);
 
     var items = await orderedQuery
@@ -77,12 +75,11 @@ public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLa
             Auth0UserId = u.Auth0UserID,
             Email = u.Email,
             Name = u.ProfileInfo != null ? u.ProfileInfo.Nickname : null,
-            RegisteredAt = u.RegistrationDate, // DateOnly
-            Roles = new List<string>()         // serwis dopnie
+            RegisteredAt = u.RegistrationDate,
+            Roles = new List<string>()
         })
         .ToListAsync(ct);
 
-    // 4) Staty (1 query)
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
     var monthAgo = today.AddMonths(-1);
 
