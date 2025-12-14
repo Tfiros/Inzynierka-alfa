@@ -1,8 +1,10 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
 using ItemTradeApp.AuthZeroCommunication.Mappers;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
+using ItemTradeApp.ExceptionsHandling;
 
 namespace ItemTradeApp.AuthZeroCommunication;
 
@@ -15,6 +17,7 @@ public interface IAuthZeroManagementClient
     Task<Result<AuthZeroBodyResponse>> DeleteUserAsync(
         string auth0UserId,
         CancellationToken ct = default);
+    Task<Result<List<Auth0UserSlim>>> GetAllUsersAsync(CancellationToken ct = default);
 }
 public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 {
@@ -136,6 +139,86 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         }
 
         return Result<AuthZeroBodyResponse>.NoContent("auth0_user_deleted");
+    }
+       public async Task<Result<List<Auth0UserSlim>>> GetAllUsersAsync(CancellationToken ct = default)
+    {
+        const int perPage = 100;
+        var page = 0;
+
+        var tokenRes = await GetManagementTokenAsync(ct);
+        if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
+        {
+            return new Result<List<Auth0UserSlim>>(
+                isSuccess: false,
+                status: tokenRes.Status,
+                data: null,
+                message: tokenRes.Message ?? "Failed to get Auth0 management token."
+            );
+        }
+        var httpClient = _httpFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", tokenRes.Data);
+
+        var all = new List<Auth0UserSlim>();
+
+        while (true)
+        {
+            var url = $"https://{_options.Domain}/api/v2/users?per_page={perPage}&page={page}&include_totals=false&fields=user_id,email,nickname,name,created_at,app_metadata&include_fields=true";
+            using var resp = await httpClient.GetAsync(url, ct);
+
+            
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync(ct);
+
+                var status = resp.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => ResultStatus.Unauthorized,
+                    HttpStatusCode.BadRequest => ResultStatus.BadRequest,
+                    HttpStatusCode.NotFound => ResultStatus.NotFound,
+                    HttpStatusCode.Conflict => ResultStatus.Conflict,
+                    _ => ResultStatus.InternalServerError
+                };
+
+                return new Result<List<Auth0UserSlim>>(
+                    isSuccess: false,
+                    status: status,
+                    data: null,
+                    message: $"Auth0 users error: {body}"
+                );
+            }
+
+            var users = await resp.Content.ReadFromJsonAsync<List<Auth0UserResponse>>(cancellationToken: ct)
+                        ?? new List<Auth0UserResponse>();
+
+            foreach (var u in users)
+            {
+                all.Add(new Auth0UserSlim
+                {
+                    UserId = u.UserId,
+                    Email = u.Email,
+                    Nickname = u.Nickname,
+                    Name = u.Name,
+                    CreatedAt = u.CreatedAt,
+                    Roles = u.AppMetadata?.Roles?
+                        .Where(r => !string.IsNullOrWhiteSpace(r))
+                        .ToList()
+                        ?? new List<string>()
+                });
+            }
+
+            if (users.Count < perPage)
+                break;
+
+            page++;
+        }
+
+        return new Result<List<Auth0UserSlim>>(
+            isSuccess: true,
+            status: ResultStatus.Success,
+            data: all,
+            message: null
+        );
     }
     private async Task<Result<string>> GetManagementTokenAsync(CancellationToken ct)
     {
