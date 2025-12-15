@@ -20,11 +20,11 @@ public interface IAuthService
 }
 
 public class AuthService(
-    IOptions<Auth0Options> config,
+    IOptions<AuthZeroOptions> config,
     IAuthZeroAPIClient apiClient,
     IAuthRepository authRepository) : IAuthService
 {
-    private readonly Auth0Options _config = config.Value;
+    private readonly AuthZeroOptions _config = config.Value;
 
     public async Task<Result<AuthZeroBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default)
     {

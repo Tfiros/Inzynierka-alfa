@@ -1,6 +1,6 @@
 ﻿namespace ItemTradeApp.AuthZeroCommunication;
 
-public sealed class Auth0Options
+public sealed class AuthZeroOptions
 {
     public string Domain { get; init; } = default!;
     public string Audience { get; init; } = default!;
