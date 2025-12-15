@@ -59,7 +59,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 
-builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection("Auth0"));
+builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p

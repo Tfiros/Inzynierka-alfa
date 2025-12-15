@@ -3,7 +3,7 @@ using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
 
 namespace ItemTradeApp.AuthZeroCommunication.Mappers;
 
-public static class Auth0DetailsMapper
+public static class AuthZeroDetailsMapper
 {
     public static AuthZeroBodyResponse Build(string message, string rawBody)
     {

@@ -2,7 +2,7 @@
 
 namespace ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
 
-public sealed class Auth0TokenResponse
+public sealed class AuthZeroTokenResponse
 {
     [JsonPropertyName("access_token")]
     public string AccessToken { get; set; } = default!;

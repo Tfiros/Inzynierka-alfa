@@ -22,9 +22,9 @@ public interface IAuthZeroManagementClient
 public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 {
     private readonly IHttpClientFactory _httpFactory;
-    private readonly Auth0Options _options;
+    private readonly AuthZeroOptions _options;
 
-    public AuthZeroAPIManagement(IHttpClientFactory httpFactory, IOptions<Auth0Options> options)
+    public AuthZeroAPIManagement(IHttpClientFactory httpFactory, IOptions<AuthZeroOptions> options)
     {
         _httpFactory = httpFactory;
         _options = options.Value;
@@ -65,7 +65,7 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         using var response = await http.SendAsync(request, ct);
         var responseContent = await response.Content.ReadAsStringAsync(ct);
 
-        var mappedDetails = Auth0DetailsMapper.Build("Auth0", responseContent);
+        var mappedDetails = AuthZeroDetailsMapper.Build("Auth0", responseContent);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -118,7 +118,7 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         using var response = await http.SendAsync(request, ct);
         var responseContent = await response.Content.ReadAsStringAsync(ct);
 
-        var mappedDetails = Auth0DetailsMapper.Build("Auth0", responseContent);
+        var mappedDetails = AuthZeroDetailsMapper.Build("Auth0", responseContent);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -188,8 +188,8 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
                 );
             }
 
-            var users = await resp.Content.ReadFromJsonAsync<List<Auth0UserResponse>>(cancellationToken: ct)
-                        ?? new List<Auth0UserResponse>();
+            var users = await resp.Content.ReadFromJsonAsync<List<AuthZeroUserResponse>>(cancellationToken: ct)
+                        ?? new List<AuthZeroUserResponse>();
 
             foreach (var u in users)
             {
@@ -249,7 +249,7 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
             return Result<string>.Unauthorized($"auth0_mgmt_token_failed: {error}");
         }
 
-        var payload = await response.Content.ReadFromJsonAsync<Auth0TokenResponse>(cancellationToken: ct);
+        var payload = await response.Content.ReadFromJsonAsync<AuthZeroTokenResponse>(cancellationToken: ct);
         if (payload is null || string.IsNullOrWhiteSpace(payload.AccessToken))
         {
             return Result<string>.Unauthorized("auth0_mgmt_token_empty");

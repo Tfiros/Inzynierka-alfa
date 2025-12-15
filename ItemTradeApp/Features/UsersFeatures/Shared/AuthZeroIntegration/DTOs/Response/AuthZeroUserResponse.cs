@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-internal sealed class Auth0UserResponse
+internal sealed class AuthZeroUserResponse
 {
     [JsonPropertyName("user_id")] public string UserId { get; set; } = null!;
     [JsonPropertyName("email")] public string? Email { get; set; }

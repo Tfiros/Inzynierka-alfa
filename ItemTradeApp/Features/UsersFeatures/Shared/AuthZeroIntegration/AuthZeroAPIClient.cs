@@ -59,7 +59,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
 
     public string BaseUrl { get; }
 
-    public AuthZeroAPIClient(IHttpClientFactory httpFactory, IOptions<Auth0Options> opts)
+    public AuthZeroAPIClient(IHttpClientFactory httpFactory, IOptions<AuthZeroOptions> opts)
     {
         _httpFactory = httpFactory;
         var domain = opts.Value.Domain?.Trim().TrimEnd('/')
@@ -178,7 +178,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
 
             if (resp.IsSuccessStatusCode)
             {
-                var data = Auth0DetailsMapper.Build($"{operationName}_success", body);
+                var data = AuthZeroDetailsMapper.Build($"{operationName}_success", body);
                 return Result<AuthZeroBodyResponse>.Success(data, $"{operationName}_success");
             }
 
@@ -186,7 +186,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         }
         catch (HttpRequestException ex)
         {
-            var data = Auth0DetailsMapper.Build($"{operationName}_http_failed", ex.Message);
+            var data = AuthZeroDetailsMapper.Build($"{operationName}_http_failed", ex.Message);
             return new Result<AuthZeroBodyResponse>(
                 false,
                 ResultStatus.InternalServerError,
@@ -214,7 +214,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
 
             if (resp.IsSuccessStatusCode)
             {
-                var data = Auth0DetailsMapper.Build($"{operationName}_success", body);
+                var data = AuthZeroDetailsMapper.Build($"{operationName}_success", body);
                 return Result<AuthZeroBodyResponse>.Success(data, $"{operationName}_success");
             }
 
@@ -222,7 +222,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         }
         catch (HttpRequestException ex)
         {
-            var data = Auth0DetailsMapper.Build($"{operationName}_http_failed", ex.Message);
+            var data = AuthZeroDetailsMapper.Build($"{operationName}_http_failed", ex.Message);
             return new Result<AuthZeroBodyResponse>(
                 false,
                 ResultStatus.InternalServerError,
@@ -238,7 +238,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         string? reason)
     {
         var msg = $"auth0_error {(int)statusCode} {reason}";
-        var data = Auth0DetailsMapper.Build(msg, body);
+        var data = AuthZeroDetailsMapper.Build(msg, body);
 
         var status = statusCode switch
         {

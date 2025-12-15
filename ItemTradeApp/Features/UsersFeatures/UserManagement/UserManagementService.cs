@@ -26,7 +26,7 @@ public interface IUserManagementService
 public class UserManagementService(
         IAuthZeroManagementClient authZeroManagementClient,
         IUserManagementRepository userManagementRepository,
-        IOptions<Auth0Options> auth0Options) : IUserManagementService
+        IOptions<AuthZeroOptions> auth0Options) : IUserManagementService
     {
        public async Task<Result<string>> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default)
 {
