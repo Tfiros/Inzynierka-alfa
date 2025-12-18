@@ -26,11 +26,12 @@ public class AuthRepository(AppDbContext dbContext) : IAuthRepository
             Experience = 0,
             TokenExpDate = now,
             RegistrationDate = DateOnly.FromDateTime(now),
-
+            IsDeleted = false,
             ProfileInfo = new ProfileInfo
             {
                 Nickname = request.Username,
-                Description = string.Empty
+                Description = string.Empty,
+                ImageUrl = string.Empty
             }
         };
 
