@@ -226,7 +226,7 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("trade_status");
 
-            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.StatusName).HasMaxLength(50);
         });
         modelBuilder.Entity<Rate>(entity =>
         {
