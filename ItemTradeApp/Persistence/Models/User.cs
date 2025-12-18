@@ -24,6 +24,8 @@ public partial class User
     public DateTime TokenExpDate { get; set; }
     [Column("registration_date")]
     public DateOnly RegistrationDate { get; set; }
+    [Column("is_deleted")] 
+    public bool IsDeleted { get; set; }
 
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 

@@ -110,38 +110,41 @@ public class UserManagementService(
 
     await userManagementRepository.UpdateUserAsync(user, ct);
 
-    return Result<string>.Success(null, "admin_user_updated");
+    return Result<string>.Success(null, "user_updated");
 }
 
 
-        public async Task<Result<string>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default)
-        {
-            if (string.IsNullOrWhiteSpace(auth0UserId))
-                return Result<string>.BadRequest("auth0_user_id_required");
-            var fullAuthZeroUserId = auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-                ? auth0UserId
-                :  "auth0|" + auth0UserId;
-            var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuthZeroUserId, ct);
+public async Task<Result<string>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default)
+{
+    if (string.IsNullOrWhiteSpace(auth0UserId))
+        return Result<string>.BadRequest("auth0_user_id_required");
 
-            if (!auth0Result.IsSuccess)
-            {
-                var msg =
-                    auth0Result.Data?.Details?.ErrorDescription
-                    ?? auth0Result.Data?.Details?.Text
-                    ?? auth0Result.Message
-                    ?? "auth0_admin_delete_user_failed";
+    var fullAuthZeroUserId = auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
+        ? auth0UserId
+        : "auth0|" + auth0UserId;
 
-                return new Result<string>(
-                    isSuccess: false,
-                    status: auth0Result.Status,
-                    data: default,
-                    message: msg);
-            }
+    var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuthZeroUserId, ct);
 
-            await userManagementRepository.DeleteUserByAuth0IdAsync(auth0UserId, ct);
+    if (!auth0Result.IsSuccess)
+    {
+        var msg =
+            auth0Result.Data?.Details?.ErrorDescription
+            ?? auth0Result.Data?.Details?.Text
+            ?? auth0Result.Message
+            ?? "auth0_admin_delete_user_failed";
 
-            return Result<string>.NoContent("user_deleted");
-        }
+        return new Result<string>(
+            isSuccess: false,
+            status: auth0Result.Status,
+            data: default,
+            message: msg);
+    }
+
+    await userManagementRepository.DeleteUserByAuth0IdAsync(auth0UserId, ct);
+
+    return Result<string>.NoContent("user_deleted");
+}
+
         
         private const string MiddlemanRoleName = "Middleman";
 

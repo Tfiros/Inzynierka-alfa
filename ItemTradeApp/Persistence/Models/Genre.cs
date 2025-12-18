@@ -10,6 +10,7 @@ public partial class Genre
     public int ID { get; set; }
     [Column("name")]
     public string Name { get; set; } = null!;
-
+    [Column("is_deleted")] 
+    public bool IsDeteled { get; set; }
     public virtual ICollection<Game> Games { get; set; } = new List<Game>();
 }

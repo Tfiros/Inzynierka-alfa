@@ -19,6 +19,7 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
     {
         var user = await dbContext.Users
             .AsNoTracking()
+            .Where(u => !u.IsDeleted)
             .Include(u => u.ProfileInfo)
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
@@ -28,6 +29,7 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
     {
         return await dbContext.Users
             .AsNoTracking()
+            .Where(u => !u.IsDeleted)
             .Include(u => u.ProfileInfo)
             .SingleOrDefaultAsync(u => u.Auth0UserID == authZeroUserId, ct);
     }

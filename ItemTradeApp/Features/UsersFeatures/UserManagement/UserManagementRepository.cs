@@ -39,17 +39,47 @@ public class UserManagementRepository (AppDbContext dbContext) : IUserManagement
         dbContext.Users.Update(user);
         await dbContext.SaveChangesAsync(ct);
     }
-    public async Task DeleteUserByAuth0IdAsync(string auth0UserId, CancellationToken ct = default)
+   public async Task DeleteUserByAuth0IdAsync(string auth0UserId, CancellationToken ct = default)
+{
+    await using var tx = await dbContext.Database.BeginTransactionAsync(ct);
+
+    var user = await dbContext.Users
+        .SingleOrDefaultAsync(u => u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
+
+    if (user is null)
     {
-        var user = await dbContext.Users
-            .SingleOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
-
-        if (user is null)
-            return;
-
-        dbContext.Users.Remove(user);
-        await dbContext.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return;
     }
+
+    await dbContext.Offers
+        .Where(o => o.User_ID == user.ID && (o.OfferStatus_ID == (int)OfferStatuses.Active || 
+                                             o.OfferStatus_ID == (int)OfferStatuses.InRealization || 
+                                             o.OfferStatus_ID == (int)OfferStatuses.Expired))
+        .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Closed), ct);
+    
+    await dbContext.Trades
+        .Where(t =>
+            (t.Customer_ID == user.ID || t.User_ID == user.ID || t.MiddlemanUser_ID == user.ID) &&
+            (t.TradeStatus_ID == (int)TradeStatuses.New ||
+             t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
+             t.TradeStatus_ID == (int)TradeStatuses.AwaitingSellerDeposit ||
+             t.TradeStatus_ID == (int)TradeStatuses.AwaitingBuyerDeposit))
+        .ExecuteUpdateAsync(s => s.SetProperty(t => t.TradeStatus_ID, (int)TradeStatuses.Failed), ct);
+   
+    await dbContext.CounterOffers
+        .Where(co => co.User_ID == user.ID)
+        .ExecuteUpdateAsync(s => s.SetProperty(co => co.OfferStatus_Id, (int)CounterOfferStatuses.Denied), ct);
+
+    user.IsDeleted = true;
+    user.Auth0UserID = null;
+    user.StripeCustomerID = null;
+    user.Email = null;
+
+    await dbContext.SaveChangesAsync(ct);
+    await tx.CommitAsync(ct);
+}
+
 
 public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount)>
     GetUsersPageWithStatsAsync(
@@ -107,7 +137,7 @@ public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLa
 
     private IQueryable<User> BuildBaseQuery(UserListQuery query, IReadOnlyCollection<string>? auth0IdFilter)
     {
-        IQueryable<User> q = dbContext.Users.AsNoTracking();
+        IQueryable<User> q = dbContext.Users.Where(u => !u.IsDeleted).AsNoTracking();
 
         if (auth0IdFilter is { Count: > 0 })
         {

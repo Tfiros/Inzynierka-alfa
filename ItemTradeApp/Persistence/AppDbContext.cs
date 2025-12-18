@@ -40,6 +40,11 @@ public partial class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        foreach (var fk in modelBuilder.Model.GetEntityTypes()
+                     .SelectMany(e => e.GetForeignKeys()))
+        {
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        }
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("user_pk");
@@ -196,12 +201,10 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Customer).WithMany(p => p.CustomerTrades)
                 .HasForeignKey(d => d.Customer_ID)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("trade_user");
 
             entity.HasOne(d => d.MiddlemanUser).WithMany(p => p.TrademiddlemanUsers)
                 .HasForeignKey(d => d.MiddlemanUser_ID)
-                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("trade_middleman");
 
             entity.HasOne(d => d.Offer).WithMany(p => p.Trades)
@@ -214,7 +217,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
                 .HasForeignKey(d => d.User_ID)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("user_buyer");
         });
 
@@ -224,7 +226,7 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("trade_status");
 
-            entity.Property(e => e.StatusName).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(50);
         });
         modelBuilder.Entity<Rate>(entity =>
         {
@@ -242,13 +244,11 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User)
                 .WithMany(p => p.Rates)
                 .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Rate_User");
 
             entity.HasOne(d => d.Trade)
                 .WithMany(p => p.Rates)
                 .HasForeignKey(d => d.TradeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Rate_Trade");
 
             entity.HasCheckConstraint(
