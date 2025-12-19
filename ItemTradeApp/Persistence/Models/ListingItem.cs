@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("listing_item")]
@@ -14,7 +15,8 @@ public partial class ListingItem
     public int Item_ID { get; set; }
     [Column("quantity")]
     public int Quantity { get; set; }
-
+    [Column("is_wanted")] 
+    public bool IsWanted { get; set; }
     public virtual Item Item { get; set; } = null!;
 
     public virtual Offer Offer { get; set; } = null!;
