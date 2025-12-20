@@ -125,5 +125,5 @@ public sealed class ItemsService(
         return new Result<PagedResponse<ItemResponse>>(true, ResultStatus.Success, response, null);
     }
     private static ItemResponse ToResponse(Item i)
-        => new ItemResponse(i.Name, i.Photo_URL, i.Game.Name);
+        => new ItemResponse(i.ID, i.Name, i.Photo_URL,i.Game.ID, i.Game.Name);
 }

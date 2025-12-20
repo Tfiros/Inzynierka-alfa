@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.ItemsFeatures.Genres.DTOs;
+using ItemTradeApp.Features.ItemsFeatures.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,7 @@ namespace ItemTradeApp.Features.ItemsFeatures.Genres;
 public sealed class GenresController(IGenresService service) : ControllerBase
 {
     [HttpGet("dropdown")]
-    public async Task<ActionResult<Result<GenresListResponse>>> GetGenresForDropdown(string? searchText, CancellationToken ct = default)
+    public async Task<ActionResult<Result<DropdownResponse>>> GetGenresForDropdown(string? searchText, CancellationToken ct = default)
     {
         var res = await service.GetGenresForDropdownAsync(searchText, ct);
         return res.ToActionResult();

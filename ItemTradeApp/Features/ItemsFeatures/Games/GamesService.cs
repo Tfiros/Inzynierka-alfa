@@ -1,6 +1,7 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.ItemsFeatures.Games.DTOs;
 using ItemTradeApp.Features.ItemsFeatures.Genres;
+using ItemTradeApp.Features.ItemsFeatures.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence.Models;
 
@@ -12,7 +13,7 @@ public interface IGamesService
     Task<Result<GameResponse>> UpdateAsync(int id, UpdateGameRequest req, CancellationToken ct);
     Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct);
     Task<Result<PagedResponse<GameResponse>>> GetPagedAsync(int page, int pageSize, int genreId, string? searchText, CancellationToken ct);
-    Task<Result<List<GameResponse>>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct);
+    Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct);
 }
 
 public sealed class GamesService(
@@ -20,12 +21,13 @@ public sealed class GamesService(
     IGenresRepository genresRepo
 ) : IGamesService
 {  
-    public async Task<Result<List<GameResponse>>> GetGamesForDropdownAsync(string? searchText , CancellationToken ct)
+    public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText , CancellationToken ct)
     {
         var games = await gamesRepo.GetGamesForDropdown(searchText, ct);
         
-        var data = games.Select(ToResponse).ToList();
-        return new Result<List<GameResponse>>(true, ResultStatus.Success, data, null);
+        var data = games.Select(g => new DropdownDTO(g.ID, g.Name)).ToList();
+        var res = new DropdownResponse(data);
+        return new Result<DropdownResponse>(true, ResultStatus.Success, res, null);
     }
     public async Task<Result<GameResponse>> CreateAsync(CreateGameRequest req, CancellationToken ct)
     {
@@ -134,6 +136,6 @@ public sealed class GamesService(
         return new Result<PagedResponse<GameResponse>>(true, ResultStatus.Success, response, null);
     }
     private static GameResponse ToResponse(Game g)
-        => new GameResponse(g.Name, g.Photo_URL,g.Genre.Name);
+        => new GameResponse(g.ID, g.Name, g.Photo_URL,g.Genre.Name);
 }
 

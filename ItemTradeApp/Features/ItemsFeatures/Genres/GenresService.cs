@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.ItemsFeatures.Genres.DTOs;
+using ItemTradeApp.Features.ItemsFeatures.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence.Models;
 
@@ -11,7 +12,7 @@ public interface IGenresService
     Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct);
     Task<Result<PagedResponse<GenreDTO>>> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct);
 
-    Task<Result<GenresListResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct);
+    Task<Result<DropdownResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct);
 }
 
 public sealed class GenresService(IGenresRepository repo) : IGenresService
@@ -70,14 +71,14 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         return new Result<object?>(true, ResultStatus.NoContent, null, null);
     }
 
-    public async Task<Result<GenresListResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct)
+    public async Task<Result<DropdownResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct)
     {
         var entities = await repo.GetGenresForDropdownAsync(searchText,ct);
         if (entities.Count == 0) 
-            return new Result<GenresListResponse>(false, ResultStatus.NotFound, null, "No genre found.");
-        var genreDtos = entities.Select(entity => new GenreDTO(entity.ID, entity.Name)).ToList();
-        var res = new GenresListResponse(genreDtos);
-        return new Result<GenresListResponse>(true, ResultStatus.Success, res, "Genres found.");
+            return new Result<DropdownResponse>(false, ResultStatus.NotFound, null, "No genre found.");
+        var genreDtos = entities.Select(entity => new DropdownDTO(entity.ID, entity.Name)).ToList();
+        var res = new DropdownResponse(genreDtos);
+        return new Result<DropdownResponse>(true, ResultStatus.Success, res, "Genres found.");
     }
     public async Task<Result<PagedResponse<GenreDTO>>> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct)
     {

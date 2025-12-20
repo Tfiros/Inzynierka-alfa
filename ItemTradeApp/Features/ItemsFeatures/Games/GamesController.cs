@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.ItemsFeatures.Games.DTOs;
+using ItemTradeApp.Features.ItemsFeatures.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 
 namespace ItemTradeApp.Features.ItemsFeatures.Games;
@@ -13,7 +14,7 @@ using ExceptionsHandling;
 public sealed class GamesController(IGamesService service) : ControllerBase
 {
     [HttpGet("dropdown")]
-    public async Task<ActionResult<Result<List<GameResponse>>>> GetGamesForDropdown([FromQuery] string? searchText, CancellationToken ct)
+    public async Task<ActionResult<Result<DropdownResponse>>> GetGamesForDropdown([FromQuery] string? searchText, CancellationToken ct)
     {
         var res = await service.GetGamesForDropdownAsync(searchText, ct);
         return res.ToActionResult();
