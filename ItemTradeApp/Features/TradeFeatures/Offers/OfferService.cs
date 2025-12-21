@@ -12,7 +12,7 @@ public interface IItemService
 public class OfferService(IOffersRepository repo) : IItemService
 {
     public async Task<Result<OfferListingsPagedReponse>> GetOffersAsync(OfferListingsQuery query,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         if (query is null)
         {
