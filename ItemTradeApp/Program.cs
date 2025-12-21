@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ItemTradeApp.AuthZeroCommunication;
+using ItemTradeApp.Features.TradeFeatures.Offers;
 using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
@@ -59,6 +60,9 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 
+builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
+builder.Services.AddScoped<IItemService, OfferService>();
+builder.Services.AddScoped<IOffersRepository, OfferRepository>();
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddCors(opts =>
 {

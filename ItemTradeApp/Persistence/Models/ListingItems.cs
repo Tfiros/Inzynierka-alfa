@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ItemTradeApp.Persistence.Models;
-[Table("listing_item")]
-public partial class ListingItem
+[Table("listing_items")]
+public partial class ListingItems
 {
     [Column("id")]
     public int ID { get; set; }

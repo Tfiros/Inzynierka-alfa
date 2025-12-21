@@ -26,7 +26,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
 
-    public virtual DbSet<ListingItem> ListingItems { get; set; }
+    public virtual DbSet<ListingItems> ListingItems { get; set; }
 
     public virtual DbSet<Offer> Offers { get; set; }
 
@@ -137,7 +137,7 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("listingofferitems_item");
         });
 
-        modelBuilder.Entity<ListingItem>(entity =>
+        modelBuilder.Entity<ListingItems>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("listingitems_pk");
 
@@ -157,6 +157,7 @@ public partial class AppDbContext : DbContext
             entity.ToTable("offer");
 
             entity.Property(e => e.ExpDate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
 
             entity.HasOne(d => d.OfferStatus).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.OfferStatus_ID)
