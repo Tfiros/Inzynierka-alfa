@@ -19,4 +19,6 @@ public partial class Game
     public virtual Genre Genre { get; set; } = null!;
 
     public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+    public ICollection<ItemRarity> ItemRarities { get; set; } = new List<ItemRarity>();
+
 }

@@ -69,9 +69,9 @@ public sealed class ItemsService(
             changed = true;
         }
 
-        if (req.GameId > 0 && entity.Game_ID != req.GameId)
+        if (req.RarityItemId > 0 && entity.ItemRarityId != req.RarityItemId)
         {
-            var game = await gamesRepo.GetByIdAsync(req.GameId, ct);
+            var game = await gamesRepo.GetByIdAsync(req.ra, ct);
             if (game is null || game.IsDeleted)
                 return new Result<ItemResponse>(false, ResultStatus.NotFound, null, "Provided game doesn't exist.");
 
