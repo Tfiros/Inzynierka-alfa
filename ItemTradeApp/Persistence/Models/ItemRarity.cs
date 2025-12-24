@@ -5,7 +5,7 @@ namespace ItemTradeApp.Persistence.Models;
 public class ItemRarity
 {
     [Column("id")]
-    public int Id { get; set; }
+    public int ID { get; set; }
     [Column("game_id")]
     public int GameId { get; set; }
     [Column("rarity_name")]

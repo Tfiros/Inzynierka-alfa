@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
+using  ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 using ItemTradeApp.Features.ItemsFeatures.Games.DTOs;
 using ItemTradeApp.Features.ItemsFeatures.Genres;
 using ItemTradeApp.Features.ItemsFeatures.Shared;
@@ -18,7 +19,8 @@ public interface IGamesService
 
 public sealed class GamesService(
     IGamesRepository gamesRepo,
-    IGenresRepository genresRepo
+    IGenresRepository genresRepo,
+    IItemRarityRepository i
 ) : IGamesService
 {  
     public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText , CancellationToken ct)
@@ -37,13 +39,21 @@ public sealed class GamesService(
 
         if (req.GenreId <= 0)
             return new Result<GameResponse>(false, ResultStatus.BadRequest, null, "GenreId is required.");
+        var raritiesNames = (req.ItemRaritiesNames ?? new List<string>())
+            .Select(r => (r ?? string.Empty).Trim())
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
+        if (raritiesNames.Count == 0)
+            return new Result<GameResponse>(
+                false, ResultStatus.BadRequest, null, "At least one item rarity is required.");
         var genre = await genresRepo.GetByIdAsync(req.GenreId, ct);
         if (genre is null || genre.IsDeleted)
             return new Result<GameResponse>(false, ResultStatus.NotFound, null, "Provided genre does not exist.");
         if (await gamesRepo.ExistsByNameAsync(name, ct))
             return new Result<GameResponse>(false, ResultStatus.Conflict, null, "There is already a game with this name.");
-        var entity = new Game
+        var game = new Game
         {
             Name = name,
             Genre_ID = genre.ID,
@@ -51,15 +61,15 @@ public sealed class GamesService(
             IsDeleted = false
         };
 
-        await gamesRepo.AddAsync(entity, ct);
-        await gamesRepo.SaveChangesAsync(ct);
+        var rarities = raritiesNames.Select(r => new ItemRarity
+        {
+            RarityName = r,
+            IsDeleted = false
+        }).ToList();
 
-        return new Result<GameResponse>(
-            true,
-            ResultStatus.Created,
-            ToResponse(entity),
-            null
-        );
+        var createdGame = await gamesRepo.CreateWithRaritiesAsync(game, rarities, ct);
+
+        return new Result<GameResponse>(true, ResultStatus.Created, ToResponse(createdGame), "Game created successfully");
     }
 
     public async Task<Result<GameResponse>> UpdateAsync(int id, UpdateGameRequest req, CancellationToken ct)
@@ -102,7 +112,7 @@ public sealed class GamesService(
 
     public async Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct)
     {
-        var entity = await gamesRepo.GetByIdAsync(id, ct);
+        var entity = await gamesRepo.GetByIdWithNoTrackAsync(id, ct);
         if (entity is null || entity.IsDeleted)
             return new Result<object?>(true, ResultStatus.NoContent, null, null);
 

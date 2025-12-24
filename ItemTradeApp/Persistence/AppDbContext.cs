@@ -23,6 +23,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Genre> Genres { get; set; }
 
     public virtual DbSet<Item> Items { get; set; }
+    public virtual DbSet<ItemRarity> ItemRarities { get; set; }
 
     public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
 
@@ -133,7 +134,7 @@ public partial class AppDbContext : DbContext
         {
             e.ToTable("item_rarity");
 
-            e.HasKey(x => x.Id);
+            e.HasKey(x => x.ID);
 
             e.Property(x => x.RarityName)
                 .HasColumnName("rarity_name")

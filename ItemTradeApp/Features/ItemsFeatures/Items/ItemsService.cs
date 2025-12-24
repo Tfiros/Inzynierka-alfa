@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
+using ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 using ItemTradeApp.Features.ItemsFeatures.Games;
 using ItemTradeApp.Features.ItemsFeatures.Items.DTOs;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -16,7 +17,8 @@ public interface IItemsService
 
 public sealed class ItemsService(
     IItemsRepository itemsRepo,
-    IGamesRepository gamesRepo
+    IGamesRepository gamesRepo,
+    IItemRarityRepository itemRarityRepo
 ) : IItemsService
 {
     public async Task<Result<ItemResponse>> CreateAsync(CreateItemRequest req, CancellationToken ct)
@@ -27,16 +29,21 @@ public sealed class ItemsService(
 
         if (req.GameId <= 0)
             return new Result<ItemResponse>(false, ResultStatus.BadRequest, null, "GameId is required.");
-
+        if (req.ItemRarityId <= 0)
+            return new Result<ItemResponse>(false, ResultStatus.BadRequest, null, "ItemRarityId is required.");
         var game = await gamesRepo.GetByIdAsync(req.GameId, ct);
         if (game is null || game.IsDeleted)
             return new Result<ItemResponse>(false, ResultStatus.NotFound, null, "Provided game doesn't exist.");
+        var itemRarity = await itemRarityRepo.GetByIdAsync(req.ItemRarityId, ct);
+        if (itemRarity is null || itemRarity.IsDeleted || !game.ItemRarities.Contains(itemRarity))
+            return new Result<ItemResponse>(false, ResultStatus.NotFound, null, "Provided itemRarity doesn't exist.");
         if (await itemsRepo.ExistsByNameAsync(name, ct))
             return new Result<ItemResponse>(false, ResultStatus.BadRequest, null, "Item with the same name already exists.");
         var entity = new Item
         {
             Name = name,
             Game_ID = game.ID,
+            ItemRarityId = itemRarity.ID,
             Photo_URL = "",
             IsDeleted = false
         };
@@ -71,11 +78,11 @@ public sealed class ItemsService(
 
         if (req.RarityItemId > 0 && entity.ItemRarityId != req.RarityItemId)
         {
-            var game = await gamesRepo.GetByIdAsync(req.ra, ct);
-            if (game is null || game.IsDeleted)
+            var itemRarity = await itemRarityRepo.GetByIdAsync(req.RarityItemId, ct);
+            if (itemRarity is null || itemRarity.IsDeleted)
                 return new Result<ItemResponse>(false, ResultStatus.NotFound, null, "Provided game doesn't exist.");
 
-            entity.Game_ID = game.ID;
+            entity.ItemRarityId = itemRarity.ID;
             changed = true;
         }
 
@@ -125,5 +132,5 @@ public sealed class ItemsService(
         return new Result<PagedResponse<ItemResponse>>(true, ResultStatus.Success, response, null);
     }
     private static ItemResponse ToResponse(Item i)
-        => new ItemResponse(i.ID, i.Name, i.Photo_URL,i.Game.ID, i.Game.Name);
+        => new ItemResponse(i.ID, i.Name, i.Photo_URL,i.EstimatedTokenValue,i.Game.ID, i.Game.Name);
 }

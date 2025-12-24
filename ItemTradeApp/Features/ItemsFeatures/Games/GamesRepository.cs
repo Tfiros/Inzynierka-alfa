@@ -8,10 +8,15 @@ namespace ItemTradeApp.Features.ItemsFeatures.Games;
 public interface IGamesRepository
 {
     Task<Game?> GetByIdAsync(int id, CancellationToken ct);
-    Task AddAsync(Game game, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<(List<Game> Items, int TotalCount)> GetPagedAsync(int genreId, int page, int pageSize, string? searchText, CancellationToken ct);
     Task<bool> ExistsByNameAsync(string name,  CancellationToken ct);
+    Task<Game?> GetByIdWithNoTrackAsync(int id, CancellationToken ct);
+    Task<Game> CreateWithRaritiesAsync(
+        Game game,
+        IReadOnlyCollection<ItemRarity> rarities,
+        CancellationToken ct);
+    Task SoftDeleteCascadeAsync(int gameId, CancellationToken ct);
 
     Task<List<Game>> GetGamesForDropdown(string? searchText, CancellationToken ct);
 
@@ -23,6 +28,9 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
     public async Task<Game?> GetByIdAsync(int id, CancellationToken ct)
         => await db.Games.Include(g => g.Genre).FirstOrDefaultAsync(g => g.ID == id, ct);
 
+    public async Task<Game?> GetByIdWithNoTrackAsync(int id, CancellationToken ct) =>
+        await db.Games.AsNoTracking().FirstOrDefaultAsync(g => g.ID == id, ct);
+    
     public async Task<List<Game>> GetGamesForDropdown(string? searchText, CancellationToken ct)
     {
         IQueryable<Game> query = db.Games
@@ -78,9 +86,49 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
 
         return (items, totalCount);
     }
+    public async Task<Game> CreateWithRaritiesAsync(
+        Game game,
+        IReadOnlyCollection<ItemRarity> rarities,
+        CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-    public async Task AddAsync(Game game, CancellationToken ct)
-        => await db.Games.AddAsync(game, ct);
+        db.Games.Add(game);
+        await db.SaveChangesAsync(ct);
+
+        foreach (var rarity in rarities)
+            rarity.GameId = game.ID;
+
+        db.ItemRarities.AddRange(rarities);
+        await db.SaveChangesAsync(ct);
+
+        await tx.CommitAsync(ct);
+
+        return game;
+    }
+    public async Task SoftDeleteCascadeAsync(int gameId, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var game = await db.Games
+            .Include(g => g.Items)
+            .Include(g => g.ItemRarities)
+            .FirstOrDefaultAsync(g => g.ID == gameId, ct);
+
+        if (game is null || game.IsDeleted)
+            return;
+
+        game.IsDeleted = true;
+
+        foreach (var item in game.Items)
+            if (!item.IsDeleted) item.IsDeleted = true;
+
+        foreach (var rarity in game.ItemRarities)
+            if (!rarity.IsDeleted) rarity.IsDeleted = true;
+
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
 
     public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
         => db.Games.AnyAsync(g => g.Name == name, ct);

@@ -8,11 +8,13 @@ namespace ItemTradeApp.Features.ItemsFeatures.Genres;
 public interface IGenresRepository
 {
     Task<Genre?> GetByIdAsync(int id, CancellationToken ct);
+    Task<Genre?> GetByIdWithNoTrackAsync(int id, CancellationToken ct);
     Task<bool> ExistsActiveByNameAsync(string name, CancellationToken ct);
     Task AddAsync(Genre genre, CancellationToken ct);
     Task<List<Genre>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct);
     Task<(List<Genre> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct);
     Task<bool> ExistsByNameAsync(string name, CancellationToken ct);
+    Task SoftDeleteCascadeAsync(int genreId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -36,12 +38,13 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
             .ToListAsync(ct);
     }
 
-    public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-        => db.Genres.AnyAsync(x => x.Name == name, ct);
+    public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
+        => await db.Genres.AnyAsync(x => x.Name == name, ct);
 
-
-    public Task<Genre?> GetByIdAsync(int id, CancellationToken ct)
-        => db.Genres.FirstOrDefaultAsync(x => x.ID == id, ct);
+    public async Task<Genre?> GetByIdWithNoTrackAsync(int id, CancellationToken ct) =>
+        await db.Genres.AsNoTracking().FirstOrDefaultAsync(g => g.ID == id, ct);
+    public async Task<Genre?> GetByIdAsync(int id, CancellationToken ct)
+        => await db.Genres.FirstOrDefaultAsync(x => x.ID == id, ct);
     public async Task<bool> ExistsActiveByNameAsync(string name, CancellationToken ct)
         => await db.Genres.AnyAsync(x => x.Name == name && !x.IsDeleted, ct);
     public async Task AddAsync(Genre genre, CancellationToken ct)
@@ -68,5 +71,40 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
 
         return (items, totalCount);
     }
+    public async Task SoftDeleteCascadeAsync(int genreId, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var genre = await db.Genres
+            .Include(g => g.Games)
+                .ThenInclude(game => game.Items)
+            .Include(g => g.Games)
+                .ThenInclude(game => game.ItemRarities)
+            .FirstOrDefaultAsync(g => g.ID == genreId, ct);
+
+        if (genre is null || genre.IsDeleted)
+            return;
+
+        genre.IsDeleted = true;
+        foreach (var game in genre.Games)
+        {
+            if (game.IsDeleted) continue;
+            game.IsDeleted = true;
+            foreach (var item in game.Items)
+            {
+                if (!item.IsDeleted)
+                    item.IsDeleted = true;
+            }
+            foreach (var rarity in game.ItemRarities)
+            {
+                if (!rarity.IsDeleted)
+                    rarity.IsDeleted = true;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
     public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 }

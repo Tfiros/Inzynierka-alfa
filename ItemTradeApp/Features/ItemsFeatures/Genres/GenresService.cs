@@ -61,13 +61,11 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
 
     public async Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct)
     {
-        var entity = await repo.GetByIdAsync(id, ct);
+        var entity = await repo.GetByIdWithNoTrackAsync(id, ct);
         if (entity is null || entity.IsDeleted)
             return new Result<object?>(true, ResultStatus.NoContent, null, null);
-
-        entity.IsDeleted = true;
-        await repo.SaveChangesAsync(ct);
-
+        
+        await repo.SoftDeleteCascadeAsync(id, ct);
         return new Result<object?>(true, ResultStatus.NoContent, null, null);
     }
 
