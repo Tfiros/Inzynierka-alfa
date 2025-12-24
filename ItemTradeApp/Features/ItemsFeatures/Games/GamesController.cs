@@ -34,7 +34,7 @@ public sealed class GamesController(IGamesService service) : ControllerBase
     }
 
     [HttpDelete("{id:int}/delete")]
-    public async Task<ActionResult<Result<object?>>> SoftDelete([FromRoute] int id, CancellationToken ct)
+    public async Task<ActionResult<Result<string>>> SoftDelete([FromRoute] int id, CancellationToken ct)
     {
         var res = await service.SoftDeleteAsync(id, ct);
         return res.ToActionResult();

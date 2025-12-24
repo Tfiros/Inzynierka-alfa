@@ -1,8 +1,6 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
-using ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 using ItemTradeApp.Features.ItemsFeatures.ItemRarities.DTOs;
 using ItemTradeApp.Features.Shared.DTOs;
-using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 
@@ -18,45 +16,34 @@ public interface IItemRarityService
         CancellationToken ct);
 
     Task<Result<int>> CreateAsync(CreateItemRarityRequest request, CancellationToken ct);
-    Task<Result<object?>> UpdateNameAsync(int id, UpdateItemRarityRequest request, CancellationToken ct);
-    Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct);
+    Task<Result<string>> UpdateNameAsync(int id, UpdateItemRarityRequest request, CancellationToken ct);
+    Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct);
 }
 
 public sealed class ItemRarityService(IItemRarityRepository repo) : IItemRarityService
 {
-    public async Task<Result<ItemRarityListResponse>> GetDropdownAsync(
-        int gameId,
-        string? searchText,
-        CancellationToken ct)
+    public async Task<Result<ItemRarityListResponse>> GetDropdownAsync(int gameId, string? searchText, CancellationToken ct)
     {
         if (gameId <= 0)
-            return new Result<ItemRarityListResponse>(false, ResultStatus.BadRequest, null, "GameId is required.");
+            return Result<ItemRarityListResponse>.BadRequest("GameId is required.");
 
         if (!await repo.GameExistsAsync(gameId, ct))
-            return new Result<ItemRarityListResponse>(false, ResultStatus.NotFound, null, "Game not found.");
+            return Result<ItemRarityListResponse>.NotFound("Game not found.");
 
         var items = await repo.SearchForDropdownAsync(gameId, searchText, ct);
 
-        var dto = items
-            .Select(x => new ItemRarityDTO(x.ID, x.RarityName))
-            .ToList();
-
-        return new Result<ItemRarityListResponse>(
-            true, ResultStatus.Success, new ItemRarityListResponse(dto), null);
+        var dto = items.Select(x => new ItemRarityDTO(x.ID, x.RarityName)).ToList();
+        return Result<ItemRarityListResponse>.Success(new ItemRarityListResponse(dto));
     }
 
     public async Task<Result<PagedResponse<ItemRarityDTO>>> GetPagedAsync(
-        int gameId,
-        int page,
-        int pageSize,
-        string? searchText,
-        CancellationToken ct)
+        int gameId, int page, int pageSize, string? searchText, CancellationToken ct)
     {
         if (gameId <= 0)
-            return new Result<PagedResponse<ItemRarityDTO>>(false, ResultStatus.BadRequest, null, "GameId is required.");
+            return Result<PagedResponse<ItemRarityDTO>>.BadRequest("GameId is required.");
 
         if (!await repo.GameExistsAsync(gameId, ct))
-            return new Result<PagedResponse<ItemRarityDTO>>(false, ResultStatus.NotFound, null, "Game not found.");
+            return Result<PagedResponse<ItemRarityDTO>>.NotFound("Game not found.");
 
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
@@ -74,28 +61,28 @@ public sealed class ItemRarityService(IItemRarityRepository repo) : IItemRarityS
             Elements = items.Select(x => new ItemRarityDTO(x.ID, x.RarityName)).ToList()
         };
 
-        return new Result<PagedResponse<ItemRarityDTO>>(true, ResultStatus.Success, response, null);
+        return Result<PagedResponse<ItemRarityDTO>>.Success(response);
     }
 
     public async Task<Result<int>> CreateAsync(CreateItemRarityRequest request, CancellationToken ct)
     {
         if (request.GameId <= 0)
-            return new Result<int>(false, ResultStatus.BadRequest, 0, "GameId is required.");
+            return Result<int>.BadRequest("GameId is required.");
 
         var name = (request.RarityName ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return new Result<int>(false, ResultStatus.BadRequest, 0, "RarityName is required.");
+            return Result<int>.BadRequest("RarityName is required.");
 
         if (name.Length > 20)
-            return new Result<int>(false, ResultStatus.BadRequest, 0, "RarityName max 20 chars.");
+            return Result<int>.BadRequest("RarityName max 20 chars.");
 
         if (!await repo.GameExistsAsync(request.GameId, ct))
-            return new Result<int>(false, ResultStatus.NotFound, 0, "Game not found.");
+            return Result<int>.NotFound("Game not found.");
 
         if (await repo.ExistsActiveByNameAsync(request.GameId, name, ct))
-            return new Result<int>(false, ResultStatus.Conflict, 0, "Rarity name already exists for this game.");
+            return Result<int>.Conflict("Rarity name already exists for this game.");
 
-        var entity = new ItemRarity
+        var entity = new Persistence.Models.ItemRarity
         {
             GameId = request.GameId,
             RarityName = name,
@@ -105,48 +92,48 @@ public sealed class ItemRarityService(IItemRarityRepository repo) : IItemRarityS
         await repo.AddAsync(entity, ct);
         await repo.SaveChangesAsync(ct);
 
-        return new Result<int>(true, ResultStatus.Created, entity.ID, null);
+        return Result<int>.Created(entity.ID);
     }
 
-    public async Task<Result<object?>> UpdateNameAsync(int id, UpdateItemRarityRequest request, CancellationToken ct)
+    public async Task<Result<string>> UpdateNameAsync(int id, UpdateItemRarityRequest request, CancellationToken ct)
     {
         if (id <= 0)
-            return new Result<object?>(false, ResultStatus.BadRequest, null, "Id is required.");
+            return Result<string>.BadRequest("Id is required.");
 
         var name = (request.RarityName ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return new Result<object?>(false, ResultStatus.BadRequest, null, "RarityName is required.");
+            return Result<string>.BadRequest("RarityName is required.");
 
         if (name.Length > 20)
-            return new Result<object?>(false, ResultStatus.BadRequest, null, "RarityName max 20 chars.");
+            return Result<string>.BadRequest("RarityName max 20 chars.");
 
         var entity = await repo.GetByIdAsync(id, ct);
         if (entity is null || entity.IsDeleted)
-            return new Result<object?>(false, ResultStatus.NotFound, null, "Item rarity not found.");
+            return Result<string>.NotFound("Item rarity not found.");
 
         if (string.Equals(entity.RarityName, name, StringComparison.Ordinal))
-            return new Result<object?>(true, ResultStatus.NoContent, null, null);
+            return Result<string>.NoContent();
 
         if (await repo.ExistsActiveByNameAsync(entity.GameId, name, ct))
-            return new Result<object?>(false, ResultStatus.Conflict, null, "Rarity name already exists for this game.");
+            return Result<string>.Conflict("Rarity name already exists for this game.");
 
         entity.RarityName = name;
         await repo.SaveChangesAsync(ct);
 
-        return new Result<object?>(true, ResultStatus.NoContent, null, null);
+        return Result<string>.NoContent("Updated.");
     }
 
-    public async Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct)
+    public async Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct)
     {
         if (id <= 0)
-            return new Result<object?>(false, ResultStatus.BadRequest, null, "Id is required.");
+            return Result<string>.BadRequest("Id is required.");
+
         var rarity = await repo.GetByIdWithNoTrackAsync(id, ct);
         if (rarity is null)
-            return new Result<object?>(false, ResultStatus.NotFound, null,
-                "No ItemRarity for provided id has been found.");
+            return Result<string>.NotFound("No ItemRarity for provided id has been found.");
+
         await repo.SoftDeleteCascadeAsync(id, ct);
 
-        return new Result<object?>(true, ResultStatus.NoContent, null, null);
+        return Result<string>.NoContent("Deleted.");
     }
-
 }

@@ -27,20 +27,20 @@ public interface IItemRarityRepository
 
 public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepository
 {
-    public Task<bool> GameExistsAsync(int gameId, CancellationToken ct) =>
-        db.Games.AnyAsync(g => g.ID == gameId && !g.IsDeleted, ct);
+    public async Task<bool> GameExistsAsync(int gameId, CancellationToken ct) =>
+        await db.Games.AnyAsync(g => g.ID == gameId && !g.IsDeleted, ct);
 
     public async Task<ItemRarity?> GetByIdWithNoTrackAsync(int id, CancellationToken ct) =>
         await db.ItemRarities.AsNoTracking().FirstOrDefaultAsync(r => r.ID == id, ct);
 
-    public Task<bool> ExistsActiveByNameAsync(int gameId, string rarityName, CancellationToken ct) =>
-        db.ItemRarities.AnyAsync(r =>
+    public async Task<bool> ExistsActiveByNameAsync(int gameId, string rarityName, CancellationToken ct) =>
+        await db.ItemRarities.AnyAsync(r =>
             r.GameId == gameId &&
             !r.IsDeleted &&
             r.RarityName == rarityName, ct);
 
-    public Task<ItemRarity?> GetByIdAsync(int id, CancellationToken ct) =>
-        db.ItemRarities.FirstOrDefaultAsync(r => r.ID == id, ct);
+    public async Task<ItemRarity?> GetByIdAsync(int id, CancellationToken ct) =>
+       await db.ItemRarities.FirstOrDefaultAsync(r => r.ID == id, ct);
 
     public async Task<List<ItemRarity>> SearchForDropdownAsync(int gameId, string? searchText, CancellationToken ct)
     {
@@ -110,9 +110,9 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
         await tx.CommitAsync(ct);
     }
 
-    public Task AddAsync(ItemRarity entity, CancellationToken ct) =>
-        db.ItemRarities.AddAsync(entity, ct).AsTask();
+    public async Task AddAsync(ItemRarity entity, CancellationToken ct) =>
+       await db.ItemRarities.AddAsync(entity, ct).AsTask();
 
-    public Task SaveChangesAsync(CancellationToken ct) =>
-        db.SaveChangesAsync(ct);
+    public async Task SaveChangesAsync(CancellationToken ct) =>
+        await db.SaveChangesAsync(ct);
 }

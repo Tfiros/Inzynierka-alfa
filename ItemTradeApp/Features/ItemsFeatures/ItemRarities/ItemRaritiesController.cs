@@ -43,7 +43,7 @@ public sealed class ItemRarityController(IItemRarityService service) : Controlle
     }
 
     [HttpPut("{id:int}")]
-    public async Task<ActionResult<Result<object?>>> UpdateName(
+    public async Task<ActionResult<Result<string>>> UpdateName(
         [FromRoute] int id,
         [FromBody] UpdateItemRarityRequest request,
         CancellationToken ct = default)
@@ -53,7 +53,7 @@ public sealed class ItemRarityController(IItemRarityService service) : Controlle
     }
 
     [HttpDelete("{id:int}/delete")]
-    public async Task<ActionResult<Result<object?>>> SoftDelete(
+    public async Task<ActionResult<Result<string>>> SoftDelete(
         [FromRoute] int id,
         CancellationToken ct = default)
     {

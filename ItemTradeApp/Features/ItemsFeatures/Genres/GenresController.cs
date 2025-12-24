@@ -33,7 +33,7 @@ public sealed class GenresController(IGenresService service) : ControllerBase
     }
 
     [HttpDelete("{id:int}/delete")]
-    public async Task<ActionResult<Result<object?>>> SoftDelete([FromRoute] int id, CancellationToken ct = default)
+    public async Task<ActionResult<Result<string>>> SoftDelete([FromRoute] int id, CancellationToken ct = default)
     {
         var res = await service.SoftDeleteAsync(id, ct);
         return res.ToActionResult();

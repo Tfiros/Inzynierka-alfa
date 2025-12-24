@@ -5,13 +5,14 @@ using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.ItemsFeatures.Genres;
+
 public interface IGenresService
 {
     Task<Result<GenreDTO>> CreateAsync(CreateOrUpdateGenreRequest req, CancellationToken ct);
     Task<Result<GenreDTO>> UpdateAsync(int id, CreateOrUpdateGenreRequest req, CancellationToken ct);
-    Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct);
-    Task<Result<PagedResponse<GenreDTO>>> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct);
+    Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct);
 
+    Task<Result<PagedResponse<GenreDTO>>> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct);
     Task<Result<DropdownResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct);
 }
 
@@ -21,10 +22,10 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
     {
         var name = (req.Name ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return new Result<GenreDTO>(false, ResultStatus.BadRequest, null, "Name is required.");
+            return Result<GenreDTO>.BadRequest("Name is required.");
 
         if (await repo.ExistsActiveByNameAsync(name, ct))
-            return new Result<GenreDTO>(false, ResultStatus.Conflict, null, "A genre with the same name already exists.");
+            return Result<GenreDTO>.Conflict("A genre with the same name already exists.");
 
         var entity = new Genre
         {
@@ -35,49 +36,51 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         await repo.AddAsync(entity, ct);
         await repo.SaveChangesAsync(ct);
 
-        var dto = new GenreDTO(entity.ID,entity.Name);
-        return new Result<GenreDTO>(true, ResultStatus.Created, dto, null);
+        return Result<GenreDTO>.Created(new GenreDTO(entity.ID, entity.Name));
     }
 
     public async Task<Result<GenreDTO>> UpdateAsync(int id, CreateOrUpdateGenreRequest req, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(id, ct);
-        if (entity is null)
-            return new Result<GenreDTO>(false, ResultStatus.NotFound, null, "Genre doesn't exist.");
-        
-        if (entity.IsDeleted)
-            return new Result<GenreDTO>(false, ResultStatus.NotFound, null, "Genre doesn't exist.");
+        if (entity is null || entity.IsDeleted)
+            return Result<GenreDTO>.NotFound("Genre doesn't exist.");
 
         var name = (req.Name ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return new Result<GenreDTO>(false, ResultStatus.BadRequest, null, "Genre name is required.");
+            return Result<GenreDTO>.BadRequest("Genre name is required.");
+
         if (await repo.ExistsActiveByNameAsync(name, ct))
-            return new Result<GenreDTO>(false, ResultStatus.Conflict, null, "A genre with the same name already exists.");
+            return Result<GenreDTO>.Conflict("A genre with the same name already exists.");
+
         entity.Name = name;
         await repo.SaveChangesAsync(ct);
 
-        return new Result<GenreDTO>(true, ResultStatus.Success, new GenreDTO(entity.ID, entity.Name), null);
+        return Result<GenreDTO>.Success(new GenreDTO(entity.ID, entity.Name));
     }
 
-    public async Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct)
+    public async Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct)
     {
         var entity = await repo.GetByIdWithNoTrackAsync(id, ct);
         if (entity is null || entity.IsDeleted)
-            return new Result<object?>(true, ResultStatus.NoContent, null, null);
-        
+            return Result<string>.NoContent();
+
         await repo.SoftDeleteCascadeAsync(id, ct);
-        return new Result<object?>(true, ResultStatus.NoContent, null, null);
+
+        return Result<string>.NoContent("Genre deleted.");
     }
 
     public async Task<Result<DropdownResponse>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct)
     {
-        var entities = await repo.GetGenresForDropdownAsync(searchText,ct);
-        if (entities.Count == 0) 
-            return new Result<DropdownResponse>(false, ResultStatus.NotFound, null, "No genre found.");
-        var genreDtos = entities.Select(entity => new DropdownDTO(entity.ID, entity.Name)).ToList();
+        var entities = await repo.GetGenresForDropdownAsync(searchText, ct);
+        if (entities.Count == 0)
+            return Result<DropdownResponse>.NotFound("No genre found.");
+
+        var genreDtos = entities.Select(x => new DropdownDTO(x.ID, x.Name)).ToList();
         var res = new DropdownResponse(genreDtos);
-        return new Result<DropdownResponse>(true, ResultStatus.Success, res, "Genres found.");
+
+        return Result<DropdownResponse>.Success(res, "Genres found.");
     }
+
     public async Task<Result<PagedResponse<GenreDTO>>> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct)
     {
         if (page < 1) page = 1;
@@ -98,8 +101,6 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
             Elements = items
         };
 
-        return new Result<PagedResponse<GenreDTO>>(true, ResultStatus.Success, response, null);
+        return Result<PagedResponse<GenreDTO>>.Success(response);
     }
-    
 }
-

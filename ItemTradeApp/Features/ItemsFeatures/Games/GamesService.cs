@@ -1,7 +1,7 @@
 ﻿using ItemTradeApp.ExceptionsHandling;
-using  ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 using ItemTradeApp.Features.ItemsFeatures.Games.DTOs;
 using ItemTradeApp.Features.ItemsFeatures.Genres;
+using ItemTradeApp.Features.ItemsFeatures.ItemRarities;
 using ItemTradeApp.Features.ItemsFeatures.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence.Models;
@@ -12,33 +12,40 @@ public interface IGamesService
 {
     Task<Result<GameResponse>> CreateAsync(CreateGameRequest req, CancellationToken ct);
     Task<Result<GameResponse>> UpdateAsync(int id, UpdateGameRequest req, CancellationToken ct);
-    Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct);
-    Task<Result<PagedResponse<GameResponse>>> GetPagedAsync(int page, int pageSize, int genreId, string? searchText, CancellationToken ct);
+
+    Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct);
+
+    Task<Result<PagedResponse<GameResponse>>> GetPagedAsync(
+        int page, int pageSize, int genreId, string? searchText, CancellationToken ct);
+
     Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct);
 }
 
 public sealed class GamesService(
     IGamesRepository gamesRepo,
     IGenresRepository genresRepo,
-    IItemRarityRepository i
+    IItemRarityRepository itemRarityRepo
 ) : IGamesService
-{  
-    public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText , CancellationToken ct)
+{
+    public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct)
     {
         var games = await gamesRepo.GetGamesForDropdown(searchText, ct);
-        
+
         var data = games.Select(g => new DropdownDTO(g.ID, g.Name)).ToList();
         var res = new DropdownResponse(data);
-        return new Result<DropdownResponse>(true, ResultStatus.Success, res, null);
+
+        return Result<DropdownResponse>.Success(res);
     }
+
     public async Task<Result<GameResponse>> CreateAsync(CreateGameRequest req, CancellationToken ct)
     {
         var name = (req.Name ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return new Result<GameResponse>(false, ResultStatus.BadRequest, null, "Name is required.");
+            return Result<GameResponse>.BadRequest("Name is required.");
 
         if (req.GenreId <= 0)
-            return new Result<GameResponse>(false, ResultStatus.BadRequest, null, "GenreId is required.");
+            return Result<GameResponse>.BadRequest("GenreId is required.");
+
         var raritiesNames = (req.ItemRaritiesNames ?? new List<string>())
             .Select(r => (r ?? string.Empty).Trim())
             .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -46,13 +53,15 @@ public sealed class GamesService(
             .ToList();
 
         if (raritiesNames.Count == 0)
-            return new Result<GameResponse>(
-                false, ResultStatus.BadRequest, null, "At least one item rarity is required.");
+            return Result<GameResponse>.BadRequest("At least one item rarity is required.");
+
         var genre = await genresRepo.GetByIdAsync(req.GenreId, ct);
         if (genre is null || genre.IsDeleted)
-            return new Result<GameResponse>(false, ResultStatus.NotFound, null, "Provided genre does not exist.");
+            return Result<GameResponse>.NotFound("Provided genre does not exist.");
+
         if (await gamesRepo.ExistsByNameAsync(name, ct))
-            return new Result<GameResponse>(false, ResultStatus.Conflict, null, "There is already a game with this name.");
+            return Result<GameResponse>.Conflict("There is already a game with this name.");
+
         var game = new Game
         {
             Name = name,
@@ -69,17 +78,17 @@ public sealed class GamesService(
 
         var createdGame = await gamesRepo.CreateWithRaritiesAsync(game, rarities, ct);
 
-        return new Result<GameResponse>(true, ResultStatus.Created, ToResponse(createdGame), "Game created successfully");
+        return Result<GameResponse>.Created(ToResponse(createdGame), "Game created successfully");
     }
 
     public async Task<Result<GameResponse>> UpdateAsync(int id, UpdateGameRequest req, CancellationToken ct)
     {
         if (id <= 0)
-            return new Result<GameResponse>(false, ResultStatus.BadRequest, null, "Id is zero or a negative number.");
+            return Result<GameResponse>.BadRequest("Id is zero or a negative number.");
 
         var entity = await gamesRepo.GetByIdAsync(id, ct);
         if (entity is null || entity.IsDeleted)
-            return new Result<GameResponse>(false, ResultStatus.NotFound, null, "Game doesn't exist.");
+            return Result<GameResponse>.NotFound("Game doesn't exist.");
 
         var changed = false;
 
@@ -88,7 +97,7 @@ public sealed class GamesService(
             !string.Equals(entity.Name, newName, StringComparison.Ordinal))
         {
             if (await gamesRepo.ExistsByNameAsync(newName, ct))
-                return new Result<GameResponse>(false, ResultStatus.Conflict, null, "There is already a game with this name.");
+                return Result<GameResponse>.Conflict("There is already a game with this name.");
 
             entity.Name = newName;
             changed = true;
@@ -98,7 +107,7 @@ public sealed class GamesService(
         {
             var genre = await genresRepo.GetByIdAsync(req.GenreId, ct);
             if (genre is null || genre.IsDeleted)
-                return new Result<GameResponse>(false, ResultStatus.NotFound, null, "Chosen genre doesn't exist.");
+                return Result<GameResponse>.NotFound("Chosen genre doesn't exist.");
 
             entity.Genre_ID = genre.ID;
             changed = true;
@@ -107,28 +116,31 @@ public sealed class GamesService(
         if (changed)
             await gamesRepo.SaveChangesAsync(ct);
 
-        return new Result<GameResponse>(true, ResultStatus.Success, ToResponse(entity), null);
+        return Result<GameResponse>.Success(ToResponse(entity));
     }
 
-    public async Task<Result<object?>> SoftDeleteAsync(int id, CancellationToken ct)
+    public async Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct)
     {
         var entity = await gamesRepo.GetByIdWithNoTrackAsync(id, ct);
         if (entity is null || entity.IsDeleted)
-            return new Result<object?>(true, ResultStatus.NoContent, null, null);
+            return Result<string>.NoContent();
 
         entity.IsDeleted = true;
         await gamesRepo.SaveChangesAsync(ct);
 
-        return new Result<object?>(true, ResultStatus.NoContent, null, null);
+        return Result<string>.NoContent("Game deleted.");
     }
-    public async Task<Result<PagedResponse<GameResponse>>> GetPagedAsync(int page, int pageSize,int genreId,  string? searchText, CancellationToken ct)
+
+    public async Task<Result<PagedResponse<GameResponse>>> GetPagedAsync(
+        int page, int pageSize, int genreId, string? searchText, CancellationToken ct)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
         if (pageSize > 100) pageSize = 100;
-        
+
         if (genreId <= 0)
-            return new Result<PagedResponse<GameResponse>>(false, ResultStatus.BadRequest, null, "GenreId is required.");
+            return Result<PagedResponse<GameResponse>>.BadRequest("GenreId is required.");
+
         var (entities, totalCount) = await gamesRepo.GetPagedAsync(genreId, page, pageSize, searchText, ct);
 
         var items = entities.Select(ToResponse).ToList();
@@ -143,9 +155,9 @@ public sealed class GamesService(
             Elements = items
         };
 
-        return new Result<PagedResponse<GameResponse>>(true, ResultStatus.Success, response, null);
+        return Result<PagedResponse<GameResponse>>.Success(response);
     }
-    private static GameResponse ToResponse(Game g)
-        => new GameResponse(g.ID, g.Name, g.Photo_URL,g.Genre.Name);
-}
 
+    private static GameResponse ToResponse(Game g)
+        => new(g.ID, g.Name, g.Photo_URL, g.Genre.Name);
+}
