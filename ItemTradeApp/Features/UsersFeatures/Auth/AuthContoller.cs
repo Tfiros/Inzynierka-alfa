@@ -105,7 +105,6 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("refresh")]
-    [Authorize]
     public async Task<ActionResult<Result<RefreshResponse>>> Refresh()
     {
         var rt = Request.Cookies[RefreshCookieName];
@@ -130,6 +129,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         }
 
         var dto = new RefreshResponse(
+            ok.Id,
             ok.AccessToken,
             ok.ExpiresIn,
             ok.IdToken

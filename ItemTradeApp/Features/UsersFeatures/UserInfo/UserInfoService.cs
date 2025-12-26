@@ -62,7 +62,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
 
     public async Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct)
     {
-        var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(auth0UserId, ct);
+        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
+            ? auth0UserId.Substring("auth0|".Length)
+            : auth0UserId;
+        
+        var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
 
         if (user is null || user.ProfileInfo is null)
             return Result<UserProfileInfoResponse>.NotFound(

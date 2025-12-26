@@ -8,6 +8,7 @@ public interface IAuthRepository
 {
     Task Register(RegisterRequest request, string auth0Id);
     Task<User> GetUserByEmail(string email);
+    Task<User> GetUserByAuth0Id(string auth0Id);
 }
 
 public class AuthRepository(AppDbContext dbContext) : IAuthRepository
@@ -43,5 +44,10 @@ public class AuthRepository(AppDbContext dbContext) : IAuthRepository
     public async Task<User> GetUserByEmail(string email)
     {
         return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);   
+    }
+
+    public async Task<User> GetUserByAuth0Id(string auth0Id)
+    {
+        return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Auth0UserID == auth0Id);
     }
 }

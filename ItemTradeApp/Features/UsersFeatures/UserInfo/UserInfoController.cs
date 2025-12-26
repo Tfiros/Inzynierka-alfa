@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.ExceptionsHandling;
+﻿using System.Security.Claims;
+using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Request;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -29,7 +30,7 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
         return result.ToActionResult();
     }
     [Authorize(Policy = "OwnResource")]
-    [HttpPut("profile")]
+    [HttpPut("profile/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,
         CancellationToken ct)
@@ -40,7 +41,7 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
             return bad.ToActionResult();
         }
 
-        var auth0UserId = User.FindFirst("sub")?.Value;
+        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
             var unauthorized = Result<UserProfileInfoResponse>.Unauthorized("Missing sub claim in JWT.");
