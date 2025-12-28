@@ -26,8 +26,10 @@ public class UserSettingsController(IUserSettingsService service) : ControllerBa
         var result = await service.UpdateSensitiveDataAsync(auth0UserId, request, ct);
         return result.ToActionResult();
     }
+    
+    [Authorize(Policy = "OwnResource")]
     [HttpGet("profileInfo/{id:int}")]
-    public async Task<ActionResult<Result<UserSecurityInfoResponse>>> GetProfileInfo(
+    public async Task<ActionResult<Result<UserSecurityInfoResponse>>> GetUserSensitiveData(
         int id,
         CancellationToken ct = default)
     {
