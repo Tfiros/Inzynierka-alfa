@@ -23,6 +23,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Genre> Genres { get; set; }
 
     public virtual DbSet<Item> Items { get; set; }
+    public virtual DbSet<ItemRarity> ItemRarities { get; set; }
 
     public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
 
@@ -122,8 +123,35 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Game).WithMany(p => p.Items)
                 .HasForeignKey(d => d.Game_ID)
                 .HasConstraintName("item_game");
-        });
+            entity.Property(x => x.ItemRarityId).HasColumnName("item_rarity_id");
 
+            entity.HasOne(x => x.ItemRarity)
+                .WithMany(r => r.Items)
+                .HasForeignKey(x => x.ItemRarityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ItemRarity>(e =>
+        {
+            e.ToTable("item_rarity");
+
+            e.HasKey(x => x.ID);
+
+            e.Property(x => x.RarityName)
+                .HasColumnName("rarity_name")
+                .HasMaxLength(20)
+                .IsRequired();
+
+            e.Property(x => x.GameId).HasColumnName("game_id");
+
+            e.HasOne(x => x.Game)
+                .WithMany(g => g.ItemRarities)
+                .HasForeignKey(x => x.GameId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.GameId, x.RarityName })
+                .IsUnique()
+                .HasDatabaseName("uq_item_rarity_game_name");
+        });
         modelBuilder.Entity<ListingCounterOfferItem>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("listingofferitems_pk");

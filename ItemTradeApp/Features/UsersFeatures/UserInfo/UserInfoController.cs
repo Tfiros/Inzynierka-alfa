@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.ExceptionsHandling;
+﻿using System.Security.Claims;
+using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Request;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;

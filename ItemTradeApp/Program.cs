@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ItemTradeApp.AuthZeroCommunication;
+using ItemTradeApp.Features.ItemsFeatures;
 using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
@@ -71,7 +72,7 @@ builder.Services.AddCors(opts =>
 
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
-
+builder.Services.RegisterItemsFeaturesDi();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

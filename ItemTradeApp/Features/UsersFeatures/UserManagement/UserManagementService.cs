@@ -195,7 +195,7 @@ public async Task<Result<string>> DeleteUserAsync(string auth0UserId, Cancellati
                         PageSize = pageSize,
                         TotalCount = 0,
                         TotalPages = 1,
-                        Items = new List<UserListItemDTO>(),
+                        Elements = new List<UserListItemDTO>(),
                         RegisteredLastMonthCount =
                             0, 
                         MiddlemenCount = 0
@@ -258,7 +258,7 @@ public async Task<Result<string>> DeleteUserAsync(string auth0UserId, Cancellati
                 PageSize = pageSize,
                 TotalCount = totalCount,
                 TotalPages = totalPages,
-                Items = items,
+                Elements = items,
                 RegisteredLastMonthCount = tuple.registeredLastMonthCount,
                 MiddlemenCount = tuple.middlemenCount
             };
