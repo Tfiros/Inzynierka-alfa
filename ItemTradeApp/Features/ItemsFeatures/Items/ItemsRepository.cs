@@ -21,7 +21,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .FirstOrDefaultAsync(i => i.ID == id, ct);
 
     public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-            => db.Items.AnyAsync(i => i.Game.Name == name, ct);
+            => db.Items.AsNoTracking().AnyAsync(i => i.Game.Name == name, ct);
 
     public async Task AddAsync(Item item, CancellationToken ct)
         => await db.Items.AddAsync(item, ct).AsTask();
@@ -34,15 +34,12 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
         CancellationToken ct)
     {
         var query = db.Items
+            .AsNoTracking()
             .Include(i => i.Game)
             .Where(i => !i.IsDeleted && i.Game_ID == gameId)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            searchText = searchText.Trim();
-            query = query.Where(i => i.Name.Contains(searchText));
-        }
+        query = ApplyTextSearch(query, searchText);
 
         var totalCount = await query.CountAsync(ct);
 
@@ -53,6 +50,14 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .ToListAsync(ct);
 
         return (items, totalCount);
+    }
+    private static IQueryable<Item> ApplyTextSearch(IQueryable<Item> query, string? searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return query;
+
+        searchText = searchText.Trim();
+        return query.Where(g => g.Name.Contains(searchText));
     }
 
 }

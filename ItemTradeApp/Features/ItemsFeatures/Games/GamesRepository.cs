@@ -30,17 +30,13 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
 
     public async Task<Game?> GetByIdWithNoTrackAsync(int id, CancellationToken ct) =>
         await db.Games.AsNoTracking().FirstOrDefaultAsync(g => g.ID == id, ct);
-    
+
     public async Task<List<Game>> GetGamesForDropdown(string? searchText, CancellationToken ct)
     {
         IQueryable<Game> query = db.Games
             .Where(g => !g.IsDeleted);
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            searchText = searchText.Trim();
-            query = query.Where(g => g.Name.Contains(searchText));
-        }
+        query = ApplyTextSearch(query, searchText);
 
         return await query
             .OrderBy(g => g.Name)
@@ -48,7 +44,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
             .ToListAsync(ct);
     }
 
-    
+
     public async Task<(List<Game> Items, int TotalCount)> GetPagedAsync(
         int genreId,
         int page,
@@ -63,21 +59,12 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         if (genreId > 0)
             query = query.Where(g => g.Genre_ID == genreId);
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            searchText = searchText.Trim();
-            query = query.Where(g => g.Name.Contains(searchText));
-        }
+        query = ApplyTextSearch(query, searchText);
 
         var totalCount = await query.CountAsync(ct);
-        var test = await db.Games
-            .Where(g => !g.IsDeleted && g.Genre_ID == genreId)
-            .AsNoTracking()
-            .Take(5)
-            .Select(g => new { g.ID, g.Name, g.Genre_ID, g.IsDeleted })
-            .ToListAsync(ct);
 
         var items = await query
+            .AsNoTracking()
             .Include(g => g.Genre)
             .OrderBy(g => g.Name)
             .Skip((page - 1) * pageSize)
@@ -86,6 +73,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
 
         return (items, totalCount);
     }
+
     public async Task<Game> CreateWithRaritiesAsync(
         Game game,
         IReadOnlyCollection<ItemRarity> rarities,
@@ -106,6 +94,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
 
         return game;
     }
+
     public async Task SoftDeleteCascadeAsync(int gameId, CancellationToken ct)
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -121,10 +110,12 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         game.IsDeleted = true;
 
         foreach (var item in game.Items)
-            if (!item.IsDeleted) item.IsDeleted = true;
+            if (!item.IsDeleted)
+                item.IsDeleted = true;
 
         foreach (var rarity in game.ItemRarities)
-            if (!rarity.IsDeleted) rarity.IsDeleted = true;
+            if (!rarity.IsDeleted)
+                rarity.IsDeleted = true;
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -134,4 +125,15 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         => db.Games.AnyAsync(g => g.Name == name, ct);
 
     public async Task SaveChangesAsync(CancellationToken ct) => await db.SaveChangesAsync(ct);
+
+    private static IQueryable<Game> ApplyTextSearch(IQueryable<Game> query, string? searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return query;
+
+        searchText = searchText.Trim();
+        return query.Where(g => g.Name.Contains(searchText));
+    }
+
+
 }

@@ -47,12 +47,8 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
         var q = db.ItemRarities.AsNoTracking()
             .Where(r => r.GameId == gameId && !r.IsDeleted);
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            var s = searchText.Trim();
-            q = q.Where(r => EF.Functions.ILike(r.RarityName, $"%{s}%"));
-        }
-
+        q = ApplyTextSearch(q, searchText);
+        
         return await q
             .OrderBy(r => r.RarityName)
             .Take(Consts.DROPDOWN_LIMIT)
@@ -73,12 +69,7 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
         var q = db.ItemRarities.AsNoTracking()
             .Where(r => r.GameId == gameId && !r.IsDeleted);
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            var s = searchText.Trim();
-            q = q.Where(r => EF.Functions.ILike(r.RarityName, $"%{s}%"));
-        }
-
+        q = ApplyTextSearch(q, searchText);
         var totalCount = await q.CountAsync(ct);
 
         var items = await q
@@ -115,4 +106,16 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
 
     public async Task SaveChangesAsync(CancellationToken ct) =>
         await db.SaveChangesAsync(ct);
+    private static IQueryable<ItemRarity> ApplyTextSearch(
+        IQueryable<ItemRarity> query,
+        string? searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return query;
+
+        var s = searchText.Trim();
+        return query.Where(r => EF.Functions.ILike(r.RarityName, $"%{s}%"));
+    }
+
+
 }

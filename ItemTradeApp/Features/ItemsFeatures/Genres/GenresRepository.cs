@@ -23,14 +23,11 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
     public async Task<List<Genre>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct)
     {
         var query = db.Set<Genre>()
+            .AsNoTracking()
             .Where(x => !x.IsDeleted)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            searchText = searchText.Trim();
-            query = query.Where(x => x.Name.Contains(searchText));
-        }
+        query = ApplyTextSearch(query, searchText);
 
         return await query
             .OrderBy(x => x.Name)
@@ -52,14 +49,11 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
     public async Task<(List<Genre> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct)
     {
         var query = db.Genres
+            .AsNoTracking()
             .Where(x => !x.IsDeleted)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            searchText = searchText.Trim();
-            query = query.Where(x => x.Name.Contains(searchText));
-        }
+        query = ApplyTextSearch(query, searchText);
 
         var totalCount = await query.CountAsync(ct);
 
@@ -107,4 +101,13 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
     }
 
     public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
+    private static IQueryable<Genre> ApplyTextSearch(IQueryable<Genre> query, string? searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return query;
+
+        searchText = searchText.Trim();
+        return query.Where(g => g.Name.Contains(searchText));
+    }
+
 }
