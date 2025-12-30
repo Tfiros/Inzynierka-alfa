@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
+using ItemTradeApp.AuthZeroCommunication.Dto.ResponseDtos;
 using ItemTradeApp.ExceptionsHandling;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.UsersFeature.UserInfo.DTOs.Response;
@@ -65,6 +65,7 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
         string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
             ? auth0UserId.Substring("auth0|".Length)
             : auth0UserId;
+        
         var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
 
         if (user is null || user.ProfileInfo is null)
