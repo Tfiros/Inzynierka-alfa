@@ -15,10 +15,13 @@ public partial class Item
     [Column("photo_url")]
     public string Photo_URL { get; set; } = null!;
     [Column("is_deleted")] 
-    public bool IsDeteled { get; set; }
+    public bool IsDeleted { get; set; }
+    [Column("estimated_token_value")] 
+    public int EstimatedTokenValue { get; set; }
+    [Column("item_rarity_id")]
+    public int ItemRarityId { get; set; }
+    public ItemRarity ItemRarity { get; set; } = null!;
     public virtual Game Game { get; set; } = null!;
-
     public virtual ICollection<ListingCounterOfferItem> ListingCounterOfferItems { get; set; } = new List<ListingCounterOfferItem>();
-
     public virtual ICollection<ListingItem> ListingItems { get; set; } = new List<ListingItem>();
 }
