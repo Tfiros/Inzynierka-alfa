@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using ItemTradeApp.AuthZeroCommunication;
-using ItemTradeApp.Features.ItemsFeatures;
-using ItemTradeApp.Features.UsersFeature;
+using ItemTradeApp.Features.ItemsManagement;
+using ItemTradeApp.Features.Users;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence;
+using ItemTradeApp.Users.AuthZeroCommunication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;

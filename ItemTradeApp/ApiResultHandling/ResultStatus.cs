@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace ItemTradeApp.ExceptionsHandling;
+namespace ItemTradeApp.ApiResultHandling;
 
 public enum ResultStatus
 {

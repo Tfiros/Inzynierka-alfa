@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.ExceptionsHandling;
+﻿using ItemTradeApp.ApiResultHandling;
 
 public class Result<T>(bool isSuccess, ResultStatus status, T? data, string? message = null)
 {
