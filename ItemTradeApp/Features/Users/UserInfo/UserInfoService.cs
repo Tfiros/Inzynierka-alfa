@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;

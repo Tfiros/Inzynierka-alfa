@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 using ItemTradeApp.AuthZeroCommunication.Dto.Response;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Users.Auth.DTOs.RequestDtos;
@@ -107,10 +108,11 @@ public class AuthService(
 
         var dto = new LoginResponse(
             user.ID,
-            accessToken!,
             expiresIn,
-            refreshToken,
-            idToken);
+            idToken,
+            accessToken,
+            refreshToken
+            );
 
         return Result<LoginResponse>.Success(dto, "Login Successful");
     }
@@ -179,7 +181,17 @@ public class AuthService(
             return Result<RefreshResponse>.InternalServerError("no_access_token_from_auth0");
         }
 
-        var dto = new RefreshResponse(accessToken!, expiresIn, refreshToken, idToken);
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.ReadJwtToken(accessToken);
+        var auth0id = token.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        string trimmedAuth0UserId = auth0id.StartsWith("auth0|")
+            ? auth0id.Substring("auth0|".Length)
+            : auth0id;
+
+        var user = authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
+        
+        var dto = new RefreshResponse(user.Id, expiresIn, idToken,accessToken,refreshToken);
         return Result<RefreshResponse>.Success(dto, "Refresh successful");
     }
 

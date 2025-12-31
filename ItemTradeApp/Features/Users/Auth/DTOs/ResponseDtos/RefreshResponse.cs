@@ -1,3 +1,3 @@
 ﻿namespace ItemTradeApp.Users.Auth.DTOs.ResponseDtos;
 
-public record RefreshResponse(string AccessToken, int ExpiresIn, string? RefreshToken = null, string? IdToken = null);
+public record RefreshResponse(int Id, int ExpiresIn,string? IdToken = null, string? AccessToken = null, string? RefreshToken = null );

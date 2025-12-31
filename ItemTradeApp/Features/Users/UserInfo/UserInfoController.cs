@@ -30,7 +30,7 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
         return result.ToActionResult();
     }
     [Authorize(Policy = "OwnResource")]
-    [HttpPut("profile")]
+    [HttpPut("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,
         CancellationToken ct)
@@ -41,7 +41,7 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
             return bad.ToActionResult();
         }
 
-        var auth0UserId = User.FindFirst("sub")?.Value;
+        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
             var unauthorized = Result<UserProfileInfoResponse>.Unauthorized("Missing sub claim in JWT.");

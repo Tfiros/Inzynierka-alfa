@@ -9,6 +9,8 @@ public interface IUserSettingsService
         string auth0UserId,
         UserDataUpdateRequest request,
         CancellationToken ct = default);
+    
+    Task<Result<UserSecurityInfoResponse>> GetSecurityProfileInfoAsync(int userId, CancellationToken ct = default);
 }
 public sealed class UserSettingsService(IUserSettingsRepository userSettingsRepository,
     IAuthZeroManagementClient authZeroApiClient) : IUserSettingsService
@@ -93,5 +95,23 @@ public sealed class UserSettingsService(IUserSettingsRepository userSettingsRepo
         await userSettingsRepository.UpdateUserAsync(user, ct);
 
         return Result<string>.Success("user_sensitive_data_updated");
+    }
+    public async Task<Result<UserSecurityInfoResponse>> GetSecurityProfileInfoAsync(int userId, CancellationToken ct = default)
+    {
+        var user = await userSettingsRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
+        if (user is null || user.ProfileInfo is null)
+        {
+            return Result<UserSecurityInfoResponse>.NotFound(
+                "user_or_profile_info_not_found: User or profile info not found");
+        }
+        
+
+        var dto = new UserSecurityInfoResponse(
+            user.ID,
+            user.DateOfBirth,
+            user.Email
+        );
+
+        return Result<UserSecurityInfoResponse>.Success(dto);
     }
 }
