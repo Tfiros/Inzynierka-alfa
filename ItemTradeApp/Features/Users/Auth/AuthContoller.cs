@@ -69,13 +69,12 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             return result.ToActionResult();
 
         var ok = result.Data;
-
+        
         if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
             SetRefreshCookie(ok.RefreshToken!, DateTimeOffset.UtcNow.AddDays(7));
 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
 
-        // ważne: po zalogowaniu wydaj token antiforgery powiązany z aktualnym userem
         IssueAntiforgeryToken();
 
         var dto = new LoginResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
@@ -122,7 +121,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
 
-        // ważne: po refresh też odśwież token antiforgery (może być per-user)
         IssueAntiforgeryToken();
 
         var dto = new RefreshResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
@@ -148,7 +146,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     [Authorize]
     public ActionResult<Result<AuthMeDTO>> Me()
     {
-        // opcjonalnie, ale pomaga: odnów token przy /me
         IssueAntiforgeryToken();
 
         var login =
@@ -162,9 +159,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             .Select(x => x.Value)
             .Distinct()
             .ToList();
-
-        // Jeśli chcesz userId, to zwykle masz go w "sub" (auth0 id) – ale DTO masz na int.
-        // Zakładam, że authService/me mapuje to już gdzie indziej, więc tu zostaje jak było.
+        
         var dto = new AuthMeDTO(true, login, roles);
         return Result<AuthMeDTO>.Success(dto).ToActionResult();
     }
@@ -181,22 +176,21 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     private CookieOptions BaseHttpOnlyCookie(string path, DateTimeOffset? expiresUtc) => new()
     {
         HttpOnly = true,
-        Secure   = true,              // masz SPA na https => OK
-        SameSite = SameSiteMode.None, // cross-site cookie
+        Secure   = true,
+        SameSite = SameSiteMode.None,
         Path     = path,
         Expires  = expiresUtc
     };
 
     private void SetRefreshCookie(string refreshToken, DateTimeOffset expiresUtc)
     {
-        // refresh cookie tylko na endpoint refresh
-        var opts = BaseHttpOnlyCookie("/Auth/refresh", expiresUtc);
+        var opts = BaseHttpOnlyCookie("/", expiresUtc);
         Response.Cookies.Append(RefreshCookieName, refreshToken, opts);
     }
 
     private void DeleteRefreshCookie()
     {
-        var opts = BaseHttpOnlyCookie("/Auth/refresh", DateTimeOffset.UnixEpoch);
+        var opts = BaseHttpOnlyCookie("/", DateTimeOffset.UnixEpoch);
         Response.Cookies.Append(RefreshCookieName, "", opts);
     }
 
@@ -211,18 +205,12 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         var opts = BaseHttpOnlyCookie("/", DateTimeOffset.UnixEpoch);
         Response.Cookies.Append(AccessCookieName, "", opts);
     }
-
-    /// <summary>
-    /// Wydaje i zapisuje cookie antiforgery (.AspNetCore.Antiforgery.*) oraz wystawia request token w headerze.
-    /// Front powinien brać X-XSRF-TOKEN z response header i wysyłać w request header dla POST/PUT/PATCH/DELETE.
-    /// </summary>
     private void IssueAntiforgeryToken()
     {
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);
 
         if (!string.IsNullOrWhiteSpace(tokens.RequestToken))
         {
-            // Uwaga: w AddAntiforgery ustawiasz HeaderName = "X-XSRF-TOKEN"
             Response.Headers["X-XSRF-TOKEN"] = tokens.RequestToken!;
         }
     }
