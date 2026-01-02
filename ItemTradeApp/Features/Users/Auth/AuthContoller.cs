@@ -173,38 +173,40 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         .GetRequiredService<IHostEnvironment>()
         .IsDevelopment();
 
-    private CookieOptions BaseHttpOnlyCookie(string path, DateTimeOffset? expiresUtc) => new()
+    private CookieOptions BaseHttpOnlyCookie(string path) => new()
     {
         HttpOnly = true,
         Secure   = true,
         SameSite = SameSiteMode.None,
-        Path     = path,
-        Expires  = expiresUtc
+        Path     = path
     };
 
     private void SetRefreshCookie(string refreshToken, DateTimeOffset expiresUtc)
     {
-        var opts = BaseHttpOnlyCookie("/", expiresUtc);
+        var opts = BaseHttpOnlyCookie("/");
+        opts.Expires = expiresUtc;
         Response.Cookies.Append(RefreshCookieName, refreshToken, opts);
     }
 
     private void DeleteRefreshCookie()
     {
-        var opts = BaseHttpOnlyCookie("/", DateTimeOffset.UnixEpoch);
-        Response.Cookies.Append(RefreshCookieName, "", opts);
+        var opts = BaseHttpOnlyCookie("/");
+        Response.Cookies.Delete(RefreshCookieName, opts);
     }
 
     private void SetAccessCookie(string accessToken, int expiresInSeconds)
     {
-        var opts = BaseHttpOnlyCookie("/", DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds));
+        var opts = BaseHttpOnlyCookie("/");
+        opts.Expires = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds);
         Response.Cookies.Append(AccessCookieName, accessToken, opts);
     }
 
     private void DeleteAccessCookie()
     {
-        var opts = BaseHttpOnlyCookie("/", DateTimeOffset.UnixEpoch);
-        Response.Cookies.Append(AccessCookieName, "", opts);
+        var opts = BaseHttpOnlyCookie("/");
+        Response.Cookies.Delete(AccessCookieName, opts);
     }
+
     private void IssueAntiforgeryToken()
     {
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);
