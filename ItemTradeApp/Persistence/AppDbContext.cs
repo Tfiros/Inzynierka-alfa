@@ -49,13 +49,15 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("user_pk");
+            entity
+                .Property(x => x.TokenExpDate)
+                .HasColumnType("timestamptz");
 
             entity.ToTable("User");
 
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
-            entity.Property(e => e.TokenExpDate).HasColumnType("timestamp without time zone");
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>

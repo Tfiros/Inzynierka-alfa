@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ItemTradeApp.ExceptionsHandling;
+namespace ItemTradeApp.ApiResultHandling;
 
 public class ResultFactory
 {
