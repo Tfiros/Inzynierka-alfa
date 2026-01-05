@@ -253,8 +253,8 @@ public class OfferService(
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(IReadOnlyCollection<OfferItemDTO> offeredItems,
         IReadOnlyCollection<OfferItemDTO> wantedItems, DateOnly expDate, CancellationToken ct)
     {
-        var offered = NormalizeItems(offeredItems);
-        var wanted = NormalizeItems(wantedItems);
+        var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
+        var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
         if (offered.Count == 0)
             return (false, "offered_items_required", null);
@@ -287,31 +287,6 @@ public class OfferService(
 
         return (true, null, draft);
 
-    }
-
-    private static Dictionary<int, int> NormalizeItems(IReadOnlyCollection<OfferItemDTO> items)
-    {
-        var result = new Dictionary<int, int>();
-        foreach (var item in items)
-        {
-            
-            //It will be fixed with fluentValidation
-            if(item.ItemId <= 0) continue;
-            if (item.Quantity <= 0) continue;
-
-            if (result.TryGetValue(item.ItemId, out var q))
-            {
-                result[item.ItemId] = q + item.Quantity;
-            }
-            else
-            {
-                result[item.ItemId] =item.Quantity;
-            }
-
-
-        }
-
-        return result;
     }
 
     private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost)
