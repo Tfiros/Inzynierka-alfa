@@ -47,9 +47,9 @@ public class OfferRepository(AppDbContext dbContext) : IOffersRepository
         OfferListingsQuery query,
         CancellationToken ct = default)
     {
-        var page = query.Page < 1 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
+        var page = query.Page;
+        var pageSize = query.PageSize;
 
         var localQuery = dbContext.Offers.AsNoTracking().AsQueryable();
         localQuery = localQuery.Where(o => o.OfferStatus_ID == (int)OfferStatuses.Active);
