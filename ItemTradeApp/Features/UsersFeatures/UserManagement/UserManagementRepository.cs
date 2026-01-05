@@ -56,7 +56,7 @@ public class UserManagementRepository (AppDbContext dbContext) : IUserManagement
         .Where(o => o.User_ID == user.ID && (o.OfferStatus_ID == (int)OfferStatuses.Active || 
                                              o.OfferStatus_ID == (int)OfferStatuses.InRealization || 
                                              o.OfferStatus_ID == (int)OfferStatuses.Expired))
-        .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Closed), ct);
+        .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Completed), ct);
     
     await dbContext.Trades
         .Where(t =>
