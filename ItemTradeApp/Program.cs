@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ItemTradeApp.AuthZeroCommunication;
-using ItemTradeApp.Features.TradeFeatures.Offers;
+using ItemTradeApp.Features.Offers;
 using ItemTradeApp.Features.UsersFeature;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
@@ -14,6 +14,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -60,8 +61,6 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 
-builder.Services.AddScoped<IItemService, OfferService>();
-builder.Services.AddScoped<IOffersRepository, OfferRepository>();
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddCors(opts =>
 {
@@ -74,6 +73,7 @@ builder.Services.AddCors(opts =>
 
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
+builder.Services.RegisterOfferFeatureDi();
 
 var app = builder.Build();
 
