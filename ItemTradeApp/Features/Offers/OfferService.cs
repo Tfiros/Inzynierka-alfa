@@ -1,6 +1,7 @@
 using ItemTradeApp.Features.Offers.DTOs;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
@@ -97,12 +98,12 @@ public class OfferService(
                 ListingItems = draft.Offered.Select(kv => new ListingItems
                 {
                     Item_ID = kv.Key,
-                    Quantity = kv.Value,
+                    Quantity = kv.Value.Quantity,
                     IsWanted = false
                 }).Concat(draft.Wanted.Select(kv => new ListingItems
                 {
                     Item_ID = kv.Key,
-                    Quantity = kv.Value,
+                    Quantity = kv.Value.Quantity,
                     IsWanted = true
                 })).ToList()
             };
@@ -202,17 +203,17 @@ public class OfferService(
     }
 
     #region OfferServiceHelpers
-
-    private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, int> offered, Dictionary<int, int> wanted)
+    
+    private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
     {
         var target = new Dictionary<(int ItemId, bool IsWanted), int>(offered.Count + wanted.Count);
         foreach (var kv in offered)
         {
-            target[(kv.Key, false)] = kv.Value;
+            target[(kv.Key, false)] = kv.Value.Quantity;
         }
         foreach (var kv in wanted)
         {
-            target[(kv.Key, true)] = kv.Value;
+            target[(kv.Key, true)] = kv.Value.Quantity;
         }
 
         var current = offer.ListingItems.ToDictionary(li => (li.Item_ID, li.IsWanted), li => li);
@@ -238,13 +239,13 @@ public class OfferService(
 
     }
 
-    private static OfferResponse MapResponse(Offer offer, Dictionary<int, int> offered, Dictionary<int, int> wanted)
+    private static OfferResponse MapResponse(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
     {
         var offerCore = new OfferCoreDTO(offer.ID, offer.ExpDate, offer.CreationDate, offer.TokenCost);
         return new OfferResponse(
             offerCore,
-            offered.Select(x => new OfferItemDTO(x.Key, x.Value)).ToList(),
-            wanted.Select(x => new OfferItemDTO(x.Key, x.Value)).ToList()
+            offered.Select(x => new OfferItemDTO(x.Key, x.Value.Quantity)).ToList(),
+            wanted.Select(x => new OfferItemDTO(x.Key, x.Value.Quantity)).ToList()
             )
         ;
     }
@@ -269,17 +270,20 @@ public class OfferService(
         var (okItems, errItems, items) = await LoadItemsOrErrorAsync(offered, wanted, ct);
         if (!okItems) return (false, errItems, null);
 
+        var offeredLines = offered.ToDictionary(kv => kv.Key, kv => new DictItemQuantity(items[kv.Key], kv.Value));
+        var wantedLines = wanted.ToDictionary(kv => kv.Key, kv => new DictItemQuantity(items[kv.Key], kv.Value));
+
         int tokenCost;
         try
         {
-            tokenCost = CalculateTokenCost(offered, wanted, items, extraDayCost);
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost);
         }
         catch (OverflowException)
         {
             return (false, "token_cost_overflow", null);
         }
 
-        var draft = new OfferDraft(offered, wanted, expCalcDate, tokenCost);
+        var draft = new OfferDraft(offeredLines, wantedLines, expCalcDate, tokenCost);
 
         return (true, null, draft);
 
@@ -310,20 +314,20 @@ public class OfferService(
         return result;
     }
 
-    private static int CalculateTokenCost(Dictionary<int,int> offered, Dictionary<int,int> wanted, Dictionary<int,Item> items, int extraDayCost)
+    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost)
     {
         long totalValue = 0;
 
         checked
         {
-            foreach (var kv in offered)
+            foreach (var items in offered.Values)
             {
-                totalValue += (long)items[kv.Key].EstimatedValue * kv.Value;
+                totalValue += (long)items.Item.EstimatedValue * items.Quantity;
             }
 
-            foreach (var kv in wanted)
+            foreach (var items in wanted.Values)
             {
-                totalValue += (long)items[kv.Key].EstimatedValue * kv.Value;
+                totalValue += (long)items.Item.EstimatedValue * items.Quantity;
             }
         }
 
