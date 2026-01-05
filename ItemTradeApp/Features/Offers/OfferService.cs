@@ -18,7 +18,7 @@ public interface IOfferService
         CreateOfferAsync(string auth0UserId, CreateOfferRequest createOfferRequest,
         CancellationToken ct = default);
 
-    Task<Result<bool>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
+    Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
 
     Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId, UpdateOfferRequest request,
         CancellationToken ct = default);
@@ -177,29 +177,29 @@ public class OfferService(
 
     }
 
-    public async Task<Result<bool>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default)
+    public async Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
-            return Result<bool>.Unauthorized("missing_sub_claim");
+            return Result<string>.Unauthorized("missing_sub_claim");
         }
 
         if (offerId <= 0)
         {
-            return Result<bool>.BadRequest("invalid_offer_id");
+            return Result<string>.BadRequest("invalid_offer_id");
         }
 
         var userState = await userRepository.GetStateByAuth0IdAsync(auth0UserId, ct);
-        if (userState is null) return Result<bool>.Unauthorized("user_not_found");
-        if (userState.IsDeleted) return Result<bool>.Unauthorized("user_deleted");
+        if (userState is null) return Result<string>.Unauthorized("user_not_found");
+        if (userState.IsDeleted) return Result<string>.Unauthorized("user_deleted");
 
         var updated = await offersRepository.CancelOfferAsync(userState.Id, offerId, ct);
         if (!updated)
         {
-            return Result<bool>.BadRequest("cancel_offer_failed");
+            return Result<string>.BadRequest("cancel_offer_failed");
         }
 
-        return Result<bool>.NoContent();
+        return Result<string>.NoContent("offer_cancelled");
     }
 
     #region OfferServiceHelpers

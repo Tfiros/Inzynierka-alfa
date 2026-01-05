@@ -34,7 +34,7 @@ public class OfferController(IOfferService offerService) : ControllerBase
 
     [HttpDelete("{offerId:int}")]
     [Authorize]
-    public async Task<ActionResult<Result<bool>>> CancelOffer(
+    public async Task<ActionResult<Result<string>>> CancelOffer(
         [FromRoute] int offerId, CancellationToken ct = default
     )
     {
