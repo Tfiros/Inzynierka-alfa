@@ -11,7 +11,7 @@ public partial class Offer
     [Column("user_id")]
     public int User_ID { get; set; }
     [Column("exp_date")]
-    public DateTime ExpDate { get; set; }
+    public DateOnly ExpDate { get; set; }
     [Column("creation_date")]
     public DateTime CreationDate { get; set; }
     [Column("token_cost")]

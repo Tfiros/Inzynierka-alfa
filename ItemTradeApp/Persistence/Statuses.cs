@@ -5,7 +5,8 @@ public enum OfferStatuses
     Active = 1,
     Expired = 2,
     InRealization = 3,
-    Closed = 4
+    Completed = 4, 
+    Canceled = 5
 }
 
 public enum CounterOfferStatuses

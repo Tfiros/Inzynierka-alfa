@@ -16,6 +16,8 @@ public partial class Item
     public string Photo_URL { get; set; } = null!;
     [Column("is_deleted")] 
     public bool IsDeteled { get; set; }
+    [Column("estimated_value")]
+    public int EstimatedValue { get; set; }
     public virtual Game Game { get; set; } = null!;
 
     public virtual ICollection<ListingCounterOfferItem> ListingCounterOfferItems { get; set; } = new List<ListingCounterOfferItem>();
