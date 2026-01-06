@@ -6,6 +6,7 @@ using ItemTradeApp.Users.Auth.DTOs.RequestDtos;
 using ItemTradeApp.Users.Auth.DTOs.ResponseDtos;
 using ItemTradeApp.Users.AuthZeroCommunication;
 using ItemTradeApp.Users.Shared.DTOs;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Users.Auth;
@@ -17,6 +18,7 @@ public interface IAuthService
     Task<Result<AuthZeroBodyResponse>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default);
     Task<Result<RefreshResponse>>     RefreshAsync(string req, CancellationToken ct = default);
     Task<Result<AuthZeroBodyResponse>> LogoutAsync(string req, CancellationToken ct = default);
+    Task<Result<int>> GetUserIdAsync(string req, CancellationToken ct = default);
 }
 
 public class AuthService(
@@ -220,5 +222,15 @@ public class AuthService(
         }
         res.Data.Message = "Logout successful";
         return res;
+    }
+
+    public async Task<Result<int>> GetUserIdAsync(string authZeroId, CancellationToken ct = default)
+    {
+        string trimmedAuth0UserId = authZeroId.StartsWith("auth0|")
+            ? authZeroId.Substring("auth0|".Length)
+            : authZeroId;
+        var res = await authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
+        if (res is null) return Result<int>.NotFound("User not found");
+        return Result<int>.Success(res.ID, "User id retrieved successfully");
     }
 }
