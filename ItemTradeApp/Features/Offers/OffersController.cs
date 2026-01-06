@@ -9,7 +9,7 @@ namespace ItemTradeApp.Features.Offers;
 
 [ApiController]
 [Route("[controller]")]
-public class OfferController(IOfferService offerService) : ControllerBase
+public class OffersController(IOffersService offerService) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]

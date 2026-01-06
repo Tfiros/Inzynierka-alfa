@@ -9,7 +9,7 @@ using ItemTradeApp.Persistence.Models;
 namespace ItemTradeApp.Features.Offers;
 
 
-public interface IOfferService
+public interface IOffersService
 {
     Task<Result<PagedResponse<OfferListingDTO>>>
         GetOffersAsync(OfferListingsQuery query, CancellationToken ct = default);
@@ -24,10 +24,10 @@ public interface IOfferService
         CancellationToken ct = default);
 }
 
-public class OfferService(
+public class OffersService(
     IOffersRepository offersRepository,
-    IOfferUserRepository userRepository,
-    IUnitOfWork unitOfWork) : IOfferService
+    IUsersRepository userRepository,
+    IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
         CancellationToken ct = default)
@@ -144,7 +144,7 @@ public class OfferService(
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferResponse>.BadRequest("offer_not_active");
         
-        var updateFeeTokens = Math.Max(OfferConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
+        var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
         if (userState.Tokens < updateFeeTokens) return Result<OfferResponse>.BadRequest("not_enough_tokens");
         
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
@@ -306,8 +306,8 @@ public class OfferService(
             }
         }
 
-        var baseTokenCost = (int)Math.Ceiling(totalValue * OfferConsts.BaseCostRate);
-        if (baseTokenCost < OfferConsts.MinBaseTokenCost) baseTokenCost = OfferConsts.MinBaseTokenCost;
+        var baseTokenCost = (int)Math.Ceiling(totalValue * OffersConsts.BaseCostRate);
+        if (baseTokenCost < OffersConsts.MinBaseTokenCost) baseTokenCost = OffersConsts.MinBaseTokenCost;
 
         int tokenCost;
         checked
@@ -323,14 +323,14 @@ public class OfferService(
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var minExpDate = today.AddDays(OfferConsts.MinExpiryDays);
+        var minExpDate = today.AddDays(OffersConsts.MinExpiryDays);
         if (requestExpDate < minExpDate)
         {
             return (false, "exp_date_min_7_days", default, 0);
         }
 
         var extraDays = requestExpDate.DayNumber - minExpDate.DayNumber;
-        var extraDaysCost = extraDays > 0 ? extraDays * OfferConsts.ExtraDayCost : 0;
+        var extraDaysCost = extraDays > 0 ? extraDays * OffersConsts.ExtraDayCost : 0;
 
         return (true, null, requestExpDate, extraDaysCost);
 

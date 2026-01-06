@@ -21,7 +21,7 @@ public interface IOffersRepository
 
 }
 
-public class OfferRepository(AppDbContext dbContext) : IOffersRepository
+public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 {
     public void RemoveListingItemsRange(IEnumerable<ListingItems> items)
         => dbContext.RemoveRange(items);

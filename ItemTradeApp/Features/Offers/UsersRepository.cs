@@ -5,14 +5,14 @@ namespace ItemTradeApp.Features.Offers;
 
 public sealed record UserState(int Id, bool IsDeleted, int Tokens);
 
-public interface IOfferUserRepository
+public interface IUsersRepository
 {
     Task<UserState?> GetStateByAuth0IdAsync(string auth0UserId, CancellationToken ct = default);
     Task<bool> TrySubtractTokenCostAsync(int userId, int tokenCost, CancellationToken ct = default);
 
 }
 
-public class UserRepository(AppDbContext dbContext) : IOfferUserRepository
+public class UsersRepository(AppDbContext dbContext) : IUsersRepository
 {
     public Task<UserState?> GetStateByAuth0IdAsync(string auth0UserId, CancellationToken ct = default)
         => dbContext.Users.AsNoTracking()

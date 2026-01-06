@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.Offers;
 
-public class OfferConsts
+public class OffersConsts
 {
     public const int MinBaseTokenCost = 10;
     public const decimal BaseCostRate = 0.02m; //2%
