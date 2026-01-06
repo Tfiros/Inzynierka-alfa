@@ -60,15 +60,14 @@ public class OfferRepository(AppDbContext dbContext) : IOffersRepository
 
         var offers = await localQuery.Skip((page - 1) * pageSize)
             .Take(pageSize).Select(o => new OfferListingDTO
-            (new OfferCoreDTO(o.ID,o.ExpDate,o.CreationDate,o.TokenCost),
+            (new OfferCoreDTO(o.ID,o.ExpDate,o.CreationDate,o.TokenCost,o.OfferStatus.ID),
               new OfferUserDTO
                     (
                         o.User_ID,
                         o.User.ProfileInfo!.Nickname,
                         o.User.ProfileInfo!.ImageUrl
                     ),
-              o.OfferStatus_ID, 
-              o.ListingItems.Select(li => 
+              o.ListingItems.Where(li=>!li.IsWanted).Select(li => 
                     new OfferListingItemDTO
                         (
                             li.Item.ID,
@@ -78,8 +77,20 @@ public class OfferRepository(AppDbContext dbContext) : IOffersRepository
                             li.Quantity,
                             li.Item.Game.Name,
                             li.Item.Game.Genre.ID,
-                            li.Item.Game.Genre.Name 
-                        )).ToList()
+                            li.Item.Game.Genre.Name
+                        )).ToList(),
+              o.ListingItems.Where(li=>li.IsWanted).Select(li => 
+                  new OfferListingItemDTO
+                  (
+                      li.Item.ID,
+                      li.Item.Name,
+                      li.Item.Game.ID,
+                      li.Item.Photo_URL,
+                      li.Quantity,
+                      li.Item.Game.Name,
+                      li.Item.Game.Genre.ID,
+                      li.Item.Game.Genre.Name
+                  )).ToList()
             )).ToListAsync(ct);
         return (offers, totalCount);
 

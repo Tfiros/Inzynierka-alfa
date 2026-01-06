@@ -24,7 +24,7 @@ public class OfferController(IOfferService offerService) : ControllerBase
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<Result<OfferResponse>>> CreateOffer(
-        [FromBody] CreateOfferRequest request, CancellationToken ct = default)
+        [FromBody] OfferDraftRequest request, CancellationToken ct = default)
     {
         var auth0UserId = User.FindFirst("sub")?.Value;
         var result = await offerService.CreateOfferAsync(auth0UserId ?? string.Empty, request, ct);
@@ -47,7 +47,7 @@ public class OfferController(IOfferService offerService) : ControllerBase
     [Authorize]
     public async Task<ActionResult<Result<OfferResponse>>> UpdateOffer(
         [FromRoute] int offerId,
-        [FromBody] UpdateOfferRequest request,
+        [FromBody] OfferDraftRequest request,
         CancellationToken ct = default
     )
     {

@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 
-public sealed class UpdateOfferRequest
+public sealed class OfferDraftRequest
 {
     public DateOnly ExpDate { get; set; }
     public IReadOnlyCollection<OfferItemDTO> OfferedItems { get; set; } = Array.Empty<OfferItemDTO>();

@@ -15,12 +15,12 @@ public interface IOfferService
         GetOffersAsync(OfferListingsQuery query, CancellationToken ct = default);
 
     Task<Result<OfferResponse>> 
-        CreateOfferAsync(string auth0UserId, CreateOfferRequest createOfferRequest,
+        CreateOfferAsync(string auth0UserId, OfferDraftRequest offerDraftRequest,
         CancellationToken ct = default);
 
     Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
 
-    Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId, UpdateOfferRequest request,
+    Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId, OfferDraftRequest request,
         CancellationToken ct = default);
 }
 
@@ -59,14 +59,14 @@ public class OfferService(
     }
 
     public async Task<Result<OfferResponse>> CreateOfferAsync(string auth0UserId,
-        CreateOfferRequest createOfferRequest, CancellationToken ct = default)
+        OfferDraftRequest offerDraftRequest, CancellationToken ct = default)
     {
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<OfferResponse>.Unauthorized("missing_sub_claim");
 
     
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(createOfferRequest.OfferedItems, createOfferRequest.WantedItems, createOfferRequest.ExpDate, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.ExpDate, ct);
         if (!okDraft)
             return Result<OfferResponse>.BadRequest(errDraft);
         if (draft is null) return Result<OfferResponse>.BadRequest("draft_creation_failed");
@@ -124,7 +124,7 @@ public class OfferService(
     }
 
     public async Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId,
-        UpdateOfferRequest request,
+        OfferDraftRequest request,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
@@ -241,7 +241,7 @@ public class OfferService(
 
     private static OfferResponse MapResponse(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
     {
-        var offerCore = new OfferCoreDTO(offer.ID, offer.ExpDate, offer.CreationDate, offer.TokenCost);
+        var offerCore = new OfferCoreDTO(offer.ID, offer.ExpDate, offer.CreationDate, offer.TokenCost, offer.OfferStatus.ID);
         return new OfferResponse(
             offerCore,
             offered.Select(x => new OfferItemDTO(x.Key, x.Value.Quantity)).ToList(),
