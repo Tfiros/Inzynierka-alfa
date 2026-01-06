@@ -17,13 +17,13 @@ public interface IOffersService
     Task<Result<OfferDetailsDTO>> GetOfferByIdAsync(int id,
         CancellationToken ct = default);
 
-    Task<Result<OfferResponse>> 
+    Task<Result<OfferDetailsDTO>> 
         CreateOfferAsync(string auth0UserId, OfferDraftRequest offerDraftRequest,
         CancellationToken ct = default);
 
     Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
 
-    Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId, OfferDraftRequest request,
+    Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId, OfferDraftRequest request,
         CancellationToken ct = default);
 }
 
@@ -35,6 +35,9 @@ public class OffersService(
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
         CancellationToken ct = default)
     {
+        if (query.Page <= 0) return Result<PagedResponse<OfferListingDTO>>.BadRequest("invalid_page_number");
+        if (query.PageSize <= 0) return Result<PagedResponse<OfferListingDTO>>.BadRequest("invalid_page_size");
+        query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
 
         if (query.GameId is not null && query.GameId <= 0)
         {
@@ -70,25 +73,25 @@ public class OffersService(
         return Result<OfferDetailsDTO>.Success(response);
     }
 
-    public async Task<Result<OfferResponse>> CreateOfferAsync(string auth0UserId,
+    public async Task<Result<OfferDetailsDTO>> CreateOfferAsync(string auth0UserId,
         OfferDraftRequest offerDraftRequest, CancellationToken ct = default)
     {
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<OfferResponse>.Unauthorized("missing_sub_claim");
+            return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
 
     
         var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.ExpDate, ct);
         if (!okDraft)
-            return Result<OfferResponse>.BadRequest(errDraft);
-        if (draft is null) return Result<OfferResponse>.BadRequest("draft_creation_failed");
+            return Result<OfferDetailsDTO>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
         
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
-        if (!okUser) return Result<OfferResponse>.Unauthorized(errUser!);
-        if (userState is null) return Result<OfferResponse>.BadRequest("user_fetch_error");
+        if (!okUser) return Result<OfferDetailsDTO>.Unauthorized(errUser!);
+        if (userState is null) return Result<OfferDetailsDTO>.BadRequest("user_fetch_error");
 
         
-        if (userState.Tokens < draft.TokenCost) return Result<OfferResponse>.BadRequest("not_enough_tokens");
+        if (userState.Tokens < draft.TokenCost) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -97,7 +100,7 @@ public class OffersService(
             if (!charged)
             {
                 await tx.RollbackAsync(ct);
-                return Result<OfferResponse>.Conflict("concurrency_conflict");
+                return Result<OfferDetailsDTO>.Conflict("concurrency_conflict");
             }
 
             var offer = new Offer
@@ -123,41 +126,42 @@ public class OffersService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            var response = MapResponse(offer, draft.Offered, draft.Wanted);
-            return Result<OfferResponse>.Created(response);
+            var response = await offersRepository.GetOfferByIdAsync(offer.ID, ct);
+            if (response is null) return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+            return Result<OfferDetailsDTO>.Created(response);
 
 
         }
         catch
         {
             await tx.RollbackAsync(ct);
-            return Result<OfferResponse>.InternalServerError("create_offer_failed");
+            return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
         }
     }
 
-    public async Task<Result<OfferResponse>> UpdateOfferAsync(string auth0UserId, int offerId,
+    public async Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId,
         OfferDraftRequest request,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<OfferResponse>.Unauthorized("missing_sub_claim");
-        if (offerId <= 0) return Result<OfferResponse>.BadRequest("invalid_offer_id");
+            return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
+        if (offerId <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
         
         var (okDraft, errDraft, draft) = await BuildDraftAsync(request.OfferedItems, request.WantedItems, request.ExpDate, ct);
         if (!okDraft)
-            return Result<OfferResponse>.BadRequest(errDraft);
-        if (draft is null) return Result<OfferResponse>.BadRequest("draft_creation_failed");
+            return Result<OfferDetailsDTO>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
 
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
-        if (!okUser) return Result<OfferResponse>.Unauthorized(errUser!);
+        if (!okUser) return Result<OfferDetailsDTO>.Unauthorized(errUser!);
         
         var offer = await offersRepository.GetTrackedOfferAsync(offerId, userState!.Id,ct);
-        if (offer is null) return Result<OfferResponse>.NotFound("offer_not_found");
+        if (offer is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
-            return Result<OfferResponse>.BadRequest("offer_not_active");
+            return Result<OfferDetailsDTO>.BadRequest("offer_not_active");
         
         var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
-        if (userState.Tokens < updateFeeTokens) return Result<OfferResponse>.BadRequest("not_enough_tokens");
+        if (userState.Tokens < updateFeeTokens) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
         
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -166,7 +170,7 @@ public class OffersService(
             if (!charged)
             {
                 await tx.RollbackAsync(ct);
-                return Result<OfferResponse>.Conflict("concurrency_conflict");
+                return Result<OfferDetailsDTO>.Conflict("concurrency_conflict");
             }
             
             ApplyListingItemsUpdate(offer, draft.Offered, draft.Wanted);
@@ -176,14 +180,15 @@ public class OffersService(
             
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            var response = MapResponse(offer, draft.Offered, draft.Wanted);
-            return Result<OfferResponse>.Success(response);
+            var response = await offersRepository.GetOfferByIdAsync(offer.ID, ct);
+            if (response is null) return Result<OfferDetailsDTO>.InternalServerError("update_offer_failed");
+            return Result<OfferDetailsDTO>.Success(response);
 
         }
         catch
         {
             await tx.RollbackAsync(ct);
-            return Result<OfferResponse>.InternalServerError("update_offer_failed");
+            return Result<OfferDetailsDTO>.InternalServerError("update_offer_failed");
         }
 
 
@@ -211,7 +216,7 @@ public class OffersService(
             return Result<string>.BadRequest("cancel_offer_failed");
         }
 
-        return Result<string>.NoContent("offer_cancelled");
+        return Result<string>.Success("offer_cancelled");
     }
 
     #region OfferServiceHelpers
@@ -250,18 +255,6 @@ public class OffersService(
         if(toAdd.Count>0) offersRepository.AddListingItemsRange(toAdd);
 
     }
-
-    private static OfferResponse MapResponse(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
-    {
-        var offerCore = new OfferCoreDTO(offer.ID, offer.ExpDate, offer.CreationDate, offer.TokenCost, offer.OfferStatus.ID);
-        return new OfferResponse(
-            offerCore,
-            offered.Select(x => new OfferItemDTO(x.Key, x.Value.Quantity)).ToList(),
-            wanted.Select(x => new OfferItemDTO(x.Key, x.Value.Quantity)).ToList()
-            )
-        ;
-    }
-
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(IReadOnlyCollection<OfferItemDTO> offeredItems,
         IReadOnlyCollection<OfferItemDTO> wantedItems, DateOnly expDate, CancellationToken ct)
     {
