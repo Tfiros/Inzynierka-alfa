@@ -14,6 +14,9 @@ public interface IOffersService
     Task<Result<PagedResponse<OfferListingDTO>>>
         GetOffersAsync(OfferListingsQuery query, CancellationToken ct = default);
 
+    Task<Result<OfferDetailsDTO>> GetOfferByIdAsync(int id,
+        CancellationToken ct = default);
+
     Task<Result<OfferResponse>> 
         CreateOfferAsync(string auth0UserId, OfferDraftRequest offerDraftRequest,
         CancellationToken ct = default);
@@ -56,6 +59,15 @@ public class OffersService(
         };
 
         return Result<PagedResponse<OfferListingDTO>>.Success(response);
+    }
+    public async Task<Result<OfferDetailsDTO>> GetOfferByIdAsync(int id,
+        CancellationToken ct = default)
+    {
+        if (id <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
+        var response = await offersRepository.GetOfferByIdAsync(id, ct);
+        if (response is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
+
+        return Result<OfferDetailsDTO>.Success(response);
     }
 
     public async Task<Result<OfferResponse>> CreateOfferAsync(string auth0UserId,

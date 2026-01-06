@@ -10,6 +10,7 @@ public interface IOffersRepository
 {
     Task<(List<OfferListingDTO> offers, int totalCount)> GetOffersPagedAsync(
         OfferListingsQuery query, CancellationToken ct = default);
+    Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default);
     Task<Dictionary<int, Item>> GetItemsByIdsAsync(IReadOnlyCollection<int> itemsIds, CancellationToken ct = default);
     Task<bool> CancelOfferAsync(int userId, int offerId, CancellationToken ct = default);
     void Add(Offer offer);
@@ -23,6 +24,20 @@ public interface IOffersRepository
 
 public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 {
+    public async Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default)
+    {
+        return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).Select(o => new OfferDetailsDTO(
+            new OfferCoreDTO(o.ID, o.ExpDate, o.CreationDate, o.TokenCost, o.OfferStatus.ID),
+            new OfferUserDTO(o.User.ID, o.User.ProfileInfo!.Nickname, o.User.ProfileInfo.ImageUrl),
+            o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
+                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
+                li.Item.Game.Genre.Name)).ToList(),
+            o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
+                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
+                li.Item.Game.Genre.Name)).ToList()
+        )).SingleOrDefaultAsync(ct);
+    }
+
     public void RemoveListingItemsRange(IEnumerable<ListingItems> items)
         => dbContext.RemoveRange(items);
     public void AddListingItemsRange(IEnumerable<ListingItems> items)
@@ -67,7 +82,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                         o.User.ProfileInfo!.Nickname,
                         o.User.ProfileInfo!.ImageUrl
                     ),
-              o.ListingItems.Where(li=>!li.IsWanted).Select(li => 
+              o.ListingItems.Where(li=>!li.IsWanted).OrderByDescending(li => li.Item.EstimatedValue).Take(3).Select(li => 
                     new OfferListingItemDTO
                         (
                             li.Item.ID,
@@ -79,7 +94,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                             li.Item.Game.Genre.ID,
                             li.Item.Game.Genre.Name
                         )).ToList(),
-              o.ListingItems.Where(li=>li.IsWanted).Select(li => 
+              o.ListingItems.Where(li=>li.IsWanted).OrderByDescending(li => li.Item.EstimatedValue).Take(3).Select(li => 
                   new OfferListingItemDTO
                   (
                       li.Item.ID,
@@ -90,7 +105,9 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                       li.Item.Game.Name,
                       li.Item.Game.Genre.ID,
                       li.Item.Game.Genre.Name
-                  )).ToList()
+                  )).ToList(),
+              o.ListingItems.Count(li => !li.IsWanted),
+              o.ListingItems.Count(li => li.IsWanted)
             )).ToListAsync(ct);
         return (offers, totalCount);
 

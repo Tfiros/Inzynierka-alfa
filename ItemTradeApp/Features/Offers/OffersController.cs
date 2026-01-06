@@ -20,6 +20,16 @@ public class OffersController(IOffersService offerService) : ControllerBase
         var result = await offerService.GetOffersAsync(query, ct);
         return result.ToActionResult();
     }
+    
+    [HttpGet("{offerId:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<Result<OfferDetailsDTO>>> GetOfferDetails(
+        [FromRoute] int offerId, CancellationToken ct = default
+    )
+    {
+        var result = await offerService.GetOfferByIdAsync(offerId, ct);
+        return result.ToActionResult();
+    }
 
     [HttpPost]
     [Authorize]
