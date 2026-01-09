@@ -38,6 +38,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Trade> Trades { get; set; }
 
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
+    public virtual DbSet<Notification> Notifications { get; set; }
+    public virtual DbSet<EmailOutbox> Emails { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -285,7 +287,45 @@ public partial class AppDbContext : DbContext
                 "CK_Rate_Mark_1_10",
                 "[Mark] >= 1.0 AND [Mark] <= 10.0");
         });
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notification");
+            entity.HasKey(x => x.Id);
 
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+
+            entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(50).IsRequired();
+
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.ReadAt).HasColumnName("read_at");
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_notification_user");
+        });
+        modelBuilder.Entity<EmailOutbox>(entity =>
+        {
+            entity.ToTable("email_outbox");
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+
+            entity.Property(x => x.Subject).HasColumnName("subject").IsRequired();
+            entity.Property(x => x.Body).HasColumnName("body").IsRequired();
+
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.SentAt).HasColumnName("sent_at");
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_email_outbox_user");
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

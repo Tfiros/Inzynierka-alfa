@@ -144,7 +144,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
 
     [HttpGet("me")]
     [Authorize]
-    public ActionResult<Result<AuthMeDTO>> Me()
+    public async Task<ActionResult<Result<AuthMeDTO>>> Me()
     {
         IssueAntiforgeryToken();
 
@@ -154,13 +154,13 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             User.FindFirst("name")?.Value ??
             User.FindFirst("preferred_username")?.Value ??
             User.FindFirst(ClaimTypes.Email)?.Value;
-
+        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var roles = User.FindAll("https://inzynierka.com/roles")
             .Select(x => x.Value)
             .Distinct()
             .ToList();
-        
-        var dto = new AuthMeDTO(true, login, roles);
+        var userId = await authService.GetUserIdAsync(auth0UserId);
+        var dto = new AuthMeDTO(userId.Data, true, login, roles);
         return Result<AuthMeDTO>.Success(dto).ToActionResult();
     }
 

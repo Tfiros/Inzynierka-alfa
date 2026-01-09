@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using ItemTradeApp;
+using ItemTradeApp.Features.EmaillsNotifications;
+using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
 using ItemTradeApp.Features.Users;
 using ItemTradeApp.Middlewares;
@@ -35,6 +37,8 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
 });
 
+builder.Services.AddSignalR();
+
 var domain = builder.Configuration["Auth0:Domain"];
 var audience = builder.Configuration["Auth0:Audience"];
 builder.Services
@@ -54,6 +58,15 @@ builder.Services
         {
             OnMessageReceived = ctx =>
             {
+                var accessToken = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/notifications"))
+                {
+                    ctx.Token = accessToken;
+                    return Task.CompletedTask;
+                }
                 if (ctx.Request.Cookies.TryGetValue("at", out var token) && !string.IsNullOrWhiteSpace(token))
                     ctx.Token = token;
 
@@ -94,6 +107,7 @@ builder.Services.AddCors(opts =>
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterItemsFeaturesDi();
+builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -102,6 +116,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("AppCors");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -126,7 +141,10 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Auth/forgot-password", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Auth/refresh", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Auth/csrf", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase);
+        path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
     {
@@ -136,6 +154,6 @@ app.Use(async (ctx, next) =>
 
     await next();
 });
-
 app.MapGroup("/api").MapControllers();
+app.MapHub<NotificationsHub>("/api/hubs/notifications");
 app.Run();
