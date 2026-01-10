@@ -19,6 +19,11 @@ public partial class Offer
     [Column("offer_status_id")]
     public int OfferStatus_ID { get; set; }
 
+    [Column("Title")] 
+    public string Title { get; set; } = null!;
+    [Column("Description")] 
+    public string Description { get; set; } = null!;
+
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
     public virtual ICollection<ListingItems> ListingItems { get; set; } = new List<ListingItems>();

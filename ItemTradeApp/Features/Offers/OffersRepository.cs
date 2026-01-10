@@ -27,7 +27,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     public async Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default)
     {
         return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).Select(o => new OfferDetailsDTO(
-            new OfferCoreDTO(o.ID, o.ExpDate, o.CreationDate, o.TokenCost, o.OfferStatus.ID),
+            new OfferCoreDTO(o.ID,o.Title,o.Description, o.ExpDate, o.CreationDate, o.TokenCost, o.OfferStatus.ID),
             new OfferUserDTO(o.User.ID, o.User.ProfileInfo!.Nickname, o.User.ProfileInfo.ImageUrl),
             o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
                 li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
@@ -75,7 +75,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
         var offers = await localQuery.Skip((page - 1) * pageSize)
             .Take(pageSize).Select(o => new OfferListingDTO
-            (new OfferCoreDTO(o.ID,o.ExpDate,o.CreationDate,o.TokenCost,o.OfferStatus.ID),
+            (new OfferCoreDTO(o.ID,o.Title,o.Description,o.ExpDate,o.CreationDate,o.TokenCost,o.OfferStatus.ID),
               new OfferUserDTO
                     (
                         o.User_ID,
