@@ -8,5 +8,7 @@ public sealed record OfferListingItemDTO(
      int Quantity,
      string GameName,
      int GenreId,
-     string GenreName
+     string GenreName,
+     int RarityId,
+     string RarityName
 );

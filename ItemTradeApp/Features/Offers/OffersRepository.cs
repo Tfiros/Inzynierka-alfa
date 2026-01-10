@@ -31,10 +31,10 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
             new OfferUserDTO(o.User.ID, o.User.ProfileInfo!.Nickname, o.User.ProfileInfo.ImageUrl),
             o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
                 li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name)).ToList(),
+                li.Item.Game.Genre.Name,li.Item.ItemRarity.ID,li.Item.ItemRarity.RarityName)).ToList(),
             o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
                 li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name)).ToList()
+                li.Item.Game.Genre.Name,li.Item.ItemRarity.ID,li.Item.ItemRarity.RarityName)).ToList()
         )).SingleOrDefaultAsync(ct);
     }
 
@@ -92,7 +92,9 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                             li.Quantity,
                             li.Item.Game.Name,
                             li.Item.Game.Genre.ID,
-                            li.Item.Game.Genre.Name
+                            li.Item.Game.Genre.Name,
+                            li.Item.ItemRarity.ID,
+                            li.Item.ItemRarity.RarityName
                         )).ToList(),
               o.ListingItems.Where(li=>li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3).Select(li => 
                   new OfferListingItemDTO
@@ -104,7 +106,9 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                       li.Quantity,
                       li.Item.Game.Name,
                       li.Item.Game.Genre.ID,
-                      li.Item.Game.Genre.Name
+                      li.Item.Game.Genre.Name,
+                      li.Item.ItemRarity.ID,
+                      li.Item.ItemRarity.RarityName
                   )).ToList(),
               o.ListingItems.Count(li => !li.IsWanted),
               o.ListingItems.Count(li => li.IsWanted)
