@@ -11,6 +11,6 @@ public partial class Genre
     [Column("name")]
     public string Name { get; set; } = null!;
     [Column("is_deleted")] 
-    public bool IsDeteled { get; set; }
+    public bool IsDeleted { get; set; }
     public virtual ICollection<Game> Games { get; set; } = new List<Game>();
 }

@@ -1,6 +1,6 @@
 ﻿using System.Net;
 using System.Security.Claims;
-using ItemTradeApp.Features.UsersFeature.UserInfo;
+using ItemTradeApp.Features.Users.UserInfo;
 using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.AspNetCore.Authorization;

@@ -23,6 +23,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Genre> Genres { get; set; }
 
     public virtual DbSet<Item> Items { get; set; }
+    public virtual DbSet<ItemRarity> ItemRarities { get; set; }
 
     public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
 
@@ -37,6 +38,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Trade> Trades { get; set; }
 
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
+    public virtual DbSet<Notification> Notifications { get; set; }
+    public virtual DbSet<EmailOutbox> Emails { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,13 +51,15 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("user_pk");
+            entity
+                .Property(x => x.TokenExpDate)
+                .HasColumnType("timestamptz");
 
             entity.ToTable("User");
 
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
-            entity.Property(e => e.TokenExpDate).HasColumnType("timestamp without time zone");
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
@@ -122,8 +127,35 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Game).WithMany(p => p.Items)
                 .HasForeignKey(d => d.Game_ID)
                 .HasConstraintName("item_game");
-        });
+            entity.Property(x => x.ItemRarityId).HasColumnName("item_rarity_id");
 
+            entity.HasOne(x => x.ItemRarity)
+                .WithMany(r => r.Items)
+                .HasForeignKey(x => x.ItemRarityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<ItemRarity>(e =>
+        {
+            e.ToTable("item_rarity");
+
+            e.HasKey(x => x.ID);
+
+            e.Property(x => x.RarityName)
+                .HasColumnName("rarity_name")
+                .HasMaxLength(20)
+                .IsRequired();
+
+            e.Property(x => x.GameId).HasColumnName("game_id");
+
+            e.HasOne(x => x.Game)
+                .WithMany(g => g.ItemRarities)
+                .HasForeignKey(x => x.GameId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.GameId, x.RarityName })
+                .IsUnique()
+                .HasDatabaseName("uq_item_rarity_game_name");
+        });
         modelBuilder.Entity<ListingCounterOfferItem>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("listingofferitems_pk");
@@ -256,7 +288,45 @@ public partial class AppDbContext : DbContext
                 "CK_Rate_Mark_1_10",
                 "[Mark] >= 1.0 AND [Mark] <= 10.0");
         });
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notification");
+            entity.HasKey(x => x.Id);
 
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+
+            entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(50).IsRequired();
+
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.ReadAt).HasColumnName("read_at");
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_notification_user");
+        });
+        modelBuilder.Entity<EmailOutbox>(entity =>
+        {
+            entity.ToTable("email_outbox");
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+
+            entity.Property(x => x.Subject).HasColumnName("subject").IsRequired();
+            entity.Property(x => x.Body).HasColumnName("body").IsRequired();
+
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.SentAt).HasColumnName("sent_at");
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_email_outbox_user");
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

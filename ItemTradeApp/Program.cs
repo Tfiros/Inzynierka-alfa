@@ -1,7 +1,11 @@
 using System.Security.Claims;
 using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.Offers;
-using ItemTradeApp.Features.UsersFeature;
+using ItemTradeApp;
+using ItemTradeApp.Features.EmaillsNotifications;
+using ItemTradeApp.Features.EmailsNotifications.Notifications;
+using ItemTradeApp.Features.ItemsManagement;
+using ItemTradeApp.Features.Users;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence;
@@ -30,25 +34,56 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Wpisz: Bearer {token}"
     };
+    c.DocumentFilter<PrefixDocumentFilter>("/api");
     c.AddSecurityDefinition("Bearer", scheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
 });
 
+builder.Services.AddSignalR();
+
 var domain = builder.Configuration["Auth0:Domain"];
 var audience = builder.Configuration["Auth0:Audience"];
-
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = $"https://{domain}/";
         options.Audience  = audience;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             NameClaimType = ClaimTypes.NameIdentifier,
             RoleClaimType = "https://inzynierka.com/roles"
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/notifications"))
+                {
+                    ctx.Token = accessToken;
+                    return Task.CompletedTask;
+                }
+                if (ctx.Request.Cookies.TryGetValue("at", out var token) && !string.IsNullOrWhiteSpace(token))
+                    ctx.Token = token;
+
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.AddAntiforgery(o =>
+{
+    o.HeaderName = "X-XSRF-TOKEN";
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    o.Cookie.SameSite = SameSiteMode.None;
+});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -60,21 +95,23 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
-
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p
-        .WithOrigins("http://localhost:5173")
+        .WithOrigins("https://localhost:5173")
         .AllowAnyHeader()
         .AllowAnyMethod()
-        .AllowCredentials()); 
+        .AllowCredentials()
+        .WithExposedHeaders("X-XSRF-TOKEN"));
 });
 
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
 
+builder.Services.RegisterItemsFeaturesDi();
+builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -83,9 +120,44 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("AppCors");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseCors("AppCors");
+app.Use(async (ctx, next) =>
+{
+    var m = ctx.Request.Method;
+    var unsafeMethod =
+        HttpMethods.IsPost(m) || HttpMethods.IsPut(m) ||
+        HttpMethods.IsPatch(m) || HttpMethods.IsDelete(m);
 
-app.MapControllers();
+    if (!unsafeMethod)
+    {
+        await next();
+        return;
+    }
+
+    var path = ctx.Request.Path.Value ?? "";
+
+    var skip =
+        path.StartsWith("/api/Auth/login", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Auth/register", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Auth/forgot-password", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Auth/refresh", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Auth/csrf", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
+
+    if (!skip)
+    {
+        var antiforgery = ctx.RequestServices.GetRequiredService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>();
+        await antiforgery.ValidateRequestAsync(ctx);
+    }
+
+    await next();
+});
+app.MapGroup("/api").MapControllers();
+app.MapHub<NotificationsHub>("/api/hubs/notifications");
 app.Run();
