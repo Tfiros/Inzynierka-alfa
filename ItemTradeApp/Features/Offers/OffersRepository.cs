@@ -82,7 +82,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                         o.User.ProfileInfo!.Nickname,
                         o.User.ProfileInfo!.ImageUrl
                     ),
-              o.ListingItems.Where(li=>!li.IsWanted).OrderByDescending(li => li.Item.EstimatedValue).Take(3).Select(li => 
+              o.ListingItems.Where(li=>!li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3).Select(li => 
                     new OfferListingItemDTO
                         (
                             li.Item.ID,
@@ -94,7 +94,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
                             li.Item.Game.Genre.ID,
                             li.Item.Game.Genre.Name
                         )).ToList(),
-              o.ListingItems.Where(li=>li.IsWanted).OrderByDescending(li => li.Item.EstimatedValue).Take(3).Select(li => 
+              o.ListingItems.Where(li=>li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3).Select(li => 
                   new OfferListingItemDTO
                   (
                       li.Item.ID,
@@ -120,7 +120,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
             return new Dictionary<int, Item>();
         }
 
-        return await dbContext.Items.AsNoTracking().Where(i => itemsIds.Contains(i.ID) && !i.IsDeteled)
+        return await dbContext.Items.AsNoTracking().Where(i => itemsIds.Contains(i.ID) && !i.IsDeleted)
             .ToDictionaryAsync(i => i.ID, ct);
     }
 

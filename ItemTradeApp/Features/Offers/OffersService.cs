@@ -58,7 +58,7 @@ public class OffersService(
             PageSize = query.PageSize,
             TotalCount = totalCount,
             TotalPages = totalPages,
-            Items = items.ToList()
+            Elements = items.ToList()
         };
 
         return Result<PagedResponse<OfferListingDTO>>.Success(response);
@@ -302,12 +302,12 @@ public class OffersService(
         {
             foreach (var items in offered.Values)
             {
-                totalValue += (long)items.Item.EstimatedValue * items.Quantity;
+                totalValue += (long)items.Item.EstimatedTokenValue * items.Quantity;
             }
 
             foreach (var items in wanted.Values)
             {
-                totalValue += (long)items.Item.EstimatedValue * items.Quantity;
+                totalValue += (long)items.Item.EstimatedTokenValue * items.Quantity;
             }
         }
 

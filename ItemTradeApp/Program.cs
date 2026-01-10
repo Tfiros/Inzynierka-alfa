@@ -9,6 +9,7 @@ using ItemTradeApp.Features.Users;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence;
+using ItemTradeApp.Users.AuthZeroCommunication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
