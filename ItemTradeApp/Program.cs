@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using ItemTradeApp.AuthZeroCommunication;
+using ItemTradeApp.Features.Offers;
 using ItemTradeApp;
 using ItemTradeApp.Features.EmaillsNotifications;
 using ItemTradeApp.Features.EmailsNotifications.Notifications;
@@ -17,6 +19,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -106,6 +109,8 @@ builder.Services.AddCors(opts =>
 
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
+builder.Services.RegisterOfferFeatureDi();
+
 builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();

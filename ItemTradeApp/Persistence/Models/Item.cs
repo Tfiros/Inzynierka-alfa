@@ -23,5 +23,6 @@ public partial class Item
     public ItemRarity ItemRarity { get; set; } = null!;
     public virtual Game Game { get; set; } = null!;
     public virtual ICollection<ListingCounterOfferItem> ListingCounterOfferItems { get; set; } = new List<ListingCounterOfferItem>();
-    public virtual ICollection<ListingItem> ListingItems { get; set; } = new List<ListingItem>();
+
+    public virtual ICollection<ListingItems> ListingItems { get; set; } = new List<ListingItems>();
 }

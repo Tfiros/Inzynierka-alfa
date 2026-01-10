@@ -11,7 +11,9 @@ public partial class Offer
     [Column("user_id")]
     public int User_ID { get; set; }
     [Column("exp_date")]
-    public DateTime ExpDate { get; set; }
+    public DateOnly ExpDate { get; set; }
+    [Column("creation_date")]
+    public DateTime CreationDate { get; set; }
     [Column("token_cost")]
     public int TokenCost { get; set; }
     [Column("offer_status_id")]
@@ -19,7 +21,7 @@ public partial class Offer
 
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
-    public virtual ICollection<ListingItem> ListingItems { get; set; } = new List<ListingItem>();
+    public virtual ICollection<ListingItems> ListingItems { get; set; } = new List<ListingItems>();
 
     public virtual OfferStatus OfferStatus { get; set; } = null!;
 
