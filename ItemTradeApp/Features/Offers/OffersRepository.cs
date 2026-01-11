@@ -1,5 +1,6 @@
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
@@ -27,16 +28,8 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 {
     public async Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default)
     {
-        return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).Select(o => new OfferDetailsDTO(
-            new OfferCoreDTO(o.ID,o.Title,o.Description, o.ExpDate, o.CreationDate, o.TokenCost, o.OfferStatus.ID),
-            new OfferUserDTO(o.User.ID, o.User.ProfileInfo!.Nickname, o.User.ProfileInfo.ImageUrl),
-            o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
-                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name,li.Item.ItemRarity.ID,li.Item.ItemRarity.RarityName)).ToList(),
-            o.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
-                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name,li.Item.ItemRarity.ID,li.Item.ItemRarity.RarityName)).ToList()
-        )).SingleOrDefaultAsync(ct);
+        
+        return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).SelectOfferDetailsDto().SingleOrDefaultAsync(ct);
     }
 
     public void RemoveListingItemsRange(IEnumerable<ListingItems> items)
@@ -75,45 +68,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         var totalCount = await localQuery.CountAsync(ct);
 
         var offers = await localQuery.Skip((page - 1) * pageSize)
-            .Take(pageSize).Select(o => new OfferListingDTO
-            (new OfferCoreDTO(o.ID,o.Title,o.Description,o.ExpDate,o.CreationDate,o.TokenCost,o.OfferStatus.ID),
-              new OfferUserDTO
-                    (
-                        o.User_ID,
-                        o.User.ProfileInfo!.Nickname,
-                        o.User.ProfileInfo!.ImageUrl
-                    ),
-              o.ListingItems.Where(li=>!li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3).Select(li => 
-                    new OfferListingItemDTO
-                        (
-                            li.Item.ID,
-                            li.Item.Name,
-                            li.Item.Game.ID,
-                            li.Item.Photo_URL,
-                            li.Quantity,
-                            li.Item.Game.Name,
-                            li.Item.Game.Genre.ID,
-                            li.Item.Game.Genre.Name,
-                            li.Item.ItemRarity.ID,
-                            li.Item.ItemRarity.RarityName
-                        )).ToList(),
-              o.ListingItems.Where(li=>li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3).Select(li => 
-                  new OfferListingItemDTO
-                  (
-                      li.Item.ID,
-                      li.Item.Name,
-                      li.Item.Game.ID,
-                      li.Item.Photo_URL,
-                      li.Quantity,
-                      li.Item.Game.Name,
-                      li.Item.Game.Genre.ID,
-                      li.Item.Game.Genre.Name,
-                      li.Item.ItemRarity.ID,
-                      li.Item.ItemRarity.RarityName
-                  )).ToList(),
-              o.ListingItems.Count(li => !li.IsWanted),
-              o.ListingItems.Count(li => li.IsWanted)
-            )).ToListAsync(ct);
+            .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
         return (offers, totalCount);
 
     }
