@@ -1,4 +1,6 @@
-namespace ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+
+namespace ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 
 public sealed record OfferListingDTO(
     OfferCoreDTO OfferCoreDto, OfferUserDTO OfferUserDto, List<OfferListingItemDTO> OfferedItems,

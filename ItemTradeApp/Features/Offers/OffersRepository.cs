@@ -1,5 +1,6 @@
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;

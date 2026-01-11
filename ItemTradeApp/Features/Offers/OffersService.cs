@@ -3,6 +3,7 @@ using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 

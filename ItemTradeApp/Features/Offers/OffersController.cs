@@ -2,6 +2,7 @@ using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
