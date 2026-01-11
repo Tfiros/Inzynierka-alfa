@@ -6,5 +6,8 @@ public sealed record UserProfileInfoResponse(
     int      Level,
     DateOnly RegistrationDate,
     string   Nickname,
-    string   Description
+    string   Description,
+    int SuccessTradesCount,
+    float Rating,
+    float SuccessRate
     );
