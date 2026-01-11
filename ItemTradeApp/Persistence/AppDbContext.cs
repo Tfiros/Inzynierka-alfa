@@ -187,8 +187,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.ID).HasName("listing_pk");
 
             entity.ToTable("offer");
-
-            entity.Property(e => e.ExpDate).HasColumnType("timestamp without time zone");
+            
             entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
 
             entity.HasOne(d => d.OfferStatus).WithMany(p => p.Offers)
