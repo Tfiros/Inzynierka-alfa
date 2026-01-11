@@ -10,7 +10,7 @@ public interface IGamesRepository
     Task<Game?> GetByIdAsync(int id, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<(List<Game> Items, int TotalCount)> GetPagedAsync(int genreId, int page, int pageSize, string? searchText, CancellationToken ct);
-    Task<bool> ExistsByNameAsync(string name,  CancellationToken ct);
+    Task<Game?> GetByNameAsync(string name,  CancellationToken ct);
     Task<Game?> GetByIdWithNoTrackAsync(int id, CancellationToken ct);
     Task<Game> CreateWithRaritiesAsync(
         Game game,
@@ -121,8 +121,9 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         await tx.CommitAsync(ct);
     }
 
-    public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-        => db.Games.AnyAsync(g => g.Name == name, ct);
+    public async Task<Game?> GetByNameAsync(string name, CancellationToken ct)
+        =>  await db.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Name == name, ct);
+    
 
     public async Task SaveChangesAsync(CancellationToken ct) => await db.SaveChangesAsync(ct);
 

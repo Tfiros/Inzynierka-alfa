@@ -58,9 +58,12 @@ public sealed class GamesService(
         if (genre is null || genre.IsDeleted)
             return Result<GameResponse>.NotFound("Provided genre does not exist.");
 
-        if (await gamesRepo.ExistsByNameAsync(name, ct))
+        var gameOfName = await gamesRepo.GetByNameAsync(name, ct);
+        if (gameOfName is not null && !gameOfName.IsDeleted)
+        {
             return Result<GameResponse>.Conflict("There is already a game with this name.");
-
+        }
+        
         var game = new Game
         {
             Name = name,
@@ -95,8 +98,11 @@ public sealed class GamesService(
         if (!string.IsNullOrWhiteSpace(newName) &&
             !string.Equals(entity.Name, newName, StringComparison.Ordinal))
         {
-            if (await gamesRepo.ExistsByNameAsync(newName, ct))
+            var gameOfName = await gamesRepo.GetByNameAsync(newName, ct);
+            if (gameOfName is not null && !gameOfName.IsDeleted)
+            {
                 return Result<GameResponse>.Conflict("There is already a game with this name.");
+            }
 
             entity.Name = newName;
             changed = true;

@@ -40,7 +40,9 @@ public class UserManagementService(
     if (user is null)
         return Result<string>.NotFound("user_not_found_local_db");
 
-    var hasEmailChange = !string.IsNullOrWhiteSpace(request.Email);
+    var hasEmailChange =
+        !string.IsNullOrWhiteSpace(request.Email) &&
+        !string.Equals(request.Email, user.Email, StringComparison.OrdinalIgnoreCase);
     var hasPasswordChange = !string.IsNullOrWhiteSpace(request.NewPassword);
     var hasRolesChange = request.Roles is not null;
     var hasNicknameChange = !string.IsNullOrWhiteSpace(request.Nickname);
