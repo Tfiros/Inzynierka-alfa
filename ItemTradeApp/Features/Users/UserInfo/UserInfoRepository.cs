@@ -10,6 +10,7 @@ public interface IUserInfoRepository
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
     Task UpdateUserWithProfileInfoAsync(ProfileInfo profile, CancellationToken ct);
     Task<bool> ExistsByAuth0IdAsync(string auth0UserId, CancellationToken ct);
+    Task<bool> ExistsByIdAsync(int auth0UserId, CancellationToken ct);
 }
 public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
 {
@@ -39,4 +40,7 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
         dbContext.ProfileInfos.Update(profile);
         await dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<bool> ExistsByIdAsync(int id, CancellationToken ct) =>
+        await dbContext.Users.AnyAsync(u => u.ID == id && !u.IsDeleted, ct);
 }
