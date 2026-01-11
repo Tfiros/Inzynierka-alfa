@@ -1,7 +1,7 @@
 namespace ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 
 public sealed record OfferUserDTO(
-    int Id,
+    int UserId,
     string Nickname,
     string? ImageUrl,
     int SuccessTradesCount,
