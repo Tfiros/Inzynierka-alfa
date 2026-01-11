@@ -1,5 +1,7 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -10,14 +12,14 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 [ApiController]
 [Route("[controller]")]
 [Authorize]
-public class UserInfoController(IUserInfoService service) : ControllerBase
+public class UserInfoController(IUserInfoService userInfoService, IUserInfoOfferService userInfoOfferService) : ControllerBase
 {
     [HttpGet("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> GetProfileInfo(
         int id,
         CancellationToken ct = default)
     {
-        var result = await service.GetProfileInfoAsync(id, ct);
+        var result = await userInfoService.GetProfileInfoAsync(id, ct);
         return result.ToActionResult();
     }
     [Authorize(Policy = "OwnResource")]
@@ -26,7 +28,7 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
         int id,
         CancellationToken ct = default)
     {
-        var result = await service.GetNavbarInfoAsync(id, ct);
+        var result = await userInfoService.GetNavbarInfoAsync(id, ct);
         return result.ToActionResult();
     }
     [Authorize(Policy = "OwnResource")]
@@ -48,7 +50,18 @@ public class UserInfoController(IUserInfoService service) : ControllerBase
             return unauthorized.ToActionResult();
         }
 
-        var result = await service.UpdateProfileAsync(auth0UserId, request, ct);
+        var result = await userInfoService.UpdateProfileAsync(auth0UserId, request, ct);
+        return result.ToActionResult();
+    }
+    
+    [HttpGet("userInfo/{id:int}/offers")]
+    public async Task<ActionResult<Result<PagedResponse<OfferListingDTO>>>> GetUserOffers(
+        int id, 
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10, 
+        CancellationToken ct = default)
+    {
+        var result = await userInfoOfferService.GetPagedAsync(page,pageSize,id, ct);
         return result.ToActionResult();
     }
 }
