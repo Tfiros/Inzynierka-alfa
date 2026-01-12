@@ -62,14 +62,12 @@ public class UserManagementRepository (AppDbContext dbContext) : IUserManagement
         .Where(t =>
             (t.Customer_ID == user.ID || t.User_ID == user.ID || t.MiddlemanUser_ID == user.ID) &&
             (t.TradeStatus_ID == (int)TradeStatuses.New ||
-             t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
-             t.TradeStatus_ID == (int)TradeStatuses.AwaitingSellerDeposit ||
-             t.TradeStatus_ID == (int)TradeStatuses.AwaitingBuyerDeposit))
+             t.TradeStatus_ID == (int)TradeStatuses.InRealization))
         .ExecuteUpdateAsync(s => s.SetProperty(t => t.TradeStatus_ID, (int)TradeStatuses.Failed), ct);
    
     await dbContext.CounterOffers
         .Where(co => co.User_ID == user.ID)
-        .ExecuteUpdateAsync(s => s.SetProperty(co => co.OfferStatus_Id, (int)CounterOfferStatuses.Denied), ct);
+        .ExecuteUpdateAsync(s => s.SetProperty(co => co.CounterOfferStatus_Id, (int)CounterOfferStatuses.Denied), ct);
 
     user.IsDeleted = true;
     user.Auth0UserID = null;

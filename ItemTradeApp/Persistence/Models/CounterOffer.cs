@@ -14,8 +14,8 @@ public partial class CounterOffer
     public DateTime CreationDate { get; set; }
     [Column("tokens_offered")]
     public int TokensOffered { get; set; }
-    [Column("offer_status_id")]
-    public int OfferStatus_Id { get; set; }
+    [Column("counter_offer_status_id")]
+    public int CounterOfferStatus_Id { get; set; }
     [Column("offer_id")]
     public int Offer_Id { get; set; }
 

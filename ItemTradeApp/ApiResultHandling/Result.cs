@@ -13,7 +13,8 @@ public class Result<T>(bool isSuccess, ResultStatus status, T? data, string? mes
         => new(true, ResultStatus.Created, data, message);
     public static Result<T> NoContent(string? message = null)
         => new(true, ResultStatus.NoContent, default, message);
-
+    public static Result<T> Forbidden(string? message = null) =>
+     new(false,ResultStatus.Forbidden,default, message);
     public static Result<T> BadRequest(string? message = null)
         => new(false, ResultStatus.BadRequest, default, message);
 
