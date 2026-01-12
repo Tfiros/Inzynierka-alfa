@@ -1,13 +1,13 @@
 ﻿public enum TradeSortBy
 {
-    CreationDateDesc,
-    CreationDateAsc,
+    CreationDateDesc = 1,
+    CreationDateAsc = 2,
 
-    TokenCostDesc,
-    TokenCostAsc,
+    TokenCostDesc = 3,
+    TokenCostAsc = 4,
 
-    TradeIdDesc,
-    TradeIdAsc
+    TradeIdDesc= 5,
+    TradeIdAsc=6
 }
 
 public enum TradeSearchBy

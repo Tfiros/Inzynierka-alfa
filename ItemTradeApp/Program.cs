@@ -151,7 +151,6 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
-  //      || path.StartsWith("/api/Trades", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
     {
