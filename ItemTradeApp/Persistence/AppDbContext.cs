@@ -34,7 +34,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<OfferStatus> OfferStatuses { get; set; }
 
     public virtual DbSet<ProfileInfo> ProfileInfos { get; set; }
-
+    public virtual DbSet<TradeUrl> TradeUrls { get; set; }
     public virtual DbSet<Trade> Trades { get; set; }
 
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
@@ -67,15 +67,13 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.ID).HasName("listingoffer_pk");
 
             entity.ToTable("counter_offer");
-
-            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
-
+            
             entity.HasOne(d => d.Offer).WithMany(p => p.CounterOffers)
                 .HasForeignKey(d => d.Offer_Id)
                 .HasConstraintName("counteroffers_offer");
 
             entity.HasOne(d => d.OfferStatus).WithMany(p => p.CounterOffers)
-                .HasForeignKey(d => d.OfferStatus_Id)
+                .HasForeignKey(d => d.CounterOfferStatus_Id)
                 .HasConstraintName("counter_offer_status_co");
 
             entity.HasOne(d => d.User).WithMany(p => p.CounterOffers)
@@ -188,7 +186,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("offer");
 
-            entity.Property(e => e.ExpDate).HasColumnType("timestamp without time zone");
             entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
 
             entity.HasOne(d => d.OfferStatus).WithMany(p => p.Offers)
@@ -228,10 +225,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("trade");
 
-            entity.Property(e => e.BuyerFeedback).HasMaxLength(200);
-            entity.Property(e => e.CompletitionDate).HasColumnType("timestamp without time zone");
-            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
-
             entity.HasOne(d => d.Customer).WithMany(p => p.CustomerTrades)
                 .HasForeignKey(d => d.Customer_ID)
                 .HasConstraintName("trade_user");
@@ -251,8 +244,15 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
                 .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("user_buyer");
+            entity.HasMany(t => t.Urls)
+                .WithOne(u => u.Trade)
+                .HasForeignKey(u => u.TradeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
-
+        modelBuilder.Entity<TradeUrl>(b =>
+        {
+            b.Property(x => x.PhotoUrl).HasMaxLength(2048);
+        });
         modelBuilder.Entity<TradeStatus>(entity =>
         {
             entity.HasKey(e => e.ID).HasName("tradestatus_pk");
