@@ -43,6 +43,8 @@ public interface ITradesService
         CancellationToken ct);
     
     Task<Result<string>> SetTradeAsFailed(int tradeId, string? auth0UserId, CancellationToken ct);
+    
+    Task<Result<string>> SetTradeAsRealised(int tradeId, string? auth0UserId, CancellationToken ct);
 
 }
 public sealed class TradesService(
@@ -460,6 +462,32 @@ public sealed class TradesService(
         return Result<string>.Success("Successfully set as failed.");
     }
 
+    public async Task<Result<string>> SetTradeAsRealised(int tradeId, string? auth0UserId, CancellationToken ct)
+    {
+        var trimmed = TrimAuth0UserId(auth0UserId);
+
+        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
+        if (middleman is null)
+            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+
+        var trade = await tradeRepo.GetByIdAsync(tradeId, ct);
+        if (trade is null)
+            return Result<string>.NotFound("Trade not found.");
+
+        if (trade.MiddlemanUser_ID is null)
+            return Result<string>.BadRequest("Trade has no middleman assigned.");
+
+        if (trade.MiddlemanUser_ID != middleman.ID)
+            return Result<string>.Forbidden("You are not assigned to this trade.");
+
+        if (trade.HasBuyersItems && trade.HasSellersItems)
+        {
+            return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
+        }
+        trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
+
+        return Result<string>.Success("Successfully set as realised.");
+    }
 
 
     #region HELPERS
