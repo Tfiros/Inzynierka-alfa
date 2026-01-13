@@ -130,11 +130,11 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
 
             CustomerId = t.Customer.ID,
             CustomerNick = t.Customer.ProfileInfo.Nickname,
-            CustomerEmail = t.Customer.Email,
+            CustomerEmail = isMiddleman.Value ? t.Customer.Email : null,
 
             PostingId = t.PostingUser.ID,
             PostingNick = t.PostingUser.ProfileInfo.Nickname,
-            PostingEmail = t.PostingUser.Email,
+            PostingEmail = isMiddleman.Value ? t.PostingUser.Email: null,
 
             PostingUserItems = t.Offer.ListingItems
                 .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
