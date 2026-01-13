@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using ItemTradeApp.Features.Offers;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
@@ -29,7 +30,7 @@ public static class OfferQueryExtentions
                 (float)o.Rating,
                 o.CompletedTrades == 0 ? 0f : (float)o.SuccesfulTrades / o.CompletedTrades
             ),
-            o.Offer.ListingItems.Where(li => !li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3)
+            o.Offer.ListingItems.Where(li => !li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
                     new OfferListingItemDTO
                     (
@@ -44,7 +45,7 @@ public static class OfferQueryExtentions
                         li.Item.ItemRarity.ID,
                         li.Item.ItemRarity.RarityName
                     )).ToList(),
-            o.Offer.ListingItems.Where(li => li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(3)
+            o.Offer.ListingItems.Where(li => li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
                     new OfferListingItemDTO
                     (
