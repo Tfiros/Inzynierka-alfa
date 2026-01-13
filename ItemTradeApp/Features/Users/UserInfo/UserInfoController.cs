@@ -54,14 +54,24 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         return result.ToActionResult();
     }
     
-    [HttpGet("userInfo/{id:int}/offers")]
-    public async Task<ActionResult<Result<PagedResponse<OfferListingDTO>>>> GetUserOffers(
+    [HttpGet("userInfo/{id:int}/offers/active")]
+    public async Task<ActionResult<Result<PagedResponse<OfferListingDTO>>>> GetUserActiveOffers(
         int id, 
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10, 
         CancellationToken ct = default)
     {
-        var result = await userInfoOfferService.GetPagedAsync(page,pageSize,id, ct);
+        var result = await userInfoOfferService.GetPagedActiveAsync(page,pageSize,id, ct);
+        return result.ToActionResult();
+    }
+    [HttpGet("userInfo/{id:int}/offers/history")]
+    public async Task<ActionResult<Result<PagedResponse<OfferListingDTO>>>> GetUserHistoryOffers(
+        int id, 
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10, 
+        CancellationToken ct = default)
+    {
+        var result = await userInfoOfferService.GetPagedHistoryAsync(page,pageSize,id, ct);
         return result.ToActionResult();
     }
 }
