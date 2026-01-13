@@ -11,6 +11,9 @@ public interface IUserInfoRepository
     Task UpdateUserWithProfileInfoAsync(ProfileInfo profile, CancellationToken ct);
     Task<bool> ExistsByAuth0IdAsync(string auth0UserId, CancellationToken ct);
     Task<bool> ExistsByIdAsync(int auth0UserId, CancellationToken ct);
+
+    Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?>
+        GetUserStatsByUserIdAsync(int id, CancellationToken ct);
 }
 public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
 {
@@ -24,6 +27,23 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .Include(u => u.ProfileInfo)
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
+    }
+    
+    public async Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?> GetUserStatsByUserIdAsync(int id, CancellationToken ct)
+    {
+        var res = await dbContext.Users.AsNoTracking().Where(u => u.ID == id && !u.IsDeleted)
+            .Select(u => new
+            {
+                ActiveOffers = u.Offers.Count(o => o.OfferStatus_ID == (int)OfferStatuses.Active),
+                SuccessTrade = u.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
+                CompletedTrade = u.OwningTrades.Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
+                    t.TradeStatus_ID == (int)TradeStatuses.Failed),
+                Rating = u.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
+
+            }).SingleOrDefaultAsync(ct);
+        if (res is null) return null;
+        return (res.ActiveOffers,res.SuccessTrade,res.CompletedTrade,(float)res.Rating);
     }
 
     public async Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct)

@@ -46,13 +46,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
 
 
         var level  = UserLevelCalculator.CalculateLevel(user.Experience);
-
-        var successTradesCount = user.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization);
-        var rating = (float)(user.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m);
-        var completedTradesCount = user.OwningTrades.Count(t =>
-            t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-            t.TradeStatus_ID == (int)TradeStatuses.Failed);
-        var successRate = completedTradesCount == 0 ? 0f : (float)successTradesCount / completedTradesCount;
+        var stats = await userInfoRepository.GetUserStatsByUserIdAsync(userId, ct);
+        if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
+        var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
+            
+        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -61,7 +59,8 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
             user.ProfileInfo.Description,
-            successTradesCount,
+            activeOffersCount,
+            successTradeCount,
             rating,
             successRate
         );
@@ -85,13 +84,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
         
         await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
         var level = UserLevelCalculator.CalculateLevel(user.Experience);
-        
-        var successTradesCount = user.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization);
-        var rating = (float)(user.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m);
-        var completedTradesCount = user.OwningTrades.Count(t =>
-            t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-            t.TradeStatus_ID == (int)TradeStatuses.Failed);
-        var successRate = completedTradesCount == 0 ? 0f : (float)successTradesCount / completedTradesCount;
+        var stats = await userInfoRepository.GetUserStatsByUserIdAsync(user.ID, ct);
+        if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
+        var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
+            
+        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -100,7 +97,8 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
             user.ProfileInfo.Description,
-            successTradesCount,
+            activeOffersCount,
+            successTradeCount,
             rating,
             successRate
         );

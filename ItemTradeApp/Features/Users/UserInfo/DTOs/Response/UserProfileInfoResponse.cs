@@ -7,6 +7,7 @@ public sealed record UserProfileInfoResponse(
     DateOnly RegistrationDate,
     string   Nickname,
     string   Description,
+    int ActiveOffersCount,
     int SuccessTradesCount,
     float Rating,
     float SuccessRate
