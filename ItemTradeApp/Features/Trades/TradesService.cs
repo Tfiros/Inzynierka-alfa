@@ -34,6 +34,13 @@ public interface ITradesService
     Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? q, CancellationToken ct);
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
+    
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
+        string? auth0UserId,
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        CancellationToken ct);
 
 }
 public sealed class TradesService(
@@ -391,6 +398,39 @@ public sealed class TradesService(
         );
 
         return Result<TradeDetailsResponse>.Success(dto, "Successfully retrieved.");
+    }
+    
+    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
+        string? auth0UserId,
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        CancellationToken ct)
+    {
+        var (p, ps) = Normalize(page, pageSize);
+
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("Missing auth0 user id (sub claim).");
+
+        var invalid = ValidateTradesQuery(query, TradeStatuses.Failed);
+        if (invalid is not null) return invalid;
+
+        var trimmed = TrimAuth0UserId(auth0UserId);
+
+        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
+        if (middleman is null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("User not found for given auth0 user id.");
+
+        var (items, total) = await tradeRepo.GetTradesByStatusAsync(
+            p,
+            ps,
+            middleman.ID,
+            TradeStatuses.Failed,
+            query,
+            ct,true);
+
+        var resp = ToPaged(p, ps, total, items);
+        return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
     }
 
 

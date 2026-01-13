@@ -107,6 +107,21 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.GetTradeDetailsAsync(auth0UserId, tradeId, ct);
         return res.ToActionResult();
     }
+    
+    [HttpGet("middleman/failed-with-return")]
+    [Authorize(Roles = "Middleman")]
+    public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetFailedTradeWithReturn(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] TradesQuery? q = null,
+        CancellationToken ct = default)
+    {
+        var auth0UserId = User.FindFirstValue("sub")
+                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        var res = await tradesService.GetMyFailedWithItemsToReturnAsync(auth0UserId, page, pageSize, q, ct);
+        return res.ToActionResult();
+    }
 
 
 }

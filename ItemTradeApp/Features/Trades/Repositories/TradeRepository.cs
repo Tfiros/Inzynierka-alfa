@@ -22,7 +22,8 @@ public interface ITradeRepository
         int? middlemanUserId,
         TradeStatuses status,
         TradesQuery? q,
-        CancellationToken ct);
+        CancellationToken ct,
+        bool? onlyWithItemsToReturn = false);
 }
 
 public sealed class TradeRepository(AppDbContext db) : ITradeRepository
@@ -88,7 +89,8 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
     int? middlemanUserId,
     TradeStatuses status,
     TradesQuery? q,
-    CancellationToken ct)
+    CancellationToken ct,
+    bool? onlyWithItemsToReturn = false)
 {
     q ??= new TradesQuery();
 
@@ -99,6 +101,9 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
     if (middlemanUserId is not null)
         query = query.Where(t => t.MiddlemanUser_ID == middlemanUserId.Value);
 
+    if (onlyWithItemsToReturn.Value)
+        query = query.Where(t => t.HasBuyersItems || t.HasSellersItems);
+    
     query = ApplyFilters(query, q);
     query = ApplySearch(query, q);
 
