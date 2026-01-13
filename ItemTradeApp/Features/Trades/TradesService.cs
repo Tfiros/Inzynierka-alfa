@@ -31,7 +31,7 @@ public interface ITradesService
         CancellationToken ct);
     Task<Result<MiddlemanTradesStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? q, CancellationToken ct);
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, bool isMiddleman, string auth0UserId,  TradesQuery? q, CancellationToken ct);
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
     
@@ -281,15 +281,21 @@ public sealed class TradesService(
     public async Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(
         int page,
         int pageSize,
+        bool isMiddleman,
+        string auth0UserId,
         TradesQuery? query,
         CancellationToken ct)
     {
         var (p, ps) = Normalize(page, pageSize);
-        
+        var trimmedAuth0UserId = TrimAuth0UserId(auth0UserId);
+        var user = await userRepo.GetByAuth0UserIdAsync(trimmedAuth0UserId, ct);
+        if (user is null)
+            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("User not found.");
+
         var invalid = ValidateTradesQuery(query, TradeStatuses.New);
         if (invalid is not null) return invalid;
         var (items, total) = await tradeRepo.GetTradesByStatusAsync(
-            p, ps, middlemanUserId: null, status: TradeStatuses.New, query, ct);
+            p, ps, user.ID, status: TradeStatuses.New, query, ct, isMiddleman);
         var resp = ToPaged(p, ps, total, items);
 
         return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");

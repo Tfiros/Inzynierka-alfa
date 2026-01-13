@@ -20,11 +20,12 @@ public interface ITradeRepository
     Task<(List<TradeListItemDTO> Items, int TotalCount)> GetTradesByStatusAsync(
         int page,
         int pageSize,
-        int? middlemanUserId,
+        int userId,
         TradeStatuses status,
         TradesQuery? q,
         CancellationToken ct,
-        bool? onlyWithItemsToReturn = false);
+        bool? onlyWithItemsToReturn = false,
+        bool? isMiddleman = false);
 }
 
 public sealed class TradeRepository(AppDbContext db) : ITradeRepository
@@ -89,11 +90,12 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
     public async Task<(List<TradeListItemDTO> Items, int TotalCount)> GetTradesByStatusAsync(
     int page,
     int pageSize,
-    int? middlemanUserId,
+    int userId,
     TradeStatuses status,
     TradesQuery? q,
     CancellationToken ct,
-    bool? onlyWithItemsToReturn = false)
+    bool? onlyWithItemsToReturn = false,
+    bool? isMiddleman = false)
 {
     q ??= new TradesQuery();
 
@@ -101,8 +103,8 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         .AsNoTracking()
         .Where(t => t.TradeStatus_ID == (int)status);
 
-    if (middlemanUserId is not null)
-        query = query.Where(t => t.MiddlemanUser_ID == middlemanUserId.Value);
+    if (!isMiddleman.Value)
+        query = query.Where(t => t.PostingUser.ID == userId);
 
     if (onlyWithItemsToReturn.Value)
         query = query.Where(t => t.HasBuyersItems || t.HasSellersItems);

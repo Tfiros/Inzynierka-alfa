@@ -50,20 +50,22 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.UpdateTradeByMiddlemanAsync(tradeId, request, auth0UserId, ct);
         return res.ToActionResult();
     }
-    [HttpGet("middleman/available")]
-    [Authorize(Roles = "Middleman")]
+    [HttpGet("created")]
+    [Authorize]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetAvailableNew(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var res = await tradesService.GetAvailableNewAsync(page, pageSize, q, ct);
+        var isMiddleman = User.IsInRole("Middleman");
+        var auth0UserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var res = await tradesService.GetAvailableNewAsync(page, pageSize,isMiddleman,auth0UserId, q, ct);
         return res.ToActionResult();
     }
 
-    [HttpGet("middleman/in-realization")]
-    [Authorize(Roles = "Middleman")]
+    [HttpGet("in-realization")]
+    [Authorize]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyInRealization(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -75,8 +77,8 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         return res.ToActionResult();
     }
 
-    [HttpGet("middleman/completed")]
-    [Authorize(Roles = "Middleman")]
+    [HttpGet("completed")]
+    [Authorize]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyCompleted(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
