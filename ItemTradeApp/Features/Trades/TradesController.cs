@@ -122,6 +122,19 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.GetMyFailedWithItemsToReturnAsync(auth0UserId, page, pageSize, q, ct);
         return res.ToActionResult();
     }
+    
+    [HttpPut("middleman/{tradeId:int}/set-failed")]
+    [Authorize(Roles = "Middleman")]
+    public async Task<ActionResult<Result<string>>> SetTradeAsFailed(
+        [FromRoute] int tradeId,
+        CancellationToken ct = default)
+    {
+        var auth0UserId = User.FindFirstValue("sub")
+                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        var res = await tradesService.SetTradeAsFailed(tradeId, auth0UserId , ct);
+        return res.ToActionResult();
+    }
 
 
 }

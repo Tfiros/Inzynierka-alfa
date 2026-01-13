@@ -41,6 +41,8 @@ public interface ITradesService
         int pageSize,
         TradesQuery? query,
         CancellationToken ct);
+    
+    Task<Result<string>> SetTradeAsFailed(int tradeId, string? auth0UserId, CancellationToken ct);
 
 }
 public sealed class TradesService(
@@ -432,6 +434,32 @@ public sealed class TradesService(
         var resp = ToPaged(p, ps, total, items);
         return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
     }
+    
+    public async Task<Result<string>> SetTradeAsFailed(int tradeId, string? auth0UserId, CancellationToken ct)
+    {
+        var trimmed = TrimAuth0UserId(auth0UserId);
+
+        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
+        if (middleman is null)
+            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+
+        var trade = await tradeRepo.GetTradeWithOfferByIdAsync(tradeId, ct);
+        if (trade is null)
+            return Result<string>.NotFound("Trade not found.");
+
+        if (trade.MiddlemanUser_ID is null)
+            return Result<string>.BadRequest("Trade has no middleman assigned.");
+
+        if (trade.MiddlemanUser_ID != middleman.ID)
+            return Result<string>.Forbidden("You are not assigned to this trade.");
+
+        trade.TradeStatus_ID = (int)TradeStatuses.Failed;
+        trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
+        trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
+
+        return Result<string>.Success("Successfully set as failed.");
+    }
+
 
 
     #region HELPERS

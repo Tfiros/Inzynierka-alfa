@@ -7,6 +7,7 @@ namespace ItemTradeApp.Features.Trades.Repositories;
 
 public interface ITradeRepository
 {
+    Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct);
     Task AddAsync(Trade trade, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<Trade?> GetByIdAsync(int tradeId, CancellationToken ct);
@@ -28,6 +29,8 @@ public interface ITradeRepository
 
 public sealed class TradeRepository(AppDbContext db) : ITradeRepository
 {
+    public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct)
+        => await db.Trades.Where(t => t.ID == tradeId).Include(t => t.Offer).FirstOrDefaultAsync(ct);
     public async Task AddAsync(Trade trade, CancellationToken ct) =>
         await db.Trades.AddAsync(trade, ct).AsTask();
 
