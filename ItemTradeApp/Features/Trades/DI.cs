@@ -6,10 +6,12 @@ public static class DI
 {
     public static IServiceCollection RegisterTradeFeaturesDi(
         this IServiceCollection services
-        )
+    )
     {
         services.AddScoped<ITradesService, TradesService>();
-
+        services.AddScoped<IUserContext, UserContext>();
+        services.AddScoped<ITradesRequestValidator, TradesRequestValidator>();
+        services.AddScoped<ITradeListQueryService, TradeListQueryService>();
         services.AddScoped<ITradeRepository, TradeRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<ICounterOfferRepository, CounterOfferRepository>();

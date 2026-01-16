@@ -7,214 +7,406 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Trades;
+
 public interface ITradesService
 {
-    Task<Result<string>> AssignMiddlemanAsync(
-        AssignMiddlemanRequest? request,
-        string? auth0UserId,
-        CancellationToken ct);
+    Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<int>> CreateAsync(
-        CreateTradeRequest? request,
-        string? auth0UserId,
-        CancellationToken ct);
+    Task<Result<string>> AssignMiddlemanAsync(AssignMiddlemanRequest? request, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<string>> UpdateTradeByMiddlemanAsync(
-        int tradeId,
-        UpdateTradeRequest? request,
-        string? auth0UserId,
-        CancellationToken ct);
+    Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(
-        string? auth0UserId,
-        int tradeId,
-        CancellationToken ct);
-    Task<Result<MiddlemanTradesStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct);
+    Task<Result<string>> SetTradeAsFailedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, bool isMiddleman, string auth0UserId,  TradesQuery? q, CancellationToken ct);
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(string? auth0UserId, int page, int pageSize, TradesQuery? query, CancellationToken ct);
-    
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
-        string? auth0UserId,
-        int page,
-        int pageSize,
-        TradesQuery? query,
-        CancellationToken ct);
-    
-    Task<Result<string>> SetTradeAsFailed(int tradeId, string? auth0UserId, CancellationToken ct);
-    
-    Task<Result<string>> SetTradeAsRealised(int tradeId, string? auth0UserId, CancellationToken ct);
+    Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
+    Task<Result<object>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
+
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 }
+
 public sealed class TradesService(
     ITradeRepository tradeRepo,
     IOfferRepository offerRepo,
     ICounterOfferRepository counterOfferRepo,
     IUserRepository userRepo,
-    IUnitOfWork unitOfWork
+    IUnitOfWork unitOfWork,
+    IUserContext userContext,
+    ITradesRequestValidator validator,
+    ITradeListQueryService listQuery
 ) : ITradesService
 {
-    public async Task<Result<MiddlemanTradesStatsResponse>> GetMiddlemanStatsAsync(
-        string? auth0UserId,
-        CancellationToken ct)
+    public async Task<Result<object>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<MiddlemanTradesStatsResponse>.Unauthorized("Missing auth0 user id (sub claim).");
+        if (isMiddleman)
+        {
+            var ures = await TryGetMiddleman(auth0UserId, ct);
+            if (ures.Error is not null)
+                return Result<object>.Unauthorized(ures.Error);
 
-        var trimmed = TrimAuth0UserId(auth0UserId);
+            var middleman = ures.User!;
+            var (all, completed, myActive, available) =
+                await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
 
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<MiddlemanTradesStatsResponse>.Unauthorized("User not found for given auth0 user id.");
+            object dto = new MiddlemanTradesStatsResponse(
+                All: all,
+                Completed: completed,
+                MyActive: myActive,
+                Available: available
+            );
 
-        var (all, completed, myActive, available) = await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
+            return Result<object>.Success(dto, "Successfully retrieved.");
+        }
+        else
+        {
+            var ures = await TryGetUser(auth0UserId, ct);
+            if (ures.Error is not null)
+                return Result<object>.Unauthorized(ures.Error);
 
-        var dto = new MiddlemanTradesStatsResponse(
+            var user = ures.User!;
+            var (all, completed, myActive, created) =
+                await tradeRepo.GetUserStatsAsync(user.ID, ct);
+
+            object dto = new UserTradesStatsResponse(
+                All: all,
+                Completed: completed,
+                MyActive: myActive,
+                Created: created
+            );
+
+            return Result<object>.Success(dto, "Successfully retrieved.");
+        }
+    }
+
+
+    public async Task<Result<MiddlemanTradesStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct)
+    {
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<MiddlemanTradesStatsResponse>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
+
+        var (all, completed, myActive, available) =
+            await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
+
+        return Result<MiddlemanTradesStatsResponse>.Success(new MiddlemanTradesStatsResponse(
             All: all,
             Completed: completed,
             MyActive: myActive,
             Available: available
-        );
-
-        return Result<MiddlemanTradesStatsResponse>.Success(dto, "Successfully retrieved.");
+        ));
     }
 
-     public async Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct)
-{
-    if (request is null)
-        return Result<int>.BadRequest("Body is required.");
-
-    if (string.IsNullOrWhiteSpace(auth0UserId))
-        return Result<int>.Unauthorized("Missing auth0 user id (sub claim).");
-
-    var trimmedAuth0UserId = TrimAuth0UserId(auth0UserId);
-
-    var caller = await userRepo.GetByAuth0UserIdAsync(trimmedAuth0UserId, ct);
-    if (caller is null)
-        return Result<int>.Unauthorized("User not found for given auth0 user id.");
-
-    var offer = await offerRepo.GetByIdAsync(request.OfferId, ct);
-    if (offer is null)
-        return Result<int>.NotFound("Offer not found.");
-
-    if (await tradeRepo.ExistsActiveForOfferAsync(request.OfferId, ct))
-        return Result<int>.Conflict("Trade already exists for this offer.");
-
-    if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
-        return Result<int>.BadRequest("Offer is not active.");
-
-    var postingUserId = offer.User_ID;
-
-    int customerId;
-    int tokenCost;
-    CounterOffer? acceptedCounterOffer = null;
-    
-    if (request.CounterOfferId is not null)
-    {
-        if (caller.ID != postingUserId)
-            return Result<int>.Forbidden("Only offer owner can accept a counteroffer.");
-
-        var counterOffer = await counterOfferRepo.GetByIdAsync(request.CounterOfferId.Value, ct);
-        if (counterOffer is null)
-            return Result<int>.NotFound("CounterOffer not found.");
-
-        if (counterOffer.Offer_Id != request.OfferId)
-            return Result<int>.BadRequest("CounterOffer does not belong to given Offer.");
-
-        if (counterOffer.CounterOfferStatus_Id != (int)CounterOfferStatuses.Pending)
-            return Result<int>.BadRequest("CounterOffer is not pending.");
-
-        customerId = counterOffer.User_ID;
-        if (customerId == postingUserId)
-            return Result<int>.BadRequest("Offer owner cannot accept their own counteroffer.");
-
-        tokenCost = counterOffer.TokensOffered;
-        acceptedCounterOffer = counterOffer;
-    }
-    else
-    {
-        customerId = request.CustomerId;
-
-        var customer = await userRepo.GetByIdAsync(customerId, ct);
-        if (customer is null)
-            return Result<int>.NotFound("Customer not found.");
-
-        if (caller.ID != customerId)
-            return Result<int>.Forbidden("You cannot create trade for another customer.");
-
-        if (customerId == postingUserId)
-            return Result<int>.BadRequest("Customer cannot buy their own offer.");
-
-        tokenCost = offer.TokenCost;
-    }
-
-    await using var tx = await unitOfWork.BeginTransactionAsync(ct);
-    try
-    {
-        offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
-
-        if (acceptedCounterOffer is not null)
-        {
-            acceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted;
-
-            await counterOfferRepo.DenyOtherPendingForOfferAsync(
-                request.OfferId,
-                acceptedCounterOffer.ID,
-                ct);
-        }
-
-        var trade = new Trade
-        {
-            Offer_ID = request.OfferId,
-            Customer_ID = customerId,
-            User_ID = postingUserId,
-            TokenCost = tokenCost,
-
-            CreationDate = DateTime.UtcNow,
-            CompletitionDate = null,
-            TradeStatus_ID = (int)TradeStatuses.New,
-
-            HasBuyersItems = false,
-            HasSellersItems = false,
-        };
-
-        await tradeRepo.AddAsync(trade, ct);
-
-        await unitOfWork.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-
-        return Result<int>.Success(trade.ID);
-    }
-    catch
-    {
-        await tx.RollbackAsync(ct);
-        throw;
-    }
-}
-
-    public async Task<Result<string>> AssignMiddlemanAsync(
-        AssignMiddlemanRequest? request,
+    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
         string? auth0UserId,
         CancellationToken ct)
+    {
+        var (p, ps) = validator.Normalize(page, pageSize);
+
+        var ures = await TryGetUser(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+
+        var user = ures.User!;
+
+        var invalid = validator.ValidateTradesQuery(query, TradeStatuses.New);
+        if (invalid is not null) return invalid;
+        const bool isMiddlemanView = true;
+
+        var (items, total) = await listQuery.GetTradesAsync(
+            status: TradeStatuses.New,
+            page: p,
+            pageSize: ps,
+            callerUserId: user.ID,
+            q: query ?? new TradesQuery(),
+            isMiddlemanView: isMiddlemanView,
+            onlyWithItemsToReturn: false,
+            ct: ct);
+
+        return Result<PagedResponse<TradeListItemDTO>>.Success(ToPaged(p, ps, total, items));
+    }
+
+    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        CancellationToken ct)
+    {
+        var (p, ps) = validator.Normalize(page, pageSize);
+
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
+
+        var invalid = validator.ValidateTradesQuery(query, TradeStatuses.InRealization);
+        if (invalid is not null) return invalid;
+
+        var (items, total) = await listQuery.GetTradesAsync(
+            status: TradeStatuses.InRealization,
+            page: p,
+            pageSize: ps,
+            callerUserId: middleman.ID,
+            q: query ?? new TradesQuery(),
+            isMiddlemanView: true,
+            onlyWithItemsToReturn: false,
+            ct: ct);
+
+        return Result<PagedResponse<TradeListItemDTO>>.Success(ToPaged(p, ps, total, items));
+    }
+
+    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        CancellationToken ct)
+    {
+        var (p, ps) = validator.Normalize(page, pageSize);
+
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
+
+        var invalid = validator.ValidateTradesQuery(query, TradeStatuses.SuccesfulRealization);
+        if (invalid is not null) return invalid;
+
+        var (items, total) = await listQuery.GetTradesAsync(
+            status: TradeStatuses.SuccesfulRealization,
+            page: p,
+            pageSize: ps,
+            callerUserId: middleman.ID,
+            q: query ?? new TradesQuery(),
+            isMiddlemanView: true,
+            onlyWithItemsToReturn: false,
+            ct: ct);
+
+        return Result<PagedResponse<TradeListItemDTO>>.Success(ToPaged(p, ps, total, items));
+    }
+
+    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        CancellationToken ct)
+    {
+        var (p, ps) = validator.Normalize(page, pageSize);
+
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
+
+        var invalid = validator.ValidateTradesQuery(query, TradeStatuses.Failed);
+        if (invalid is not null) return invalid;
+
+        var (items, total) = await listQuery.GetTradesAsync(
+            status: TradeStatuses.Failed,
+            page: p,
+            pageSize: ps,
+            callerUserId: middleman.ID,
+            q: query ?? new TradesQuery(),
+            isMiddlemanView: true,
+            onlyWithItemsToReturn: true,
+            ct: ct);
+
+        return Result<PagedResponse<TradeListItemDTO>>.Success(ToPaged(p, ps, total, items));
+    }
+
+    public async Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(
+        int tradeId,
+        string? auth0UserId,
+        CancellationToken ct)
+    {
+        if (tradeId <= 0)
+            return Result<TradeDetailsResponse>.BadRequest("tradeId must be > 0.");
+
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<TradeDetailsResponse>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
+
+        var trade = await tradeRepo.GetTradeDetailsAsync(tradeId, ct);
+        if (trade is null)
+            return Result<TradeDetailsResponse>.NotFound("Trade not found.");
+
+        if (trade.MiddlemanUser_ID != middleman.ID)
+            return Result<TradeDetailsResponse>.Forbidden("You are not assigned to this trade.");
+
+        var buyer = trade.Customer;
+        var seller = trade.PostingUser;
+
+        var buyerPhotos = trade.Urls.Where(u => u.IsBuyers).Select(u => u.PhotoUrl).ToList();
+        var sellerPhotos = trade.Urls.Where(u => !u.IsBuyers).Select(u => u.PhotoUrl).ToList();
+
+        var dto = new TradeDetailsResponse(
+            hasBuyersItems: trade.HasBuyersItems,
+            hasSellersItems: trade.HasSellersItems,
+            buyingUserPhotos: new InTradeUserPhotos(
+                buyer.ID,
+                buyer.ProfileInfo?.Nickname ?? "",
+                buyer.Email,
+                buyerPhotos
+            ),
+            sellingUserPhotos: new InTradeUserPhotos(
+                seller.ID,
+                seller.ProfileInfo?.Nickname ?? "",
+                seller.Email,
+                sellerPhotos
+            )
+        );
+
+        return Result<TradeDetailsResponse>.Success(dto, "Successfully retrieved.");
+    }
+    
+
+    public async Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct)
+    {
+        if (request is null)
+            return Result<int>.BadRequest("Body is required.");
+
+        var ures = await TryGetUser(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<int>.Unauthorized(ures.Error);
+
+        var caller = ures.User!;
+
+        var offer = await offerRepo.GetByIdAsync(request.OfferId, ct);
+        if (offer is null)
+            return Result<int>.NotFound("Offer not found.");
+
+        if (await tradeRepo.ExistsActiveForOfferAsync(request.OfferId, ct))
+            return Result<int>.Conflict("Trade already exists for this offer.");
+
+        if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
+            return Result<int>.BadRequest("Offer is not active.");
+
+        var postingUserId = offer.User_ID;
+
+        int customerId;
+        int tokenCost;
+        CounterOffer? acceptedCounterOffer = null;
+
+        if (request.CounterOfferId is not null)
+        {
+            if (caller.ID != postingUserId)
+                return Result<int>.Forbidden("Only offer owner can accept a counteroffer.");
+
+            var counterOffer = await counterOfferRepo.GetByIdAsync(request.CounterOfferId.Value, ct);
+            if (counterOffer is null)
+                return Result<int>.NotFound("CounterOffer not found.");
+
+            if (counterOffer.Offer_Id != request.OfferId)
+                return Result<int>.BadRequest("CounterOffer does not belong to given Offer.");
+
+            if (counterOffer.CounterOfferStatus_Id != (int)CounterOfferStatuses.Pending)
+                return Result<int>.BadRequest("CounterOffer is not pending.");
+
+            customerId = counterOffer.User_ID;
+            if (customerId == postingUserId)
+                return Result<int>.BadRequest("Offer owner cannot accept their own counteroffer.");
+
+            tokenCost = counterOffer.TokensOffered;
+            acceptedCounterOffer = counterOffer;
+        }
+        else
+        {
+            customerId = request.CustomerId;
+
+            var customer = await userRepo.GetByIdAsync(customerId, ct);
+            if (customer is null)
+                return Result<int>.NotFound("Customer not found.");
+
+            if (caller.ID != customerId)
+                return Result<int>.Forbidden("You cannot create trade for another customer.");
+
+            if (customerId == postingUserId)
+                return Result<int>.BadRequest("Customer cannot buy their own offer.");
+
+            tokenCost = offer.TokenCost;
+        }
+
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
+
+            if (acceptedCounterOffer is not null)
+            {
+                acceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted;
+
+                await counterOfferRepo.DenyOtherPendingForOfferAsync(
+                    request.OfferId,
+                    acceptedCounterOffer.ID,
+                    ct);
+            }
+
+            var trade = new Trade
+            {
+                Offer_ID = request.OfferId,
+                Customer_ID = customerId,
+                User_ID = postingUserId,
+                TokenCost = tokenCost,
+
+                CreationDate = DateTime.UtcNow,
+                CompletitionDate = null,
+                TradeStatus_ID = (int)TradeStatuses.New,
+
+                HasBuyersItems = false,
+                HasSellersItems = false,
+            };
+
+            await tradeRepo.AddAsync(trade, ct);
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return Result<int>.Success(trade.ID);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<Result<string>> AssignMiddlemanAsync(AssignMiddlemanRequest? request, string? auth0UserId, CancellationToken ct)
     {
         if (request is null)
             return Result<string>.BadRequest("Body is required.");
 
         if (request.TradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
-        
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<string>.Unauthorized("Missing auth0 user id (sub claim).");
-        string trimmedAuth0UserId = TrimAuth0UserId(auth0UserId);
 
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmedAuth0UserId, ct);
-        if (middleman is null)
-            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<string>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
 
         var trade = await tradeRepo.GetByIdAsync(request.TradeId, ct);
         if (trade is null)
             return Result<string>.NotFound("Trade not found.");
+
         if (trade.TradeStatus_ID != (int)TradeStatuses.New)
             return Result<string>.BadRequest("Trade is not in NEW status.");
 
@@ -228,11 +420,8 @@ public sealed class TradesService(
 
         return Result<string>.Success("Middleman assigned.");
     }
-      public async Task<Result<string>> UpdateTradeByMiddlemanAsync(
-        int tradeId,
-        UpdateTradeRequest? request,
-        string? auth0UserId,
-        CancellationToken ct)
+
+    public async Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct)
     {
         if (tradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
@@ -240,12 +429,11 @@ public sealed class TradesService(
         if (request is null)
             return Result<string>.BadRequest("Body is required.");
 
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<string>.Unauthorized("Missing auth0 user id (sub claim).");
-        string trimmedAuth0UserId = TrimAuth0UserId(auth0UserId);
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmedAuth0UserId, ct);
-        if (middleman is null)
-            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<string>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
 
         var trade = await tradeRepo.GetByIdWithUrlsAsync(tradeId, ct);
         if (trade is null)
@@ -273,183 +461,19 @@ public sealed class TradesService(
         }
 
         await tradeRepo.SaveChangesAsync(ct);
-
         return Result<string>.Success("Trade updated.");
     }
 
-
-    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(
-        int page,
-        int pageSize,
-        bool isMiddleman,
-        string auth0UserId,
-        TradesQuery? query,
-        CancellationToken ct)
-    {
-        var (p, ps) = Normalize(page, pageSize);
-        var trimmedAuth0UserId = TrimAuth0UserId(auth0UserId);
-        var user = await userRepo.GetByAuth0UserIdAsync(trimmedAuth0UserId, ct);
-        if (user is null)
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("User not found.");
-
-        var invalid = ValidateTradesQuery(query, TradeStatuses.New);
-        if (invalid is not null) return invalid;
-        var (items, total) = await tradeRepo.GetTradesByStatusAsync(
-            p, ps, user.ID, status: TradeStatuses.New, query, ct, isMiddleman);
-        var resp = ToPaged(p, ps, total, items);
-
-        return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
-    }
-
-
-    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(
-        string? auth0UserId,
-        int page,
-        int pageSize,
-        TradesQuery? query,
-        CancellationToken ct)
-    {
-        var (p, ps) = Normalize(page, pageSize);
-
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("Missing auth0 user id (sub claim).");
-        var invalid = ValidateTradesQuery(query, TradeStatuses.InRealization);
-        if (invalid is not null) return invalid;
-        var trimmed = TrimAuth0UserId(auth0UserId);
-
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("User not found for given auth0 user id.");
-        
-        var (items, total) = await tradeRepo.GetTradesByStatusAsync(
-            p, ps, middleman.ID, TradeStatuses.InRealization, query, ct);
-
-        var resp = ToPaged(p, ps, total, items);
-        return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
-    }
-
-    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(
-        string? auth0UserId,
-        int page,
-        int pageSize,
-        TradesQuery? query,
-        CancellationToken ct)
-    {
-        var (p, ps) = Normalize(page, pageSize);
-
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("Missing auth0 user id (sub claim).");
-        var invalid = ValidateTradesQuery(query, TradeStatuses.SuccesfulRealization);
-        if (invalid is not null) return invalid;
-        var trimmed = TrimAuth0UserId(auth0UserId);
-
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("User not found for given auth0 user id.");
-        
-        var (items, total) = await tradeRepo.GetTradesByStatusAsync(
-            p, ps, middleman.ID, TradeStatuses.SuccesfulRealization, query, ct);
-
-        var resp = ToPaged(p, ps, total, items);
-        return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
-    }
-    public async Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(
-        string? auth0UserId,
-        int tradeId,
-        CancellationToken ct)
+    public async Task<Result<string>> SetTradeAsFailedAsync(int tradeId, string? auth0UserId, CancellationToken ct)
     {
         if (tradeId <= 0)
-            return Result<TradeDetailsResponse>.BadRequest("tradeId must be > 0.");
+            return Result<string>.BadRequest("TradeId must be > 0.");
 
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<TradeDetailsResponse>.Unauthorized("Missing auth0 user id (sub claim).");
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<string>.Unauthorized(ures.Error);
 
-        var trimmed = TrimAuth0UserId(auth0UserId);
-
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<TradeDetailsResponse>.Unauthorized("User not found for given auth0 user id.");
-
-        var trade = await tradeRepo.GetTradeDetailsAsync(tradeId, ct);
-        if (trade is null)
-            return Result<TradeDetailsResponse>.NotFound("Trade not found.");
-
-        if (trade.MiddlemanUser_ID != middleman.ID)
-            return Result<TradeDetailsResponse>.Forbidden("You are not assigned to this trade.");
-
-        var buyer = trade.Customer;
-        var seller = trade.PostingUser;
-
-        var buyerPhotos = trade.Urls
-            .Where(u => u.IsBuyers)
-            .Select(u => u.PhotoUrl)
-            .ToList();
-
-        var sellerPhotos = trade.Urls
-            .Where(u => !u.IsBuyers)
-            .Select(u => u.PhotoUrl)
-            .ToList();
-
-        var dto = new TradeDetailsResponse(
-            hasBuyersItems: trade.HasBuyersItems,
-            hasSellersItems: trade.HasSellersItems,
-            buyingUserPhotos: new InTradeUserPhotos(
-                buyer.ID,
-                buyer.ProfileInfo?.Nickname ?? "",
-                buyer.Email,
-                buyerPhotos
-            ),
-            sellingUserPhotos: new InTradeUserPhotos(
-                seller.ID,
-                seller.ProfileInfo?.Nickname ?? "",
-                seller.Email,
-                sellerPhotos
-            )
-        );
-
-        return Result<TradeDetailsResponse>.Success(dto, "Successfully retrieved.");
-    }
-    
-    public async Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
-        string? auth0UserId,
-        int page,
-        int pageSize,
-        TradesQuery? query,
-        CancellationToken ct)
-    {
-        var (p, ps) = Normalize(page, pageSize);
-
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("Missing auth0 user id (sub claim).");
-
-        var invalid = ValidateTradesQuery(query, TradeStatuses.Failed);
-        if (invalid is not null) return invalid;
-
-        var trimmed = TrimAuth0UserId(auth0UserId);
-
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized("User not found for given auth0 user id.");
-
-        var (items, total) = await tradeRepo.GetTradesByStatusAsync(
-            p,
-            ps,
-            middleman.ID,
-            TradeStatuses.Failed,
-            query,
-            ct,true);
-
-        var resp = ToPaged(p, ps, total, items);
-        return Result<PagedResponse<TradeListItemDTO>>.Success(resp, "Successfully retrieved.");
-    }
-    
-    public async Task<Result<string>> SetTradeAsFailed(int tradeId, string? auth0UserId, CancellationToken ct)
-    {
-        var trimmed = TrimAuth0UserId(auth0UserId);
-
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+        var middleman = ures.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferByIdAsync(tradeId, ct);
         if (trade is null)
@@ -465,16 +489,20 @@ public sealed class TradesService(
         trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
         trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
 
+        await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Successfully set as failed.");
     }
 
-    public async Task<Result<string>> SetTradeAsRealised(int tradeId, string? auth0UserId, CancellationToken ct)
+    public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CancellationToken ct)
     {
-        var trimmed = TrimAuth0UserId(auth0UserId);
+        if (tradeId <= 0)
+            return Result<string>.BadRequest("TradeId must be > 0.");
 
-        var middleman = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
-        if (middleman is null)
-            return Result<string>.Unauthorized("User not found for given auth0 user id.");
+        var ures = await TryGetMiddleman(auth0UserId, ct);
+        if (ures.Error is not null)
+            return Result<string>.Unauthorized(ures.Error);
+
+        var middleman = ures.User!;
 
         var trade = await tradeRepo.GetByIdAsync(tradeId, ct);
         if (trade is null)
@@ -487,32 +515,14 @@ public sealed class TradesService(
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
         if (trade.HasBuyersItems && trade.HasSellersItems)
-        {
             return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
-        }
+
         trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
 
+        await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Successfully set as realised.");
     }
 
-
-    #region HELPERS
-    private static string? TrimAuth0UserId(string? auth0UserId)
-    {
-        if (string.IsNullOrWhiteSpace(auth0UserId))
-            return null;
-
-        return auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
-    }
-    private static (int Page, int PageSize) Normalize(int page, int pageSize)
-    {
-        if (page <= 0) page = 1;
-        if (pageSize <= 0) pageSize = 10;
-        if (pageSize > 100) pageSize = 100;
-        return (page, pageSize);
-    }
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)
         => new()
         {
@@ -523,91 +533,29 @@ public sealed class TradesService(
             Elements = elements
         };
 
-    #endregion
-
-    #region VALIDATORS
-   private static Result<PagedResponse<TradeListItemDTO>>? ValidateTradesQuery(
-    TradesQuery? q,
-    TradeStatuses scope)
-{
-    if (q is null)
-        return null;
-
-    var hasSearchText = !string.IsNullOrWhiteSpace(q.SearchText);
-    var hasSearchBy = q.SearchBy is not null;
-
-    if (hasSearchText && !hasSearchBy)
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "searchBy is required when searchText is provided.");
-
-    if (!hasSearchText && hasSearchBy)
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "searchText is required when searchBy is provided.");
-
-    if (hasSearchText && hasSearchBy &&
-        (q.SearchBy == TradeSearchBy.TradeId || q.SearchBy == TradeSearchBy.OfferId) &&
-        !int.TryParse(q.SearchText!.Trim(), out _))
+    private async Task<(User? User, string? Error)> TryGetUser(string? auth0UserId, CancellationToken ct)
     {
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "searchText must be a number when searchBy is TradeId or OfferId.");
-    }
-
-    if (q.MinTokenCost is not null && q.MinTokenCost < 0)
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest("minTokenCost must be >= 0.");
-
-    if (q.MaxTokenCost is not null && q.MaxTokenCost < 0)
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest("maxTokenCost must be >= 0.");
-
-    if (q.MinTokenCost is not null && q.MaxTokenCost is not null &&
-        q.MinTokenCost.Value > q.MaxTokenCost.Value)
-    {
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "minTokenCost cannot be greater than maxTokenCost.");
-    }
-
-    if (q.CreatedFrom is not null && q.CreatedTo is not null &&
-        q.CreatedFrom.Value > q.CreatedTo.Value)
-    {
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "createdFrom cannot be greater than createdTo.");
-    }
-
-    if (q.CreatedTo is not null && q.CreatedFrom is null)
-    {
-        return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-            "createdFrom is required when createdTo is provided.");
-    }
-
-    switch (scope)
-    {
-        case TradeStatuses.New:
+        try
         {
-            if (q.CreatedTo is not null)
-                return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-                    "createdTo is not supported for available trades.");
-            
-            if (q.ReadyForCompletion is not null)
-                return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-                    "readyForCompletion is not applicable for available trades.");
-            break;
+            var user = await userContext.GetRequiredUserAsync(auth0UserId, ct);
+            return user is null ? (null, "User not found") : (user, null);
         }
-        
-
-        case TradeStatuses.SuccesfulRealization:
+        catch (Exception ex)
         {
-            if (q.ReadyForCompletion is not null)
-                return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-                    "readyForCompletion is not applicable for completed trades.");
-            
-            break;
+            return (null, ex.Message);
         }
     }
 
-    return null;
-}
-
-
-    
-
-    #endregion
+    private async Task<(User? User, string? Error)> TryGetMiddleman(string? auth0UserId, CancellationToken ct)
+    {
+        try
+        {
+            var user = await userContext.GetRequiredMiddlemanAsync(auth0UserId, ct);
+            return user is null ? (null, "User not found") : (user, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex.Message);
+        }
+    }
 }

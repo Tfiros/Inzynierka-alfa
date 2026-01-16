@@ -13,43 +13,40 @@ namespace ItemTradeApp.Features.Trades;
 [Route("[controller]")]
 public sealed class TradesController(ITradesService tradesService) : ControllerBase
 {
+    private string? GetAuth0UserId()
+        => User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
     [HttpPost]
     [Authorize]
-    public async Task<ActionResult<Result<int>>> Create([FromBody] CreateTradeRequest? request, CancellationToken ct)
+    public async Task<ActionResult<Result<int>>> Create(
+        [FromBody] CreateTradeRequest? request,
+        CancellationToken ct)
     {
-        var auth0UserId =
-            User.FindFirstValue("sub") ??
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.CreateAsync(request, auth0UserId, ct);
+        var res = await tradesService.CreateAsync(request, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
 
     [HttpPost("assign-middleman")]
     [Authorize(Roles = "Middleman")]
-    public async Task<ActionResult<Result<string>>> AssignMiddleman([FromBody] AssignMiddlemanRequest? request, CancellationToken ct)
+    public async Task<ActionResult<Result<string>>> AssignMiddleman(
+        [FromBody] AssignMiddlemanRequest? request,
+        CancellationToken ct)
     {
-        var auth0UserId =
-            User.FindFirstValue("sub") ??
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.AssignMiddlemanAsync(request, auth0UserId, ct);
+        var res = await tradesService.AssignMiddlemanAsync(request, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
-    [HttpPut("update-trade/{tradeId}")]
+
+    [HttpPut("update-trade/{tradeId:int}")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<string>>> UpdateByMiddleman(
         [FromRoute] int tradeId,
         [FromBody] UpdateTradeRequest? request,
         CancellationToken ct)
     {
-        var auth0UserId =
-            User.FindFirstValue("sub") ??
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.UpdateTradeByMiddlemanAsync(tradeId, request, auth0UserId, ct);
+        var res = await tradesService.UpdateTradeByMiddlemanAsync(tradeId, request, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
+
     [HttpGet("created")]
     [Authorize]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetAvailableNew(
@@ -58,9 +55,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var isMiddleman = User.IsInRole("Middleman");
-        var auth0UserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var res = await tradesService.GetAvailableNewAsync(page, pageSize,isMiddleman,auth0UserId, q, ct);
+        var res = await tradesService.GetAvailableNewAsync(page, pageSize, q, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
 
@@ -72,8 +67,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var res = await tradesService.GetMyInRealizationAsync(auth0UserId, page, pageSize, q, ct);
+        var res = await tradesService.GetMyInRealizationAsync(page, pageSize, q, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
 
@@ -85,71 +79,61 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var res = await tradesService.GetMyCompletedAsync(auth0UserId, page, pageSize, q, ct);
+        var res = await tradesService.GetMyCompletedAsync(page, pageSize, q, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
-    [HttpGet("middleman/stats")]
+
+    [HttpGet("failed-with-items-to-return")]
     [Authorize(Roles = "Middleman")]
-    public async Task<ActionResult<Result<MiddlemanTradesStatsResponse>>> GetMiddlemanStats(CancellationToken ct = default)
+    public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyFailedWithItemsToReturn(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] TradesQuery? q = null,
+        CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var res = await tradesService.GetMiddlemanStatsAsync(auth0UserId, ct);
+        var res = await tradesService.GetMyFailedWithItemsToReturnAsync(page, pageSize, q, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
+
+    [HttpGet("stats")]
+    [Authorize]
+    public async Task<ActionResult<Result<object>>> GetStats(CancellationToken ct = default)
+    {
+        var auth0UserId = GetAuth0UserId();
+        var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
+
+        var res = await tradesService.GetStatsAsync(auth0UserId, isMiddleman, ct);
+        return res.ToActionResult();
+    }
+
+
     [HttpGet("middleman/{tradeId:int}/details")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<TradeDetailsResponse>>> GetTradeDetails(
         [FromRoute] int tradeId,
         CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub")
-                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.GetTradeDetailsAsync(auth0UserId, tradeId, ct);
+        var res = await tradesService.GetTradeDetailsAsync(tradeId, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
-    
-    [HttpGet("middleman/failed-with-return")]
-    [Authorize(Roles = "Middleman")]
-    public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetFailedTradeWithReturn(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] TradesQuery? q = null,
-        CancellationToken ct = default)
-    {
-        var auth0UserId = User.FindFirstValue("sub")
-                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        var res = await tradesService.GetMyFailedWithItemsToReturnAsync(auth0UserId, page, pageSize, q, ct);
-        return res.ToActionResult();
-    }
-    
-    [HttpPut("middleman/{tradeId:int}/set-failed")]
+    [HttpPut("middleman/{tradeId:int}/set-as-failed")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<string>>> SetTradeAsFailed(
         [FromRoute] int tradeId,
         CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub")
-                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.SetTradeAsFailed(tradeId, auth0UserId , ct);
+        var res = await tradesService.SetTradeAsFailedAsync(tradeId, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
-    
+
     [HttpPut("middleman/{tradeId:int}/set-realised")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<string>>> SetTradeAsRealised(
         [FromRoute] int tradeId,
         CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue("sub")
-                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var res = await tradesService.SetTradeAsRealised(tradeId, auth0UserId , ct);
+        var res = await tradesService.SetTradeAsRealisedAsync(tradeId, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
-
-
 }
