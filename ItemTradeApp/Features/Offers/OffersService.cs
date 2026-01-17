@@ -6,7 +6,6 @@ using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
-using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.Features.Offers;
 
