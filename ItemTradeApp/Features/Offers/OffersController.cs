@@ -74,5 +74,13 @@ public class OffersController(IOffersService offerService) : ControllerBase
         var result = await offerService.GetQuoteAsync(req, ct);
         return result.ToActionResult();
     }
+    
+    [HttpGet("items")]
+    public async Task<ActionResult<Result<List<ItemDTO>>>> ItemSuggestion(string searchText,
+        CancellationToken ct = default)
+    {
+        var result = await offerService.GetByName(searchText, ct);
+        return result.ToActionResult();
+    }
 
 }

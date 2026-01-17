@@ -6,6 +6,7 @@ public static class DI
     {
         serviceCollection.AddScoped<IOffersRepository,OffersRepository>();
         serviceCollection.AddScoped<IUsersRepository, UsersRepository>();
+        serviceCollection.AddScoped<IItemsRepository, ItemsRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
         return serviceCollection;
     }

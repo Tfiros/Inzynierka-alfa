@@ -28,11 +28,13 @@ public interface IOffersService
         CancellationToken ct = default);
 
     Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetByName(string searchText, CancellationToken ct = default);
 }
 
 public class OffersService(
     IOffersRepository offersRepository,
     IUsersRepository userRepository,
+    IItemsRepository itemRepository,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -232,6 +234,24 @@ public class OffersService(
         if (draft is null) return Result<OfferQuoteResponse>.BadRequest("draft_creation_failed");
 
         return Result<OfferQuoteResponse>.Success(new OfferQuoteResponse(draft.TokenCost));
+    }
+    public async Task<Result<List<ItemDTO>>> GetByName(string searchText, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Result<List<ItemDTO>>.Success(new List<ItemDTO>());
+        }
+        
+
+        var items = await itemRepository.GetByName(searchText,ct);
+        var response = items.Select(i => new ItemDTO(
+            i.ID,
+            i.Name,
+            i.Photo_URL,
+            i.EstimatedTokenValue,
+            i.Game_ID,
+            i.Game.Name)).ToList();
+        return Result<List<ItemDTO>>.Success(response);
     }
 
     #region OfferServiceHelpers
