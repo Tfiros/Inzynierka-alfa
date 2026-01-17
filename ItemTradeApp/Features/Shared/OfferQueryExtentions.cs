@@ -20,7 +20,7 @@ public static class OfferQueryExtentions
                 t.TradeStatus_ID == (int)TradeStatuses.Failed),
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferListingDTO
-        (new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate, o.Offer.TokenCost, o.Offer.OfferStatus.ID),
+        (new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate, o.Offer.TokenCost, o.Offer.OfferStatus.ID, o.Offer.IsHighlighted),
             new OfferUserDTO
             (
                 o.Offer.User_ID,
@@ -76,7 +76,7 @@ public static class OfferQueryExtentions
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferDetailsDTO(
             new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate,
-                o.Offer.TokenCost, o.Offer.OfferStatus.ID),
+                o.Offer.TokenCost, o.Offer.OfferStatus.ID, o.Offer.IsHighlighted),
             new OfferUserDTO(o.Offer.User.ID, o.Offer.User.ProfileInfo!.Nickname, o.Offer.User.ProfileInfo.ImageUrl,
                 o.SuccesfulTrades, (float)o.Rating,
                 o.CompletedTrades == 0 ? 0f : (float)o.SuccesfulTrades / o.CompletedTrades),

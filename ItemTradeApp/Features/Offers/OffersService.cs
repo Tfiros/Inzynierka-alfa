@@ -6,6 +6,7 @@ using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.Features.Offers;
 
@@ -26,6 +27,8 @@ public interface IOffersService
 
     Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId, OfferDraftRequest request,
         CancellationToken ct = default);
+
+    Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
 }
 
 public class OffersService(
@@ -82,7 +85,7 @@ public class OffersService(
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
 
     
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.ExpDate, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.DurationDays, offerDraftRequest.IsHighlighted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
         if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
@@ -111,6 +114,7 @@ public class OffersService(
                 TokenCost = draft.TokenCost,
                 User_ID = userState.Id,
                 OfferStatus_ID = (int)OfferStatuses.Active,
+                IsHighlighted = draft.IsHighlighted,
                 ListingItems = draft.Offered.Select(kv => new ListingItems
                 {
                     Item_ID = kv.Key,
@@ -148,7 +152,7 @@ public class OffersService(
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
         if (offerId <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
         
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(request.OfferedItems, request.WantedItems, request.ExpDate, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftAsync(request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
         if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
@@ -178,6 +182,7 @@ public class OffersService(
     
             offer.ExpDate = draft.ExpDate;
             offer.TokenCost = draft.TokenCost;
+            offer.IsHighlighted = draft.IsHighlighted;
             
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -220,6 +225,16 @@ public class OffersService(
         return Result<string>.Success("offer_cancelled");
     }
 
+    public async Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default)
+    {
+        var (okDraft, errDraft, draft) =
+            await BuildDraftAsync(req.OfferedItems, req.WantedItems, req.DurationDays, req.IsHighlighted, ct);
+        if (!okDraft) return Result<OfferQuoteResponse>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferQuoteResponse>.BadRequest("draft_creation_failed");
+
+        return Result<OfferQuoteResponse>.Success(new OfferQuoteResponse(draft.TokenCost));
+    }
+
     #region OfferServiceHelpers
     
     private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
@@ -257,7 +272,7 @@ public class OffersService(
 
     }
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(IReadOnlyCollection<OfferItemDTO> offeredItems,
-        IReadOnlyCollection<OfferItemDTO> wantedItems, DateOnly expDate, CancellationToken ct)
+        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, CancellationToken ct)
     {
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
@@ -266,11 +281,9 @@ public class OffersService(
             return (false, "offered_items_required", null);
         if (wanted.Count == 0)
             return (false, "wanted_items_required", null);
-        if (expDate == default)
-            return (false, "exp_date_required", null);
-
-
-        var (expOk, err, expCalcDate, extraDayCost) = ResolveExpiry(expDate);
+        var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
+        
+        var (expOk, err, expCalcDate, extraDayCost) = ResolveExpiry(durationDays);
         if (!expOk) return (false, err, null);
 
         var (okItems, errItems, items) = await LoadItemsOrErrorAsync(offered, wanted, ct);
@@ -282,20 +295,20 @@ public class OffersService(
         int tokenCost;
         try
         {
-            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost);
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee);
         }
         catch (OverflowException)
         {
             return (false, "token_cost_overflow", null);
         }
 
-        var draft = new OfferDraft(offeredLines, wantedLines, expCalcDate, tokenCost);
+        var draft = new OfferDraft(offeredLines, wantedLines, expCalcDate, tokenCost, isHighlighted);
 
         return (true, null, draft);
 
     }
 
-    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost)
+    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost, int highlightFee)
     {
         long totalValue = 0;
 
@@ -315,30 +328,34 @@ public class OffersService(
         var baseTokenCost = (int)Math.Ceiling(totalValue * OffersConsts.BaseCostRate);
         if (baseTokenCost < OffersConsts.MinBaseTokenCost) baseTokenCost = OffersConsts.MinBaseTokenCost;
 
-        int tokenCost;
+
         checked
         {
-            tokenCost = baseTokenCost + extraDayCost;
+            return baseTokenCost + extraDayCost + highlightFee;
         }
-
-        return tokenCost;
-
+        
     }
 
-    private static (bool Ok, string? Error, DateOnly ExpDate, int ExtraDayCost) ResolveExpiry(DateOnly requestExpDate)
+    private static (bool Ok, string? Error, DateOnly ExpDate, int ExtraDayCost) ResolveExpiry(int durationDays)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-        var minExpDate = today.AddDays(OffersConsts.MinExpiryDays);
-        if (requestExpDate < minExpDate)
+        if (durationDays != 7 && durationDays != 14 && durationDays != 31)
         {
-            return (false, "exp_date_min_7_days", default, 0);
+            return (false, "invalid_duration_days", default, 0);
         }
 
-        var extraDays = requestExpDate.DayNumber - minExpDate.DayNumber;
-        var extraDaysCost = extraDays > 0 ? extraDays * OffersConsts.ExtraDayCost : 0;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        return (true, null, requestExpDate, extraDaysCost);
+        var expDate = today.AddDays(durationDays);
+        var durationFee = durationDays switch
+        {
+            7 => 0,
+            14 => OffersConsts.Duration14Cost,
+            31 => OffersConsts.Duration31Cost,
+            _ => 0
+        };
+        
+
+        return (true, null, expDate, durationFee);
 
 
 
