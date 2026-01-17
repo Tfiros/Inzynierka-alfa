@@ -97,7 +97,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
 
     [HttpGet("stats")]
     [Authorize]
-    public async Task<ActionResult<Result<object>>> GetStats(CancellationToken ct = default)
+    public async Task<ActionResult<Result<UserTradeStatsResponse>>> GetStats(CancellationToken ct = default)
     {
         var auth0UserId = GetAuth0UserId();
         var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");

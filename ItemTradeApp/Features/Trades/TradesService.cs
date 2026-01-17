@@ -20,7 +20,7 @@ public interface ITradesService
 
     Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<object>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
+    Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
     Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
 
@@ -44,65 +44,65 @@ public sealed class TradesService(
     ITradeListQueryService listQuery
 ) : ITradesService
 {
-    public async Task<Result<object>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
+    public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
     {
         if (isMiddleman)
         {
             var ures = await TryGetMiddleman(auth0UserId, ct);
             if (ures.Error is not null)
-                return Result<object>.Unauthorized(ures.Error);
+                return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
 
             var middleman = ures.User!;
             var (all, completed, myActive, available) =
                 await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
 
-            object dto = new MiddlemanTradesStatsResponse(
+            var dto = new UserTradeStatsResponse(
                 All: all,
                 Completed: completed,
                 MyActive: myActive,
-                Available: available
+                Created: available
             );
 
-            return Result<object>.Success(dto, "Successfully retrieved.");
+            return Result<UserTradeStatsResponse>.Success(dto, "Successfully retrieved.");
         }
         else
         {
             var ures = await TryGetUser(auth0UserId, ct);
             if (ures.Error is not null)
-                return Result<object>.Unauthorized(ures.Error);
+                return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
 
             var user = ures.User!;
             var (all, completed, myActive, created) =
                 await tradeRepo.GetUserStatsAsync(user.ID, ct);
 
-            object dto = new UserTradesStatsResponse(
+            var dto = new UserTradeStatsResponse(
                 All: all,
                 Completed: completed,
                 MyActive: myActive,
                 Created: created
             );
 
-            return Result<object>.Success(dto, "Successfully retrieved.");
+            return Result<UserTradeStatsResponse>.Success(dto, "Successfully retrieved.");
         }
     }
 
 
-    public async Task<Result<MiddlemanTradesStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct)
+    public async Task<Result<UserTradeStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct)
     {
         var ures = await TryGetMiddleman(auth0UserId, ct);
         if (ures.Error is not null)
-            return Result<MiddlemanTradesStatsResponse>.Unauthorized(ures.Error);
+            return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
 
         var middleman = ures.User!;
 
         var (all, completed, myActive, available) =
             await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
 
-        return Result<MiddlemanTradesStatsResponse>.Success(new MiddlemanTradesStatsResponse(
+        return Result<UserTradeStatsResponse>.Success(new UserTradeStatsResponse(
             All: all,
             Completed: completed,
             MyActive: myActive,
-            Available: available
+            Created: available
         ));
     }
 
@@ -514,7 +514,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
-        if (trade.HasBuyersItems && trade.HasSellersItems)
+        if (!trade.HasBuyersItems || !trade.HasSellersItems)
             return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
 
         trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;

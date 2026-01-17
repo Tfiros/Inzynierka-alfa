@@ -69,7 +69,7 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
             .Select(g => new
             {
                 All = g.Count(),
-                Completed = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
+                Completed = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization && t.MiddlemanUser_ID == middlemanUserId),
                 MyActive = g.Count(t =>
                     t.TradeStatus_ID == (int)TradeStatuses.InRealization &&
                     t.MiddlemanUser_ID == middlemanUserId),
@@ -93,10 +93,10 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                All = g.Count(t => t.TradeStatus_ID != (int)TradeStatuses.Failed),
-                Completed = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-                MyActive = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.InRealization),
-                Created = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.New)
+                All = g.Count(t => t.User_ID == postingUserId),
+                Completed = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization && t.User_ID == postingUserId),
+                MyActive = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.InRealization && t.User_ID == postingUserId),
+                Created = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.New && t.User_ID == postingUserId)
             })
             .SingleOrDefaultAsync(ct);
 
