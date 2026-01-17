@@ -67,4 +67,12 @@ public class OffersController(IOffersService offerService) : ControllerBase
         return result.ToActionResult();
     }
 
+    [HttpPost("quote")]
+    public async Task<ActionResult<Result<OfferQuoteResponse>>> Quote([FromBody] OfferDraftRequest req,
+        CancellationToken ct = default)
+    {
+        var result = await offerService.GetQuoteAsync(req, ct);
+        return result.ToActionResult();
+    }
+
 }
