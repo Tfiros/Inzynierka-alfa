@@ -18,7 +18,7 @@ public interface ITradesService
 
     Task<Result<string>> SetTradeAsFailedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
+    Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CompleteTradeAndMarkTradeRequest request, CancellationToken ct);
 
     Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
@@ -493,7 +493,10 @@ public sealed class TradesService(
         return Result<string>.Success("Successfully set as failed.");
     }
 
-    public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CancellationToken ct)
+    public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId,
+        string? auth0UserId,
+        CompleteTradeAndMarkTradeRequest request,
+        CancellationToken ct)
     {
         if (tradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
@@ -504,7 +507,7 @@ public sealed class TradesService(
 
         var middleman = ures.User!;
 
-        var trade = await tradeRepo.GetByIdAsync(tradeId, ct);
+        var trade = await tradeRepo.GetTradeWithOfferByIdAsync(tradeId, ct);
         if (trade is null)
             return Result<string>.NotFound("Trade not found.");
 
@@ -518,7 +521,26 @@ public sealed class TradesService(
             return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
 
         trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
+        trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
 
+        var buyersRate = new Rate()
+        {
+            TradeId = trade.ID,
+            UserId = request.BuyersID,
+            Mark = request.BuyersGrade,
+            Description = request.BuyersDescription
+        };
+        
+        var sellersRate = new Rate()
+        {
+            TradeId = trade.ID,
+            UserId = request.SellersID,
+            Mark = request.SellersGrade,
+            Description = request.SellersDescription
+        };
+        
+        trade.Rates.Add(buyersRate);
+        trade.Rates.Add(sellersRate);
         await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Successfully set as realised.");
     }

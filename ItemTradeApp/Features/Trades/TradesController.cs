@@ -131,9 +131,10 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<string>>> SetTradeAsRealised(
         [FromRoute] int tradeId,
+        [FromBody] CompleteTradeAndMarkTradeRequest request,
         CancellationToken ct = default)
     {
-        var res = await tradesService.SetTradeAsRealisedAsync(tradeId, GetAuth0UserId(), ct);
+        var res = await tradesService.SetTradeAsRealisedAsync(tradeId, GetAuth0UserId(), request, ct);
         return res.ToActionResult();
     }
 }

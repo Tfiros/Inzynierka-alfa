@@ -6,16 +6,16 @@ namespace ItemTradeApp.Persistence.Models;
 [Table("Rate")]
 public partial class Rate
 {
-    [Column("User_Id")]
+    [Column("user_id")]
     public int UserId { get; set; }
 
-    [Column("Trade_Id")]
+    [Column("trade_id")]
     public int TradeId { get; set; }
 
-    [Column("Mark", TypeName = "decimal(3,1)")]
+    [Column("mark", TypeName = "decimal(3,1)")]
     public decimal Mark { get; set; }
 
-    [Column("Description")]
+    [Column("description")]
     [StringLength(500)]
     public string? Description { get; set; }
 
