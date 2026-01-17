@@ -28,14 +28,16 @@ public interface IOffersService
         CancellationToken ct = default);
 
     Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
-    Task<Result<List<ItemDTO>>> GetByName(string searchText, CancellationToken ct = default);
-    Task<Result<List<ItemDTO>>> GetByNameAndGameId(string searchText, int gameId, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetItemsByName(string searchText, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetItemsByNameAndGameId(string searchText, int gameId, CancellationToken ct = default);
+    Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default);
 }
 
 public class OffersService(
     IOffersRepository offersRepository,
     IUsersRepository userRepository,
     IItemsRepository itemRepository,
+    IGamesRepository gamesRepository,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -236,7 +238,7 @@ public class OffersService(
 
         return Result<OfferQuoteResponse>.Success(new OfferQuoteResponse(draft.TokenCost));
     }
-    public async Task<Result<List<ItemDTO>>> GetByName(string searchText, CancellationToken ct = default)
+    public async Task<Result<List<ItemDTO>>> GetItemsByName(string searchText, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(searchText))
         {
@@ -255,7 +257,7 @@ public class OffersService(
         return Result<List<ItemDTO>>.Success(response);
     }
 
-    public async Task<Result<List<ItemDTO>>> GetByNameAndGameId(string searchText, int gameId,
+    public async Task<Result<List<ItemDTO>>> GetItemsByNameAndGameId(string searchText, int gameId,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(searchText))
@@ -278,6 +280,17 @@ public class OffersService(
             i.Game.Name)).ToList();
         return Result<List<ItemDTO>>.Success(response);
 
+    }
+
+    public async Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default)
+    {
+        var games = await gamesRepository.GetAll(ct);
+        var response = games.Select(g => new GameDTO(
+            g.ID,
+            g.Name,
+            g.Photo_URL
+        )).ToList();
+        return Result<List<GameDTO>>.Success(response);
     }
 
     #region OfferServiceHelpers
