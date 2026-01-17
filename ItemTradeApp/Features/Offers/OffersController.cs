@@ -75,7 +75,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         return result.ToActionResult();
     }
     
-    [HttpGet("item/suggestions")]
+    [HttpGet("items/suggestions")]
     public async Task<ActionResult<Result<List<ItemDTO>>>> ItemSuggestion(string searchText,
         CancellationToken ct = default)
     {
