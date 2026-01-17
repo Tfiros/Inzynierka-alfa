@@ -29,6 +29,7 @@ public interface IOffersService
 
     Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
     Task<Result<List<ItemDTO>>> GetByName(string searchText, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetByNameAndGameId(string searchText, int gameId, CancellationToken ct = default);
 }
 
 public class OffersService(
@@ -252,6 +253,31 @@ public class OffersService(
             i.Game_ID,
             i.Game.Name)).ToList();
         return Result<List<ItemDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<ItemDTO>>> GetByNameAndGameId(string searchText, int gameId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Result<List<ItemDTO>>.Success(new List<ItemDTO>());
+        }
+
+        if (gameId <= 0)
+        {
+            return Result<List<ItemDTO>>.BadRequest("Game ID is required");
+        }
+
+        var items = await itemRepository.GetByNameAndGameId(searchText, gameId, ct);
+        var response = items.Select(i => new ItemDTO(
+            i.ID,
+            i.Name,
+            i.Photo_URL,
+            i.EstimatedTokenValue,
+            i.Game_ID,
+            i.Game.Name)).ToList();
+        return Result<List<ItemDTO>>.Success(response);
+
     }
 
     #region OfferServiceHelpers

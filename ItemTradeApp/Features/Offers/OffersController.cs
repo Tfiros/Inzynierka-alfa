@@ -75,11 +75,18 @@ public class OffersController(IOffersService offerService) : ControllerBase
         return result.ToActionResult();
     }
     
-    [HttpGet("items")]
+    [HttpGet("item/suggestions")]
     public async Task<ActionResult<Result<List<ItemDTO>>>> ItemSuggestion(string searchText,
         CancellationToken ct = default)
     {
         var result = await offerService.GetByName(searchText, ct);
+        return result.ToActionResult();
+    }
+    [HttpGet("items")]
+    public async Task<ActionResult<Result<List<ItemDTO>>>> Items(string searchText, int gameId,
+        CancellationToken ct = default)
+    {
+        var result = await offerService.GetByNameAndGameId(searchText,gameId, ct);
         return result.ToActionResult();
     }
 
