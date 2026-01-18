@@ -68,6 +68,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     }
 
     [HttpPost("quote")]
+    [Authorize]
     public async Task<ActionResult<Result<OfferQuoteResponse>>> Quote([FromBody] OfferDraftRequest req,
         CancellationToken ct = default)
     {

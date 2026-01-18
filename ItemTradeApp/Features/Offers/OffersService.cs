@@ -252,8 +252,8 @@ public class OffersService(
             i.Name,
             i.Photo_URL,
             i.EstimatedTokenValue,
-            i.Game_ID,
-            i.Game.Name)).ToList();
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL)
+            )).ToList();
         return Result<List<ItemDTO>>.Success(response);
     }
 
@@ -276,8 +276,8 @@ public class OffersService(
             i.Name,
             i.Photo_URL,
             i.EstimatedTokenValue,
-            i.Game_ID,
-            i.Game.Name)).ToList();
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL)
+            )).ToList();
         return Result<List<ItemDTO>>.Success(response);
 
     }
