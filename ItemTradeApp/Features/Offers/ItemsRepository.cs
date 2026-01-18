@@ -19,8 +19,10 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
         {
             return new List<Item>();
         }
+        var escaped = Escape(searchText);
 
-        var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && EF.Functions.ILike(i.Name, $"%{searchText}")).AsQueryable();
+
+        var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && EF.Functions.ILike(i.Name, $"%{escaped}%", "!"));
 
 
         return await query
@@ -36,11 +38,20 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
         {
             return new List<Item>();
         }
-        var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && i.Game_ID == gameId && EF.Functions.ILike(i.Name, $"%{searchText}")).AsQueryable();
+
+        var escaped = Escape(searchText);
+        var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && i.Game_ID == gameId && EF.Functions.ILike(i.Name, $"%{escaped}%","!"));
 
         return await query
             .OrderByDescending(i => i.EstimatedTokenValue)
             .Take(5)
             .ToListAsync(ct);
+    }
+
+    private static string Escape(string input, char escapeChar = '!')
+    {
+        return input.Replace(escapeChar.ToString(), new string(escapeChar, 2))
+            .Replace("%", $"{escapeChar}%")
+            .Replace("_", $"{escapeChar}_");
     }
 }
