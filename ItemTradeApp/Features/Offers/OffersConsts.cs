@@ -9,5 +9,5 @@ public class OffersConsts
     public const int PagedOffersResponseItemAmount = 2;
     public const int HighlightCost = 50;
     public const int Duration14Cost = 30;
-    public const int Duration31Cost = 31;
+    public const int Duration31Cost = 60;
 }
