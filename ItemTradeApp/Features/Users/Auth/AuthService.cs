@@ -191,9 +191,9 @@ public class AuthService(
             ? auth0id.Substring("auth0|".Length)
             : auth0id;
 
-        var user = authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
+        var user =  await authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
         
-        var dto = new RefreshResponse(user.Id, expiresIn, idToken,accessToken,refreshToken);
+        var dto = new RefreshResponse(user.ID, expiresIn, idToken,accessToken,refreshToken);
         return Result<RefreshResponse>.Success(dto, "Refresh successful");
     }
 
