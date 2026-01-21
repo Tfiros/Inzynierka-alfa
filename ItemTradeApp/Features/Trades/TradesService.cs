@@ -18,7 +18,7 @@ public interface ITradesService
 
     Task<Result<string>> SetTradeAsFailedAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
-    Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CompleteTradeAndMarkTradeRequest request, CancellationToken ct);
+    Task<Result<string>> SetTradeAsRealisedAsync(int tradeId, string? auth0UserId, CompleteAndMarkTradeRequest request, CancellationToken ct);
 
     Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
@@ -48,11 +48,11 @@ public sealed class TradesService(
     {
         if (isMiddleman)
         {
-            var ures = await TryGetMiddleman(auth0UserId, ct);
-            if (ures.Error is not null)
-                return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
+            var user = await TryGetMiddleman(auth0UserId, ct);
+            if (user.Error is not null)
+                return Result<UserTradeStatsResponse>.Unauthorized(user.Error);
 
-            var middleman = ures.User!;
+            var middleman = user.User!;
             var (all, completed, myActive, available) =
                 await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
 
@@ -67,11 +67,11 @@ public sealed class TradesService(
         }
         else
         {
-            var ures = await TryGetUser(auth0UserId, ct);
-            if (ures.Error is not null)
-                return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
+            var getUser = await TryGetUser(auth0UserId, ct);
+            if (getUser.Error is not null)
+                return Result<UserTradeStatsResponse>.Unauthorized(getUser.Error);
 
-            var user = ures.User!;
+            var user = getUser.User!;
             var (all, completed, myActive, created) =
                 await tradeRepo.GetUserStatsAsync(user.ID, ct);
 
@@ -89,11 +89,11 @@ public sealed class TradesService(
 
     public async Task<Result<UserTradeStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct)
     {
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<UserTradeStatsResponse>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<UserTradeStatsResponse>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var (all, completed, myActive, available) =
             await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
@@ -115,11 +115,11 @@ public sealed class TradesService(
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var ures = await TryGetUser(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+        var tryGetUser = await TryGetUser(auth0UserId, ct);
+        if (tryGetUser.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetUser.Error);
 
-        var user = ures.User!;
+        var user = tryGetUser.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.New);
         if (invalid is not null) return invalid;
@@ -147,11 +147,11 @@ public sealed class TradesService(
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.InRealization);
         if (invalid is not null) return invalid;
@@ -178,11 +178,11 @@ public sealed class TradesService(
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.SuccesfulRealization);
         if (invalid is not null) return invalid;
@@ -209,11 +209,11 @@ public sealed class TradesService(
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.Failed);
         if (invalid is not null) return invalid;
@@ -239,11 +239,11 @@ public sealed class TradesService(
         if (tradeId <= 0)
             return Result<TradeDetailsResponse>.BadRequest("tradeId must be > 0.");
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<TradeDetailsResponse>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<TradeDetailsResponse>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeDetailsAsync(tradeId, ct);
         if (trade is null)
@@ -284,11 +284,11 @@ public sealed class TradesService(
         if (request is null)
             return Result<int>.BadRequest("Body is required.");
 
-        var ures = await TryGetUser(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<int>.Unauthorized(ures.Error);
+        var tryGetUser = await TryGetUser(auth0UserId, ct);
+        if (tryGetUser.Error is not null)
+            return Result<int>.Unauthorized(tryGetUser.Error);
 
-        var caller = ures.User!;
+        var caller = tryGetUser.User!;
 
         var offer = await offerRepo.GetByIdAsync(request.OfferId, ct);
         if (offer is null)
@@ -397,11 +397,11 @@ public sealed class TradesService(
         if (request.TradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<string>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetByIdAsync(request.TradeId, ct);
         if (trade is null)
@@ -429,11 +429,11 @@ public sealed class TradesService(
         if (request is null)
             return Result<string>.BadRequest("Body is required.");
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<string>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetByIdWithUrlsAsync(tradeId, ct);
         if (trade is null)
@@ -469,11 +469,11 @@ public sealed class TradesService(
         if (tradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<string>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferByIdAsync(tradeId, ct);
         if (trade is null)
@@ -495,17 +495,17 @@ public sealed class TradesService(
 
     public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId,
         string? auth0UserId,
-        CompleteTradeAndMarkTradeRequest request,
+        CompleteAndMarkTradeRequest request,
         CancellationToken ct)
     {
         if (tradeId <= 0)
             return Result<string>.BadRequest("TradeId must be > 0.");
 
-        var ures = await TryGetMiddleman(auth0UserId, ct);
-        if (ures.Error is not null)
-            return Result<string>.Unauthorized(ures.Error);
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = ures.User!;
+        var middleman = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferByIdAsync(tradeId, ct);
         if (trade is null)

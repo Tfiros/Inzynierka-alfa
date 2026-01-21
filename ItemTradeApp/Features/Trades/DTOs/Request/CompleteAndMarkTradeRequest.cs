@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.Trades.DTOs.Request;
 
-public sealed record CompleteTradeAndMarkTradeRequest(
+public sealed record CompleteAndMarkTradeRequest(
     int BuyersID,
     int BuyersGrade,
     String BuyersDescription,
