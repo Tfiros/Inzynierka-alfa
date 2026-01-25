@@ -68,7 +68,7 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("counter_offer");
 
-            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CreationDate).HasColumnType("timestamptz");
 
             entity.HasOne(d => d.Offer).WithMany(p => p.CounterOffers)
                 .HasForeignKey(d => d.Offer_Id)
@@ -188,7 +188,7 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("offer");
             
-            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CreationDate).HasColumnType("timestamptz");
 
             entity.HasOne(d => d.OfferStatus).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.OfferStatus_ID)
@@ -228,8 +228,8 @@ public partial class AppDbContext : DbContext
             entity.ToTable("trade");
 
             entity.Property(e => e.BuyerFeedback).HasMaxLength(200);
-            entity.Property(e => e.CompletitionDate).HasColumnType("timestamp without time zone");
-            entity.Property(e => e.CreationDate).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CompletitionDate).HasColumnType("timestamptz");
+            entity.Property(e => e.CreationDate).HasColumnType("timestamptz");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.CustomerTrades)
                 .HasForeignKey(d => d.Customer_ID)
