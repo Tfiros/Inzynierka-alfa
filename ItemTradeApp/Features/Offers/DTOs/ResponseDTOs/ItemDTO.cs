@@ -1,3 +1,3 @@
 namespace ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 
-public record ItemDTO(int Id, string Name, string Photo_URL, int EstimatedTokenValue, GameDTO game);
+public record ItemDTO(int Id, string Name, string PhotoUrl, int EstimatedTokenValue, GameDTO Game);
