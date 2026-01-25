@@ -34,12 +34,10 @@ public static class OfferQueryExtentions
                 .Select(li =>
                     new OfferListingItemDTO
                     (
-                        li.Item.ID,
-                        li.Item.Name,
-                        li.Item.Game.ID,
-                        li.Item.Photo_URL,
+                        new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
+                            new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                        ),
                         li.Quantity,
-                        li.Item.Game.Name,
                         li.Item.Game.Genre.ID,
                         li.Item.Game.Genre.Name,
                         li.Item.ItemRarity.ID,
@@ -49,12 +47,10 @@ public static class OfferQueryExtentions
                 .Select(li =>
                     new OfferListingItemDTO
                     (
-                        li.Item.ID,
-                        li.Item.Name,
-                        li.Item.Game.ID,
-                        li.Item.Photo_URL,
+                        new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
+                        new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                        ),
                         li.Quantity,
-                        li.Item.Game.Name,
                         li.Item.Game.Genre.ID,
                         li.Item.Game.Genre.Name,
                         li.Item.ItemRarity.ID,
@@ -80,12 +76,27 @@ public static class OfferQueryExtentions
             new OfferUserDTO(o.Offer.User.ID, o.Offer.User.ProfileInfo!.Nickname, o.Offer.User.ProfileInfo.ImageUrl,
                 o.SuccesfulTrades, (float)o.Rating,
                 o.CompletedTrades == 0 ? 0f : (float)o.SuccesfulTrades / o.CompletedTrades),
-            o.Offer.ListingItems.Where(li => !li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID,
-                li.Item.Name,
-                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name, li.Item.ItemRarity.ID, li.Item.ItemRarity.RarityName)).ToList(),
-            o.Offer.ListingItems.Where(li => li.IsWanted).Select(li => new OfferListingItemDTO(li.Item.ID, li.Item.Name,
-                li.Item.Game.ID, li.Item.Photo_URL, li.Quantity, li.Item.Game.Name, li.Item.Game.Genre.ID,
-                li.Item.Game.Genre.Name, li.Item.ItemRarity.ID, li.Item.ItemRarity.RarityName)).ToList()
+            o.Offer.ListingItems.Where(li => !li.IsWanted).Select(li =>      new OfferListingItemDTO
+            (
+                new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
+                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                ),
+                li.Quantity,
+                li.Item.Game.Genre.ID,
+                li.Item.Game.Genre.Name,
+                li.Item.ItemRarity.ID,
+                li.Item.ItemRarity.RarityName
+            )).ToList(),
+            o.Offer.ListingItems.Where(li => li.IsWanted).Select(li =>      new OfferListingItemDTO
+            (
+                new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
+                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                ),
+                li.Quantity,
+                li.Item.Game.Genre.ID,
+                li.Item.Game.Genre.Name,
+                li.Item.ItemRarity.ID,
+                li.Item.ItemRarity.RarityName
+            )).ToList()
         ));
 }
