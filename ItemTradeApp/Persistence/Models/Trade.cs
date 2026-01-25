@@ -14,10 +14,6 @@ public partial class Trade
     public DateTime CreationDate { get; set; }
     [Column("completition_date")]
     public DateTime? CompletitionDate { get; set; }
-    [Column("buyer_feedback")]
-    public string? BuyerFeedback { get; set; }
-    [Column("buyer_positivity")]
-    public int? BuyerPositivity { get; set; }
     [Column("trade_status_id")]
     public int TradeStatus_ID { get; set; }
     [Column("offer_id")]
@@ -28,7 +24,11 @@ public partial class Trade
     public int? MiddlemanUser_ID { get; set; }
     [Column("user_id")]
     public int User_ID { get; set; }
+    [Column("has_buyers_items")]
+    public bool HasBuyersItems { get; set; } = false;
 
+    [Column("has_sellers_items")]
+    public bool HasSellersItems { get; set; } = false;
     public virtual User Customer { get; set; } = null!;
 
     public virtual User? MiddlemanUser { get; set; } = null!;
@@ -39,5 +39,6 @@ public partial class Trade
     // offer posting user
     public virtual User PostingUser { get; set; } = null!;
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
+    public virtual List<TradeUrl> Urls { get; set; } = new();
 
 }

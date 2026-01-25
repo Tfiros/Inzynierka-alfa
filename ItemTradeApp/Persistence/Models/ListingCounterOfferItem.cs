@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
-[Table("listing_counter_offer_item")]
+[Table("listing_counter_offer_items")]
 public partial class ListingCounterOfferItem
 {
     [Column("id")]

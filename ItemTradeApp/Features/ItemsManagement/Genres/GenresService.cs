@@ -23,9 +23,12 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         var name = (req.Name ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(name))
             return Result<GenreDTO>.BadRequest("Name is required.");
-
-        if (await repo.ExistsActiveByNameAsync(name, ct))
-            return Result<GenreDTO>.Conflict("A genre with the same name already exists.");
+        
+        var genreOfName = await repo.GetByNameAsync(name, ct);
+        if (genreOfName is not null && !genreOfName.IsDeleted)
+        {
+            return Result<GenreDTO>.Conflict("There is already a game with this name.");
+        }
 
         var entity = new Genre
         {
@@ -49,8 +52,11 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         if (string.IsNullOrWhiteSpace(name))
             return Result<GenreDTO>.BadRequest("Genre name is required.");
 
-        if (await repo.ExistsActiveByNameAsync(name, ct))
-            return Result<GenreDTO>.Conflict("A genre with the same name already exists.");
+        var genreOfName = await repo.GetByNameAsync(name, ct);
+        if (genreOfName is not null && !genreOfName.IsDeleted)
+        {
+            return Result<GenreDTO>.Conflict("There is already a game with this name.");
+        }
 
         entity.Name = name;
         await repo.SaveChangesAsync(ct);

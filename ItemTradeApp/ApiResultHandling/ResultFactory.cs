@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.ApiResultHandling;
 
-public class ResultFactory
+internal class ResultFactory
 {
-    public static ActionResult<Result<T>> Create<T>(
+    internal static ActionResult<Result<T>> Create<T>(
         bool isSuccess,
         ResultStatus status,
         T? data,
@@ -29,7 +29,7 @@ public class ResultFactory
             ResultStatus.NotFound => new NotFoundObjectResult(result),
 
             ResultStatus.Conflict => new ConflictObjectResult(result),
-            
+            ResultStatus.Forbidden => new ForbidResult(),
             ResultStatus.Created => new ObjectResult(result)
             {
                 StatusCode = (int)HttpStatusCode.Created

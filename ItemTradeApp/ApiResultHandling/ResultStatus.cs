@@ -11,5 +11,6 @@ public enum ResultStatus
     NoContent = HttpStatusCode.NoContent,
     Conflict = HttpStatusCode.Conflict,
     Created = HttpStatusCode.Created,
+    Forbidden = HttpStatusCode.Forbidden,
     InternalServerError = HttpStatusCode.InternalServerError,
 }

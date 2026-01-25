@@ -5,6 +5,7 @@ using ItemTradeApp;
 using ItemTradeApp.Features.EmaillsNotifications;
 using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
+using ItemTradeApp.Features.Trades;
 using ItemTradeApp.Features.Users;
 using ItemTradeApp.Middlewares;
 using ItemTradeApp.Middlewares.Requirements;
@@ -110,7 +111,7 @@ builder.Services.AddCors(opts =>
 builder.Services.AddHttpClient();
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
-
+builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();

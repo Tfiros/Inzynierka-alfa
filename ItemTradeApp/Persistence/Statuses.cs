@@ -19,9 +19,7 @@ public enum CounterOfferStatuses
 public enum TradeStatuses
 {
     New = 1,
-    AwaitingSellerDeposit = 2,
-    AwaitingBuyerDeposit = 3,
-    InRealization = 4,
-    SuccesfulRealization = 5,
-    Failed = 6
+    InRealization = 2,
+    SuccesfulRealization = 3,
+    Failed = 4
 }

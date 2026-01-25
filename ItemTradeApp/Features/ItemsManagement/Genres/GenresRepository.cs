@@ -9,11 +9,10 @@ public interface IGenresRepository
 {
     Task<Genre?> GetByIdAsync(int id, CancellationToken ct);
     Task<Genre?> GetByIdWithNoTrackAsync(int id, CancellationToken ct);
-    Task<bool> ExistsActiveByNameAsync(string name, CancellationToken ct);
+    Task<Genre?> GetByNameAsync(string name, CancellationToken ct);
     Task AddAsync(Genre genre, CancellationToken ct);
     Task<List<Genre>> GetGenresForDropdownAsync(string? searchText, CancellationToken ct);
     Task<(List<Genre> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct);
-    Task<bool> ExistsByNameAsync(string name, CancellationToken ct);
     Task SoftDeleteCascadeAsync(int genreId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
@@ -34,16 +33,13 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
             .Take(Consts.DROPDOWN_LIMIT)
             .ToListAsync(ct);
     }
-
-    public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-        => await db.Genres.AnyAsync(x => x.Name == name, ct);
-
+    
     public async Task<Genre?> GetByIdWithNoTrackAsync(int id, CancellationToken ct) =>
         await db.Genres.AsNoTracking().FirstOrDefaultAsync(g => g.ID == id, ct);
     public async Task<Genre?> GetByIdAsync(int id, CancellationToken ct)
         => await db.Genres.FirstOrDefaultAsync(x => x.ID == id, ct);
-    public async Task<bool> ExistsActiveByNameAsync(string name, CancellationToken ct)
-        => await db.Genres.AnyAsync(x => x.Name == name && !x.IsDeleted, ct);
+    public async Task<Genre?> GetByNameAsync(string name, CancellationToken ct)
+        => await db.Genres.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name && !x.IsDeleted, ct);
     public async Task AddAsync(Genre genre, CancellationToken ct)
         => await db.Genres.AddAsync(genre, ct).AsTask();
     public async Task<(List<Genre> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchText, CancellationToken ct)
