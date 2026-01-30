@@ -1,5 +1,3 @@
-using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
-
 namespace ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 
 public sealed record OfferListingDTO(
