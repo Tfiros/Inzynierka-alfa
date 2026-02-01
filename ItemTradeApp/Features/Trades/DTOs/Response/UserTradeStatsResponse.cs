@@ -1,7 +1,7 @@
 ﻿namespace ItemTradeApp.Features.Trades.DTOs.Response;
 
-public record MiddlemanTradesStatsResponse(  
+public record UserTradeStatsResponse(  
     int All,
     int Completed,
     int MyActive,
-    int Available);
+    int Created);

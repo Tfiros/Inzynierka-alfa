@@ -40,6 +40,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<EmailOutbox> Emails { get; set; }
+    public virtual DbSet<Rate> Rates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -272,7 +273,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => new { e.UserId, e.TradeId })
                 .HasName("PK_Rate");
 
-            entity.ToTable("Rate");
+            entity.ToTable("rate");
 
             entity.Property(e => e.Mark)
                 .HasColumnType("decimal(3,1)");
