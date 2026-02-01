@@ -16,12 +16,46 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllers();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("limiterGlobal", ctx =>
+    {
+        var path = ctx.Request.Path.Value ?? "";
+        var isAuth = path.StartsWith("/api/Auth", StringComparison.OrdinalIgnoreCase);
+        
+        var type = isAuth ? "auth" : "api";
+
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var key = $"{type}:ip:{ip}";
+
+        //It might need to be adjusted later
+        var permitLimit = isAuth ? 20 : 30;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: key,
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+});
+
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -66,7 +100,7 @@ builder.Services
                 var path = ctx.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/notifications"))
+                    path.StartsWithSegments("/api/hubs/notifications"))
                 {
                     ctx.Token = accessToken;
                     return Task.CompletedTask;
@@ -125,6 +159,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("AppCors");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.Use(async (ctx, next) =>
 {
@@ -160,6 +195,12 @@ app.Use(async (ctx, next) =>
 
     await next();
 });
-app.MapGroup("/api").MapControllers();
-app.MapHub<NotificationsHub>("/api/hubs/notifications");
+
+app.MapGroup("/api")
+    .MapControllers()
+    .RequireRateLimiting("limiterGlobal");
+
+app.MapHub<NotificationsHub>("/api/hubs/notifications")
+    .RequireRateLimiting("limiterGlobal");
+
 app.Run();
