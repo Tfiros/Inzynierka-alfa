@@ -228,7 +228,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("trade");
 
-            entity.Property(e => e.BuyerFeedback).HasMaxLength(200);
             entity.Property(e => e.CompletitionDate).HasColumnType("timestamptz");
             entity.Property(e => e.CreationDate).HasColumnType("timestamptz");
 
