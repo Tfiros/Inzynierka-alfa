@@ -83,7 +83,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         return res.ToActionResult();
     }
 
-    [HttpGet("failed-with-items-to-return")]
+    [HttpGet("failed-with-return")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyFailedWithItemsToReturn(
         [FromQuery] int page = 1,
