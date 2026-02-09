@@ -115,10 +115,14 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
         var gameId = query.GameId;
         var genreId = query.GenreId;
+        var rarityId = query.RarityId;
 
-        if (gameId.HasValue || genreId.HasValue)
+        if (gameId.HasValue || genreId.HasValue || rarityId.HasValue)
         {
-            offers = offers.Where(o => o.ListingItems.Any(li => (!gameId.HasValue|| li.Item.Game_ID==gameId.Value) && (!genreId.HasValue || li.Item.Game.Genre_ID==genreId.Value)));
+            offers = offers.Where(o => o.ListingItems.Any(li =>
+                (!gameId.HasValue || li.Item.Game_ID == gameId.Value) &&
+                (!genreId.HasValue || li.Item.Game.Genre_ID == genreId.Value) &&
+                (!rarityId.HasValue || li.Item.ItemRarityId == rarityId.Value)));
         }
 
         return offers;
