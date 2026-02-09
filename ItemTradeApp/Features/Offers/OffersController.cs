@@ -107,6 +107,20 @@ public class OffersController(IOffersService offerService) : ControllerBase
         var result = await offerService.GetAllGames(ct);
         return result.ToActionResult();
     }
+
+    [HttpGet("genres")]
+    public async Task<ActionResult<Result<List<GenreDTO>>>> Genres(CancellationToken ct = default)
+    {
+        var result = await offerService.GetAllGenres(ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("rarities")]
+    public async Task<ActionResult<Result<List<RarityDTO>>>> Rarities([FromQuery] int gameId, CancellationToken ct = default)
+    {
+        var result = await offerService.GetRaritiesByGameId(gameId, ct);
+        return result.ToActionResult();
+    }
     
     [HttpPost("{offerId:int}/quote")]
     [Authorize]

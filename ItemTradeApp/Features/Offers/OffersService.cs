@@ -31,6 +31,8 @@ public interface IOffersService
     Task<Result<List<ItemDTO>>> GetItemsByName(string searchText, CancellationToken ct = default);
     Task<Result<List<ItemDTO>>> GetItemsByNameAndGameId(string searchText, int gameId, CancellationToken ct = default);
     Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default);
+    Task<Result<List<GenreDTO>>> GetAllGenres(CancellationToken ct = default);
+    Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default);
     Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
         OfferUpdateDraftRequest request, CancellationToken ct = default);
 }
@@ -40,6 +42,8 @@ public class OffersService(
     IUsersRepository userRepository,
     IItemsRepository itemRepository,
     IGamesRepository gamesRepository,
+    IGenresRepository genresRepository,
+    IRaritiesRepository raritiesRepository,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -57,7 +61,11 @@ public class OffersService(
         {
             return Result<PagedResponse<OfferListingDTO>>.BadRequest("incorrect_genre_id");
         }
-        
+        if (query.RarityId is not null && query.RarityId <= 0)
+        {
+            return Result<PagedResponse<OfferListingDTO>>.BadRequest("incorrect_rarity_id");
+        }
+
         var (items, totalCount) = await offersRepository.GetOffersPagedAsync(query, ct);
 
         var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
@@ -297,6 +305,30 @@ public class OffersService(
             g.Photo_URL
         )).ToList();
         return Result<List<GameDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<GenreDTO>>> GetAllGenres(CancellationToken ct = default)
+    {
+        var genres = await genresRepository.GetAll(ct);
+        var response = genres.Select(g => new GenreDTO(
+            g.ID,
+            g.Name
+        )).ToList();
+        return Result<List<GenreDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default)
+    {
+        if (gameId <= 0)
+        {
+            return Result<List<RarityDTO>>.BadRequest("invalid_game_id");
+        }
+        var rarities = await raritiesRepository.GetByGameId(gameId, ct);
+        var response = rarities.Select(r => new RarityDTO(
+            r.ID,
+            r.RarityName
+        )).ToList();
+        return Result<List<RarityDTO>>.Success(response);
     }
 
     public async Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
