@@ -35,7 +35,7 @@ public static class OfferQueryExtentions
                     new OfferListingItemDTO
                     (
                         new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
-                            new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                            new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)
                         ),
                         li.Quantity,
                         li.Item.Game.Genre.ID,
@@ -48,7 +48,7 @@ public static class OfferQueryExtentions
                     new OfferListingItemDTO
                     (
                         new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
-                        new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                        new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)
                         ),
                         li.Quantity,
                         li.Item.Game.Genre.ID,
@@ -79,7 +79,7 @@ public static class OfferQueryExtentions
             o.Offer.ListingItems.Where(li => !li.IsWanted).Select(li =>      new OfferListingItemDTO
             (
                 new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
-                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)
                 ),
                 li.Quantity,
                 li.Item.Game.Genre.ID,
@@ -90,7 +90,7 @@ public static class OfferQueryExtentions
             o.Offer.ListingItems.Where(li => li.IsWanted).Select(li =>      new OfferListingItemDTO
             (
                 new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
-                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL)
+                    new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)
                 ),
                 li.Quantity,
                 li.Item.Game.Genre.ID,

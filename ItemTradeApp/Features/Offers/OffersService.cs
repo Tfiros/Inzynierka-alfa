@@ -266,7 +266,7 @@ public class OffersService(
             i.Name,
             i.Photo_URL,
             i.EstimatedTokenValue,
-            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL)
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL,i.Game.Genre_ID)
             )).ToList();
         return Result<List<ItemDTO>>.Success(response);
     }
@@ -290,7 +290,7 @@ public class OffersService(
             i.Name,
             i.Photo_URL,
             i.EstimatedTokenValue,
-            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL)
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL,i.Game.Genre_ID)
             )).ToList();
         return Result<List<ItemDTO>>.Success(response);
 
@@ -302,7 +302,8 @@ public class OffersService(
         var response = games.Select(g => new GameDTO(
             g.ID,
             g.Name,
-            g.Photo_URL
+            g.Photo_URL,
+            g.Genre_ID
         )).ToList();
         return Result<List<GameDTO>>.Success(response);
     }
