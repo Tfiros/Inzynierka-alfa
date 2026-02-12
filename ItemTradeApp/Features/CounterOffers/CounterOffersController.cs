@@ -1,5 +1,4 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
-using ItemTradeApp.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -53,4 +52,24 @@ public class CounterOffersController (ICounterOffersService counterOffersService
 
         return Ok(result);
     }
+    [HttpPost("{offerId:int}/counter")]
+    [Authorize]
+    public async Task<IActionResult> CreateCounterOffer(
+        [FromRoute] int offerId,
+        [FromBody] CounterOfferDraftRequest request,
+        CancellationToken ct)
+    {
+        var auth0UserId = User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Unauthorized();
+
+        var result = await counterOffersService.CreateCounterOfferAsync(auth0UserId, offerId, request, ct);
+        
+        if (!result.IsSuccess)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
 }

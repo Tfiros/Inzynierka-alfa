@@ -1,17 +1,24 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
+using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.CounterOffers;
 
 public interface ICounterOffersService
 {
-    Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId, CancellationToken ct = default);
+    Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId, CancellationToken ct );
 
-    Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetSentCounterOffers(int userId, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetSentCounterOffers(int userId, CancellationToken ct );
 
-    Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetRecivedCounterOffers(int userId, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetRecivedCounterOffers(int userId, CancellationToken ct );
+
+    Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
+        string auth0UserId,
+        int offerId,
+        CounterOfferDraftRequest request,
+        CancellationToken ct);
 }
 
 
@@ -277,4 +284,120 @@ public class CounterOffersService : ICounterOffersService
 
         return Result<IReadOnlyList<CounterOfferListItemDto>>.Success(dtos);
     }
+
+public async Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
+    string auth0UserId,
+    int offerId,
+    CounterOfferDraftRequest request,
+    CancellationToken ct = default)
+{
+    ValidateCreateRequest(auth0UserId, offerId, request);
+    
+    var user = await db.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
+
+    if (user is null)
+        return Result<CounterOfferDto>.Unauthorized("user_not_found");
+
+    if (user.IsDeleted)
+        return Result<CounterOfferDto>.Unauthorized("user_deleted");
+    
+    var offer = await db.Offers
+        .AsNoTracking()
+        .FirstOrDefaultAsync(o => o.ID == offerId, ct);
+
+    ValidateOffer(offer, user);
+    
+    var ids = request.Items.Select(x => x.ItemId).Distinct().ToArray();
+
+    var existingItemIds = await db.Items
+        .AsNoTracking()
+        .Where(i => ids.Contains(i.ID))
+        .Select(i => i.ID)
+        .ToListAsync(ct);
+
+    var missing = ids.Except(existingItemIds).ToArray();
+    if (missing.Length > 0)
+        return Result<CounterOfferDto>.BadRequest($"items_not_found: {string.Join(",", missing)}");
+
+    try
+    {
+        var counterOffer = new CounterOffer
+        {
+            User_ID = user.ID,
+            Offer_Id = offerId,
+            CreationDate = DateTime.UtcNow,
+            TokensOffered = request.TokensOffered,
+            CounterOfferStatus_Id = 1, 
+            ListingCounterOfferItems = request.Items
+                .Select(x => new ListingCounterOfferItem
+                {
+                    Item_ID = x.ItemId,
+                    Quantity = x.Quantity
+                })
+                .ToList()
+        };
+
+        db.CounterOffers.Add(counterOffer);
+        await db.SaveChangesAsync(ct);
+        
+        var dto = new CounterOfferDto
+        {
+            Id = counterOffer.ID,
+            OfferId = counterOffer.Offer_Id,
+            UserId = counterOffer.User_ID,
+            CreationDate = counterOffer.CreationDate,
+            CounterOfferStatusId = counterOffer.CounterOfferStatus_Id,
+            TokensOffered = counterOffer.TokensOffered,
+            Items = counterOffer.ListingCounterOfferItems
+                .Select(i => new CounterOfferItemDto(i.Item_ID, i.Quantity))
+                .ToList()
+        };
+
+        return Result<CounterOfferDto>.Created(dto);
+    }
+    catch
+    {
+        return Result<CounterOfferDto>.InternalServerError("create_counter_offer_failed");
+    }
+}
+private static Result<CounterOfferDto>? ValidateCreateRequest(
+    string auth0UserId,
+    int offerId,
+    CounterOfferDraftRequest request)
+{
+    if (string.IsNullOrWhiteSpace(auth0UserId))
+        return Result<CounterOfferDto>.Unauthorized("missing_sub_claim");
+    if (offerId <= 0)
+        return Result<CounterOfferDto>.BadRequest("invalid_offer_id");
+    if (request.Items is null || request.Items.Count == 0)
+        return Result<CounterOfferDto>.BadRequest("items_required");
+    if (request.Items.Any(x => x.ItemId <= 0))
+        return Result<CounterOfferDto>.BadRequest("invalid_item_id");
+    if (request.Items.Any(x => x.Quantity <= 0))
+        return Result<CounterOfferDto>.BadRequest("invalid_quantity");
+    if (request.TokensOffered < 0)
+        return Result<CounterOfferDto>.BadRequest("invalid_tokens_offered");
+
+    return null;
+}
+
+private static Result<CounterOfferDto>? ValidateOffer(
+    Offer offer, User user)
+{
+    if (offer is null)
+        return Result<CounterOfferDto>.NotFound("offer_not_found");
+
+    if (offer.User_ID == user.ID)
+        return Result<CounterOfferDto>.BadRequest("cannot_counter_own_offer");
+
+    if (offer.OfferStatus_ID != 1)
+        return Result<CounterOfferDto>.BadRequest("offer_not_active");
+
+    if (offer.ExpDate < DateOnly.FromDateTime(DateTime.UtcNow))
+        return Result<CounterOfferDto>.BadRequest("offer_expired");
+
+    return null;
+}
 }
