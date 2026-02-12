@@ -1,20 +1,16 @@
-using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Features.CounterOffers.DTOs;
 
-namespace ItemTradeApp.Features.CounterOffers.DTOs;
 
 public sealed record CounterOfferDto
 {
-    public int ID { get; set; }
+    public int Id { get; init; }
+    public int OfferId { get; init; }
+    public int UserId { get; init; }
+    public DateTime CreationDate { get; init; }
+    public int CounterOfferStatusId { get; init; }
+    public int TokensOffered { get; init; }
 
-    public int ParentOffer_ID { get; set; }
-    public Offer ParentOffer { get; set; } = null!;
-
-    public int User_ID { get; set; }
-    public User User { get; set; } = null!;
-
-    public DateTime CreationDate { get; set; }
-
-    public int CounterOfferStatus_ID { get; set; }
-
-    public ICollection<CounterOfferItems> Items { get; set; } = new List<CounterOfferItems>();
+    public IReadOnlyCollection<CounterOfferItemDto> Items { get; init; } = Array.Empty<CounterOfferItemDto>();
 }
+
+

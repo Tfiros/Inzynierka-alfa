@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.CounterOffers.DTOs;
 
-public class CounterOfferItemDTO
-{
-    
-}
+public sealed record CounterOfferItemDto(
+    int ItemId,
+    int Quantity
+);
