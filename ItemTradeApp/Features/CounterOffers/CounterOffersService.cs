@@ -1,5 +1,6 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ namespace ItemTradeApp.Features.CounterOffers;
 
 public interface ICounterOffersService
 {
-    Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId, CancellationToken ct );
+    //Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId, CancellationToken ct );
 
     Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetSentCounterOffers(int userId, CancellationToken ct );
 
@@ -31,7 +32,7 @@ public class CounterOffersService : ICounterOffersService
         this.db = db ?? throw new ArgumentNullException(nameof(db));
     }
 
-    public async Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId,
+    /*public async Task<Result<OfferInformationDTO>> GetOfferInfo(int offerId, string currentUserId,
         CancellationToken ct = default)
     {
         var offer = await db.Offers
@@ -70,7 +71,9 @@ public class CounterOffersService : ICounterOffersService
                 li.Quantity,
                 li.Item.Game.Name,
                 li.Item.Game.Genre_ID,
-                li.Item.Game.Genre.Name
+                li.Item.Game.Genre.Name,
+                li.Item.ItemRarityId,
+                li.Item.ItemRarity.RarityName,
             ))
             .ToListAsync(ct);
 
@@ -89,7 +92,7 @@ public class CounterOffersService : ICounterOffersService
 
         return Result<OfferInformationDTO>.Success(dto);
     }
-
+*/
     //To test might be needed to be changed
     public async Task<Result<IReadOnlyList<CounterOfferListItemDto>>> GetSentCounterOffers(
         int userId,

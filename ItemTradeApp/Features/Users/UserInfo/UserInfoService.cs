@@ -46,6 +46,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
 
 
         var level  = UserLevelCalculator.CalculateLevel(user.Experience);
+        var stats = await userInfoRepository.GetUserStatsByUserIdAsync(userId, ct);
+        if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
+        var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
+            
+        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -53,7 +58,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             level,
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
-            user.ProfileInfo.Description
+            user.ProfileInfo.Description,
+            activeOffersCount,
+            successTradeCount,
+            rating,
+            successRate
         );
 
         return Result<UserProfileInfoResponse>.Success(dto);
@@ -75,6 +84,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
         
         await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
         var level = UserLevelCalculator.CalculateLevel(user.Experience);
+        var stats = await userInfoRepository.GetUserStatsByUserIdAsync(user.ID, ct);
+        if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
+        var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
+            
+        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -82,7 +96,11 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             level,
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
-            user.ProfileInfo.Description
+            user.ProfileInfo.Description,
+            activeOffersCount,
+            successTradeCount,
+            rating,
+            successRate
         );
 
         return Result<UserProfileInfoResponse>.Success(dto);

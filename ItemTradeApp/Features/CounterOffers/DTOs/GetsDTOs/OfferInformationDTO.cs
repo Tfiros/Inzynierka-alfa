@@ -1,4 +1,5 @@
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 
 namespace ItemTradeApp.Features.CounterOffers.DTOs;
 

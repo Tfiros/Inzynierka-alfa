@@ -24,6 +24,13 @@ public partial class Offer
     public string description { get; set; }
 
 
+    [Column("title")] 
+    public string Title { get; set; } = null!;
+    [Column("description")] 
+    public string Description { get; set; } = null!;
+    [Column("is_highlighted")]
+    public bool IsHighlighted { get; set; }
+
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
     public virtual ICollection<ListingItems> ListingItems { get; set; } = new List<ListingItems>();

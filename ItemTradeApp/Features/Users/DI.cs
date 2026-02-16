@@ -15,6 +15,8 @@ public static class DI
         serviceCollection.AddScoped<IAuthRepository, AuthRepository>();
         serviceCollection.AddScoped<IUserInfoService, UserInfoService>();
         serviceCollection.AddScoped<IUserInfoRepository,UserInfoRepository>();
+        serviceCollection.AddScoped<IUserInfoOfferService,UserInfoOfferService>();
+        serviceCollection.AddScoped<IUserInfoOfferRepository,UserInfoOfferRepository>();
         serviceCollection.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         serviceCollection.AddScoped<IUserSettingsService, UserSettingsService>();
         serviceCollection.AddScoped<IAuthZeroManagementClient, AuthZeroAPIManagement>();

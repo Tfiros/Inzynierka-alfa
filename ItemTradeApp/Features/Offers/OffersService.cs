@@ -2,7 +2,9 @@ using ItemTradeApp.Features.Offers.DTOs;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Offers.Internal;
+using ItemTradeApp.Features.Offers.Repositories;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
@@ -23,13 +25,26 @@ public interface IOffersService
 
     Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
 
-    Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId, OfferDraftRequest request,
+    Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId, OfferUpdateDraftRequest request,
         CancellationToken ct = default);
+
+    Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetItemsByName(string searchText, CancellationToken ct = default);
+    Task<Result<List<ItemDTO>>> GetItemsByNameAndGameId(string searchText, int gameId, CancellationToken ct = default);
+    Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default);
+    Task<Result<List<GenreDTO>>> GetAllGenres(CancellationToken ct = default);
+    Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default);
+    Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
+        OfferUpdateDraftRequest request, CancellationToken ct = default);
 }
 
 public class OffersService(
     IOffersRepository offersRepository,
     IUsersRepository userRepository,
+    IItemsRepository itemRepository,
+    IGamesRepository gamesRepository,
+    IGenresRepository genresRepository,
+    IRaritiesRepository raritiesRepository,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -47,7 +62,11 @@ public class OffersService(
         {
             return Result<PagedResponse<OfferListingDTO>>.BadRequest("incorrect_genre_id");
         }
-        
+        if (query.RarityId is not null && query.RarityId <= 0)
+        {
+            return Result<PagedResponse<OfferListingDTO>>.BadRequest("incorrect_rarity_id");
+        }
+
         var (items, totalCount) = await offersRepository.GetOffersPagedAsync(query, ct);
 
         var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
@@ -81,7 +100,7 @@ public class OffersService(
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
 
     
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.ExpDate, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.Title, offerDraftRequest.Description,offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.DurationDays, offerDraftRequest.IsHighlighted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
         if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
@@ -105,11 +124,14 @@ public class OffersService(
 
             var offer = new Offer
             {
+                Title = draft.Title,
+                Description = draft.Description,
                 CreationDate = DateTime.UtcNow,
                 ExpDate = draft.ExpDate,
                 TokenCost = draft.TokenCost,
                 User_ID = userState.Id,
                 OfferStatus_ID = (int)OfferStatuses.Active,
+                IsHighlighted = draft.IsHighlighted,
                 ListingItems = draft.Offered.Select(kv => new ListingItems
                 {
                     Item_ID = kv.Key,
@@ -140,25 +162,26 @@ public class OffersService(
     }
 
     public async Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId,
-        OfferDraftRequest request,
+        OfferUpdateDraftRequest request,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
         if (offerId <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
-        
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(request.OfferedItems, request.WantedItems, request.ExpDate, ct);
-        if (!okDraft)
-            return Result<OfferDetailsDTO>.BadRequest(errDraft);
-        if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
-
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
         if (!okUser) return Result<OfferDetailsDTO>.Unauthorized(errUser!);
-        
         var offer = await offersRepository.GetTrackedOfferAsync(offerId, userState!.Id,ct);
         if (offer is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferDetailsDTO>.BadRequest("offer_not_active");
+        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, ct);
+        if (!okDraft)
+            return Result<OfferDetailsDTO>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
+
+        
+        
+        
         
         var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
         if (userState.Tokens < updateFeeTokens) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
@@ -174,9 +197,11 @@ public class OffersService(
             }
             
             ApplyListingItemsUpdate(offer, draft.Offered, draft.Wanted);
-    
+            offer.Title = draft.Title;
+            offer.Description = draft.Description;
             offer.ExpDate = draft.ExpDate;
             offer.TokenCost = draft.TokenCost;
+            offer.IsHighlighted = draft.IsHighlighted;
             
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -219,6 +244,119 @@ public class OffersService(
         return Result<string>.Success("offer_cancelled");
     }
 
+    public async Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default)
+    {
+        var (okDraft, errDraft, draft) =
+            await BuildDraftAsync(req.Title,req.Description,req.OfferedItems, req.WantedItems, req.DurationDays, req.IsHighlighted, ct);
+        if (!okDraft) return Result<OfferQuoteResponse>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferQuoteResponse>.BadRequest("draft_creation_failed");
+
+        return Result<OfferQuoteResponse>.Success(new OfferQuoteResponse(draft.TokenCost));
+    }
+    public async Task<Result<List<ItemDTO>>> GetItemsByName(string searchText, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Result<List<ItemDTO>>.Success(new List<ItemDTO>());
+        }
+        
+
+        var items = await itemRepository.GetByName(searchText,ct);
+        var response = items.Select(i => new ItemDTO(
+            i.ID,
+            i.Name,
+            i.Photo_URL,
+            i.EstimatedTokenValue,
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL,i.Game.Genre_ID)
+            )).ToList();
+        return Result<List<ItemDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<ItemDTO>>> GetItemsByNameAndGameId(string searchText, int gameId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Result<List<ItemDTO>>.Success(new List<ItemDTO>());
+        }
+
+        if (gameId <= 0)
+        {
+            return Result<List<ItemDTO>>.BadRequest("Game ID is required");
+        }
+
+        var items = await itemRepository.GetByNameAndGameId(searchText, gameId, ct);
+        var response = items.Select(i => new ItemDTO(
+            i.ID,
+            i.Name,
+            i.Photo_URL,
+            i.EstimatedTokenValue,
+            new GameDTO(i.Game_ID,i.Game.Name,i.Game.Photo_URL,i.Game.Genre_ID)
+            )).ToList();
+        return Result<List<ItemDTO>>.Success(response);
+
+    }
+
+    public async Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default)
+    {
+        var games = await gamesRepository.GetAll(ct);
+        var response = games.Select(g => new GameDTO(
+            g.ID,
+            g.Name,
+            g.Photo_URL,
+            g.Genre_ID
+        )).ToList();
+        return Result<List<GameDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<GenreDTO>>> GetAllGenres(CancellationToken ct = default)
+    {
+        var genres = await genresRepository.GetAll(ct);
+        var response = genres.Select(g => new GenreDTO(
+            g.ID,
+            g.Name
+        )).ToList();
+        return Result<List<GenreDTO>>.Success(response);
+    }
+
+    public async Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default)
+    {
+        if (gameId <= 0)
+        {
+            return Result<List<RarityDTO>>.BadRequest("invalid_game_id");
+        }
+        var rarities = await raritiesRepository.GetByGameId(gameId, ct);
+        var response = rarities.Select(r => new RarityDTO(
+            r.ID,
+            r.RarityName
+        )).ToList();
+        return Result<List<RarityDTO>>.Success(response);
+    }
+
+    public async Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
+        OfferUpdateDraftRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<OfferUpdateQuoteResponse>.Unauthorized("missing_sub_claim");
+        if (offerId <= 0) return Result<OfferUpdateQuoteResponse>.BadRequest("invalid_offer_id");
+        var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
+        if (!okUser) return Result<OfferUpdateQuoteResponse>.Unauthorized(errUser!);
+        var offer = await offersRepository.GetTrackedOfferAsync(offerId, userState!.Id,ct);
+        if (offer is null) return Result<OfferUpdateQuoteResponse>.NotFound("offer_not_found");
+        if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
+            return Result<OfferUpdateQuoteResponse>.BadRequest("offer_not_active");
+        
+        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, ct);
+        if (!okDraft)
+            return Result<OfferUpdateQuoteResponse>.BadRequest(errDraft);
+        if (draft is null) return Result<OfferUpdateQuoteResponse>.BadRequest("draft_creation_failed");
+        
+        var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
+
+        return Result<OfferUpdateQuoteResponse>.Success(new OfferUpdateQuoteResponse(draft.TokenCost, updateFeeTokens));
+
+    }
+
     #region OfferServiceHelpers
     
     private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
@@ -255,9 +393,17 @@ public class OffersService(
         if(toAdd.Count>0) offersRepository.AddListingItemsRange(toAdd);
 
     }
-    private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(IReadOnlyCollection<OfferItemDTO> offeredItems,
-        IReadOnlyCollection<OfferItemDTO> wantedItems, DateOnly expDate, CancellationToken ct)
+    private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
+        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return (false, "title_required", null);
+        }
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return (false, "description_required", null);
+        }
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
@@ -265,11 +411,9 @@ public class OffersService(
             return (false, "offered_items_required", null);
         if (wanted.Count == 0)
             return (false, "wanted_items_required", null);
-        if (expDate == default)
-            return (false, "exp_date_required", null);
-
-
-        var (expOk, err, expCalcDate, extraDayCost) = ResolveExpiry(expDate);
+        var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
+        
+        var (expOk, err, expCalcDate, extraDayCost) = ResolveExpiry(durationDays);
         if (!expOk) return (false, err, null);
 
         var (okItems, errItems, items) = await LoadItemsOrErrorAsync(offered, wanted, ct);
@@ -281,20 +425,77 @@ public class OffersService(
         int tokenCost;
         try
         {
-            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost);
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee);
         }
         catch (OverflowException)
         {
             return (false, "token_cost_overflow", null);
         }
 
-        var draft = new OfferDraft(offeredLines, wantedLines, expCalcDate, tokenCost);
+        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expCalcDate, tokenCost, isHighlighted);
+
+        return (true, null, draft);
+
+    }
+    private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftForUpdateAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
+        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, DateOnly currentExpDate, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return (false, "title_required", null);
+        }
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return (false, "description_required", null);
+        }
+        var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
+        var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
+
+        if (offered.Count == 0)
+            return (false, "offered_items_required", null);
+        if (wanted.Count == 0)
+            return (false, "wanted_items_required", null);
+        var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
+
+        DateOnly expDate;
+        int extraDayCost;
+        
+        if (durationDays == 0)
+        {
+            expDate = currentExpDate;
+            extraDayCost = 0;
+        }
+        else
+        {
+            var (expOk, err, expCalcDate, dayCost) = ResolveExpiry(durationDays);
+            if (!expOk) return (false, err, null);
+            expDate = expCalcDate;
+            extraDayCost = dayCost;
+        }
+
+        var (okItems, errItems, items) = await LoadItemsOrErrorAsync(offered, wanted, ct);
+        if (!okItems) return (false, errItems, null);
+
+        var offeredLines = offered.ToDictionary(kv => kv.Key, kv => new DictItemQuantity(items[kv.Key], kv.Value));
+        var wantedLines = wanted.ToDictionary(kv => kv.Key, kv => new DictItemQuantity(items[kv.Key], kv.Value));
+
+        int tokenCost;
+        try
+        {
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee);
+        }
+        catch (OverflowException)
+        {
+            return (false, "token_cost_overflow", null);
+        }
+
+        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expDate, tokenCost, isHighlighted);
 
         return (true, null, draft);
 
     }
 
-    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost)
+    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost, int highlightFee)
     {
         long totalValue = 0;
 
@@ -314,30 +515,34 @@ public class OffersService(
         var baseTokenCost = (int)Math.Ceiling(totalValue * OffersConsts.BaseCostRate);
         if (baseTokenCost < OffersConsts.MinBaseTokenCost) baseTokenCost = OffersConsts.MinBaseTokenCost;
 
-        int tokenCost;
+
         checked
         {
-            tokenCost = baseTokenCost + extraDayCost;
+            return baseTokenCost + extraDayCost + highlightFee;
         }
-
-        return tokenCost;
-
+        
     }
 
-    private static (bool Ok, string? Error, DateOnly ExpDate, int ExtraDayCost) ResolveExpiry(DateOnly requestExpDate)
+    private static (bool Ok, string? Error, DateOnly ExpDate, int ExtraDayCost) ResolveExpiry(int durationDays)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-        var minExpDate = today.AddDays(OffersConsts.MinExpiryDays);
-        if (requestExpDate < minExpDate)
+        if (durationDays != 7 && durationDays != 14 && durationDays != 31)
         {
-            return (false, "exp_date_min_7_days", default, 0);
+            return (false, "invalid_duration_days", default, 0);
         }
 
-        var extraDays = requestExpDate.DayNumber - minExpDate.DayNumber;
-        var extraDaysCost = extraDays > 0 ? extraDays * OffersConsts.ExtraDayCost : 0;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        return (true, null, requestExpDate, extraDaysCost);
+        var expDate = today.AddDays(durationDays);
+        var durationFee = durationDays switch
+        {
+            7 => 0,
+            14 => OffersConsts.Duration14Cost,
+            31 => OffersConsts.Duration31Cost,
+            _ => 0
+        };
+        
+
+        return (true, null, expDate, durationFee);
 
 
 

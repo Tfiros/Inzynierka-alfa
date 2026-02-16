@@ -8,7 +8,7 @@ namespace ItemTradeApp.Features.CounterOffers;
 [Route("[controller]")]
 public class CounterOffersController (ICounterOffersService counterOffersService): ControllerBase
 {
-    [HttpGet ("{offerId:int}/counter")]
+    /*[HttpGet ("{offerId:int}/counter")]
     [Authorize]
     public async Task<IActionResult> GetForCounter(int offerId, CancellationToken ct)
     {
@@ -24,6 +24,7 @@ public class CounterOffersController (ICounterOffersService counterOffersService
 
         return Ok(result);
     }
+    */
     
     [HttpGet("sent/{userId:int}")]
     [Authorize]
