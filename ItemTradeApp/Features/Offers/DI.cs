@@ -1,3 +1,5 @@
+using ItemTradeApp.Features.Offers.Repositories;
+
 namespace ItemTradeApp.Features.Offers;
 
 public static class DI

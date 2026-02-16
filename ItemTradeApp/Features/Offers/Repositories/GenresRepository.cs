@@ -2,7 +2,7 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.Offers;
+namespace ItemTradeApp.Features.Offers.Repositories;
 
 public interface IGenresRepository
 {

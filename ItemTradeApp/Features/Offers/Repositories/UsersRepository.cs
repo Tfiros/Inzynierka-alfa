@@ -1,7 +1,7 @@
 using ItemTradeApp.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.Offers;
+namespace ItemTradeApp.Features.Offers.Repositories;
 
 public sealed record UserState(int Id, bool IsDeleted, int Tokens);
 
