@@ -1,3 +1,5 @@
+using ItemTradeApp.Features.Offers.Repositories;
+
 namespace ItemTradeApp.Features.Offers;
 
 public static class DI
@@ -8,6 +10,8 @@ public static class DI
         serviceCollection.AddScoped<IUsersRepository, UsersRepository>();
         serviceCollection.AddScoped<IItemsRepository, ItemsRepository>();
         serviceCollection.AddScoped<IGamesRepository, GamesRepository>();
+        serviceCollection.AddScoped<IGenresRepository, GenresRepository>();
+        serviceCollection.AddScoped<IRaritiesRepository, RaritiesRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
         return serviceCollection;
     }
