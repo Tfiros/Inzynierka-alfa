@@ -377,6 +377,32 @@ public sealed class TradesService(
 
             await tradeRepo.AddAsync(trade, ct);
 
+            var sellerEscrow = offer.TokensOffered;
+            var buyerEscrow = offer.TokensWanted;
+
+            if (sellerEscrow > 0)
+            {
+                if (!await userRepo.TryEscrowTokensAsync(postingUserId, customerId, sellerEscrow, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<int>.BadRequest("Sprzedający nie ma wystarczającej liczby tokenów.");
+                }
+            }
+
+            if (buyerEscrow > 0)
+            {
+                if (!await userRepo.TryEscrowTokensAsync(customerId, postingUserId, buyerEscrow, ct))
+                {
+                    if (sellerEscrow > 0)
+                    {
+                        await userRepo.TryRefundTokensAsync(customerId, postingUserId, sellerEscrow, ct);
+                    }
+
+                    await tx.RollbackAsync(ct);
+                    return Result<int>.BadRequest("Kupujący nie ma wystarczającej liczby tokenów.");
+                }
+            }
+
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
 
@@ -489,6 +515,16 @@ public sealed class TradesService(
         trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
         trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
 
+        if (trade.Offer.TokensOffered > 0)
+        {
+            await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered, ct);
+        }
+
+        if (trade.Offer.TokensWanted > 0)
+        {
+            await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct);
+        }
+
         await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Successfully set as failed.");
     }
@@ -541,6 +577,16 @@ public sealed class TradesService(
         
         trade.Rates.Add(buyersRate);
         trade.Rates.Add(sellersRate);
+
+        if (trade.Offer.TokensOffered > 0)
+        {
+            await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct);
+        }
+        if (trade.Offer.TokensWanted > 0)
+        {
+            await userRepo.TryReleaseTokensAsync(trade.User_ID,  trade.Offer.TokensWanted, ct);
+        }
+
         await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Successfully set as realised.");
     }
