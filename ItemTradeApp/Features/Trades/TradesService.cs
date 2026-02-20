@@ -385,7 +385,7 @@ public sealed class TradesService(
                 if (!await userRepo.TryEscrowTokensAsync(postingUserId, customerId, sellerEscrow, ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<int>.BadRequest("Sprzedający nie ma wystarczającej liczby tokenów.");
+                    return Result<int>.BadRequest("Seller doesn't have enough tokens.");
                 }
             }
 
@@ -393,13 +393,8 @@ public sealed class TradesService(
             {
                 if (!await userRepo.TryEscrowTokensAsync(customerId, postingUserId, buyerEscrow, ct))
                 {
-                    if (sellerEscrow > 0)
-                    {
-                        await userRepo.TryRefundTokensAsync(customerId, postingUserId, sellerEscrow, ct);
-                    }
-
                     await tx.RollbackAsync(ct);
-                    return Result<int>.BadRequest("Kupujący nie ma wystarczającej liczby tokenów.");
+                    return Result<int>.BadRequest("Buyer doesn't have enough tokens.");
                 }
             }
 
@@ -511,22 +506,32 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
-        trade.TradeStatus_ID = (int)TradeStatuses.Failed;
-        trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
-        trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
-
-        if (trade.Offer.TokensOffered > 0)
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered, ct);
-        }
+            if (trade.Offer.TokensOffered > 0)
+            {
+                await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered, ct);
+            }
 
-        if (trade.Offer.TokensWanted > 0)
+            if (trade.Offer.TokensWanted > 0)
+            {
+                await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct);
+            }
+            
+            trade.TradeStatus_ID = (int)TradeStatuses.Failed;
+            trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
+            trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Result<string>.Success("Successfully set as failed.");
+        }
+        catch
         {
-            await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct);
+            await tx.RollbackAsync(ct);
+            return Result<string>.BadRequest("There was an error when trying to refund tokens");
         }
-
-        await tradeRepo.SaveChangesAsync(ct);
-        return Result<string>.Success("Successfully set as failed.");
     }
 
     public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId,
@@ -555,40 +560,52 @@ public sealed class TradesService(
 
         if (!trade.HasBuyersItems || !trade.HasSellersItems)
             return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
-
-        trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
-        trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
-
-        var buyersRate = new Rate()
-        {
-            TradeId = trade.ID,
-            UserId = request.BuyersID,
-            Mark = request.BuyersGrade,
-            Description = request.BuyersDescription
-        };
         
-        var sellersRate = new Rate()
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            TradeId = trade.ID,
-            UserId = request.SellersID,
-            Mark = request.SellersGrade,
-            Description = request.SellersDescription
-        };
+            trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
+            trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
+
+            var buyersRate = new Rate()
+            {
+                TradeId = trade.ID,
+                UserId = request.BuyersID,
+                Mark = request.BuyersGrade,
+                Description = request.BuyersDescription
+            };
         
-        trade.Rates.Add(buyersRate);
-        trade.Rates.Add(sellersRate);
+            var sellersRate = new Rate()
+            {
+                TradeId = trade.ID,
+                UserId = request.SellersID,
+                Mark = request.SellersGrade,
+                Description = request.SellersDescription
+            };
+        
+            trade.Rates.Add(buyersRate);
+            trade.Rates.Add(sellersRate);
 
-        if (trade.Offer.TokensOffered > 0)
-        {
-            await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct);
-        }
-        if (trade.Offer.TokensWanted > 0)
-        {
-            await userRepo.TryReleaseTokensAsync(trade.User_ID,  trade.Offer.TokensWanted, ct);
-        }
+            
+            if (trade.Offer.TokensOffered > 0)
+            {
+                await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct);
+            }
 
-        await tradeRepo.SaveChangesAsync(ct);
-        return Result<string>.Success("Successfully set as realised.");
+            if (trade.Offer.TokensWanted > 0)
+            {
+                await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct);
+            }
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Result<string>.Success("Successfully set as realised");
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.BadRequest("There was an error when trying to transfer tokens");
+        }
     }
 
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)
