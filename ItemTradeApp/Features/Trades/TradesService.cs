@@ -511,12 +511,25 @@ public sealed class TradesService(
         {
             if (trade.Offer.TokensOffered > 0)
             {
-                await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered, ct);
+                if (
+                    !await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered,
+                        ct)
+                    )
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("Failed to refund seller's tokens.");
+                }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct);
+                if (
+                    !await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct)
+                )
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("Failed to refund buyer's tokens.");
+                }
             }
             
             trade.TradeStatus_ID = (int)TradeStatuses.Failed;
@@ -589,12 +602,20 @@ public sealed class TradesService(
             
             if (trade.Offer.TokensOffered > 0)
             {
-                await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct);
+                if (!await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("Failed to release seller's tokens.");
+                }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct);
+                if (!await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("Failed to release buyer's tokens.");
+                }
             }
 
             await unitOfWork.SaveChangesAsync(ct);
