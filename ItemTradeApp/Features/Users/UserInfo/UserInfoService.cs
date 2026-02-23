@@ -30,6 +30,7 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.ProfileInfo.Nickname,
             user.Email,
             user.Tokens,
+            user.EscrowedTokens,
             user.Experience,
             level
         );

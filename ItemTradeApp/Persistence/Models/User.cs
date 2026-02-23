@@ -18,6 +18,8 @@ public partial class User
     public DateOnly DateOfBirth { get; set; }
     [Column("tokens")]
     public int Tokens { get; set; }
+    [Column("escrowed_tokens")] 
+    public int EscrowedTokens { get; set; }
     [Column("experience")]
     public int Experience { get; set; }
     [Column("token_exp_date")]

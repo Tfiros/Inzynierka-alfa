@@ -5,6 +5,7 @@ public sealed record UserNavbarInfoResponse(
     string Nickname,
     string Email,
     int    Tokens,
+    int    EscrowedTokens,
     int    Experience,
     int    Level
 );
