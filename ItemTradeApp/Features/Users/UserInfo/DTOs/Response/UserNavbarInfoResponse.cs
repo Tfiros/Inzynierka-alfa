@@ -6,5 +6,8 @@ public sealed record UserNavbarInfoResponse(
     string Email,
     int    Tokens,
     int    Experience,
-    int    Level
+    int    Level,
+    List<int> ChatIds,
+    int ChatUnreadTotal
 );
+public sealed record ChatInfos(int ChatId, int UnreadCount);

@@ -24,14 +24,17 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             return Result<UserNavbarInfoResponse>.NotFound("user_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(user.Experience);
-
+        var chatIds = user.Chats.Select(c => c.ChatConversationId).ToList();
+        var unreadTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
         var dto = new UserNavbarInfoResponse(
             user.ID,
             user.ProfileInfo.Nickname,
             user.Email,
             user.Tokens,
             user.Experience,
-            level
+            level,
+            chatIds,
+            unreadTotal
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }
