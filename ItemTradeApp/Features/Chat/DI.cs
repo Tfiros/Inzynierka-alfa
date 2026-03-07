@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Auth;
+﻿using ItemTradeApp.Features.Chat.Helpers;
+using ItemTradeApp.Features.Chat.Services;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Chat;
@@ -8,12 +9,14 @@ public static class DI
     public static IServiceCollection RegisterChatFeatureDi(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentUserProvider, CurrentUserProvider>();
-
         services.AddScoped<IChatRepository, ChatRepository>();
-        services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IChatThreadsReader, ChatThreadsReader>();
+        services.AddScoped<IChatDmService, ChatDmService>();
+        services.AddScoped<IChatReadStateService, ChatReadStateService>();
+        services.AddScoped<IChatUserResolver, ChatUserResolver>();
+        services.AddScoped<IChatRealtimePublisher, ChatRealtimePublisher>();
 
-        services.AddSingleton<IUserIdProvider, Auth0UserIdProvider>();
+        services.AddScoped<IChatService, ChatService>();
         services.AddSingleton<PresenceTracker>();
 
         return services;

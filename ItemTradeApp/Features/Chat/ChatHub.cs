@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using ItemTradeApp.Features.Chat.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Chat;
@@ -8,7 +9,10 @@ public sealed class ChatHub : Hub
 {
     private readonly PresenceTracker _presence;
     private readonly IChatService _chatService;
-    public ChatHub(PresenceTracker presence, IChatService service)
+
+    public ChatHub(
+        PresenceTracker presence,
+        IChatService service)
     {
         _presence = presence;
         _chatService = service;
@@ -19,13 +23,16 @@ public sealed class ChatHub : Hub
         var auth0 = Context.UserIdentifier;
         if (!string.IsNullOrWhiteSpace(auth0))
         {
-            // inbox/user stream
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{auth0}");
-            // presence update
+
             var changed = _presence.UserConnected(auth0);
             if (changed)
             {
-                await Clients.All.SendAsync("presence.changed", new { auth0UserId = auth0, isOnline = true });
+                await Clients.All.SendAsync("presence.changed", new
+                {
+                    auth0UserId = auth0,
+                    isOnline = true
+                });
             }
         }
 
@@ -40,7 +47,11 @@ public sealed class ChatHub : Hub
             var changed = _presence.UserDisconnected(auth0);
             if (changed)
             {
-                await Clients.All.SendAsync("presence.changed", new { auth0UserId = auth0, isOnline = false });
+                await Clients.All.SendAsync("presence.changed", new
+                {
+                    auth0UserId = auth0,
+                    isOnline = false
+                });
             }
         }
 
@@ -49,11 +60,13 @@ public sealed class ChatHub : Hub
 
     public async Task JoinChat(int chatConversationId)
     {
-        Groups.AddToGroupAsync(Context.ConnectionId, $"chat:{chatConversationId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"chat:{chatConversationId}");
     }
 
-    public Task LeaveChat(int chatConversationId)
-        => Groups.RemoveFromGroupAsync(Context.ConnectionId, $"chat:{chatConversationId}");
+    public async Task LeaveChat(int chatConversationId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"chat:{chatConversationId}");
+    }
     public async Task SendMessage(int chatConversationId, string message)
     {
         if (chatConversationId <= 0)
@@ -65,20 +78,14 @@ public sealed class ChatHub : Hub
         var auth0UserId = Context.UserIdentifier;
         if (string.IsNullOrWhiteSpace(auth0UserId))
             throw new HubException("unauthorized");
-        var dto = await _chatService.AddMessageAsync(chatConversationId, auth0UserId, message.Trim());
+
+        var dto = await _chatService.AddMessageAsync(
+            chatConversationId,
+            auth0UserId,
+            message.Trim(),
+            Context.ConnectionAborted);
 
         await Clients.Group($"chat:{chatConversationId}")
-            .SendAsync("message.new", dto);
-    }
-
-
-    private static string GroupName(int chatConversationId) => $"chat:{chatConversationId}";
-
-    private string GetAuth0UserId()
-    {
-        var sub = Context.User?.FindFirst("sub")?.Value;
-        if (string.IsNullOrWhiteSpace(sub))
-            throw new HubException("unauthorized");
-        return sub;
+            .SendAsync("message.new", dto, Context.ConnectionAborted);
     }
 }
