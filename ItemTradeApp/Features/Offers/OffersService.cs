@@ -400,21 +400,30 @@ public class OffersService(
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
         IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, int tokensOffered, int tokensWanted, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(title) || title.Length < 3)
         {
             return (false, "title_required", null);
         }
-        if (string.IsNullOrWhiteSpace(description))
+        if (string.IsNullOrWhiteSpace(description) || description.Length < 3)
         {
             return (false, "description_required", null);
         }
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
-        if (offered.Count == 0)
-            return (false, "offered_items_required", null);
-        if (wanted.Count == 0)
-            return (false, "wanted_items_required", null);
+        if (offered.Count == 0 && wanted.Count == 0)
+        {
+            return (false, "at_least_one_side_must_have_items", null);
+        }
+        if (offered.Count == 0 && tokensOffered <= 0)
+        {
+            return (false, "must_offer_tokens_when_no_items_offered", null);
+        }
+        if (wanted.Count == 0 && tokensWanted <= 0)
+        {
+            return (false, "must_want_tokens_when_no_items_wanted", null);
+        }
+
         if (tokensWanted < 0)
             return (false, "tokens_wanted_negative", null);
         if (tokensOffered < 0)
@@ -448,21 +457,30 @@ public class OffersService(
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftForUpdateAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
         IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, DateOnly currentExpDate, int tokensOffered, int tokensWanted, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(title) || title.Length < 3)
         {
             return (false, "title_required", null);
         }
-        if (string.IsNullOrWhiteSpace(description))
+        if (string.IsNullOrWhiteSpace(description) || description.Length < 3)
         {
             return (false, "description_required", null);
         }
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
-        if (offered.Count == 0)
-            return (false, "offered_items_required", null);
-        if (wanted.Count == 0)
-            return (false, "wanted_items_required", null);
+        if (offered.Count == 0 && wanted.Count == 0)
+        {
+            return (false, "at_least_one_side_must_have_items", null);
+        }
+        if (offered.Count == 0 && tokensOffered <= 0)
+        {
+            return (false, "must_offer_tokens_when_no_items_offered", null);
+        }
+        if (wanted.Count == 0 && tokensWanted <= 0)
+        {
+            return (false, "must_want_tokens_when_no_items_wanted", null);
+        }
+        
         var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
         
         if (tokensWanted < 0)
