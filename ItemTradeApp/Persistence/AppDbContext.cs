@@ -198,6 +198,10 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("listing_user");
+            
+            entity.Property(e => e.Title).HasMaxLength(120);
+            
+            entity.Property(e => e.Description).HasMaxLength(2000);
         });
 
         modelBuilder.Entity<OfferStatus>(entity =>
