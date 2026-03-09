@@ -61,6 +61,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
+            
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Auth0UserID).IsUnique();
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
