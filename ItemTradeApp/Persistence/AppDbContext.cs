@@ -328,8 +328,8 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
-            entity.Property(x => x.Subject).HasColumnName("subject").IsRequired();
-            entity.Property(x => x.Body).HasColumnName("body").IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Body).HasColumnName("body").HasMaxLength(10000).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.SentAt).HasColumnName("sent_at");
