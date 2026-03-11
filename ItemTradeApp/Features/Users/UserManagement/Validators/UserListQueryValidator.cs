@@ -15,5 +15,7 @@ public class UserListQueryValidator: AbstractValidator<UserListQuery>
             .When(x => x.RegisteredFrom is not null && x.RegisteredTo is not null);
 
         RuleFor(x => x.SearchText).MaximumLength(150).When(x => x.SearchText is not null);
+
+        RuleFor(x => x.OrderBy).IsInEnum();
     }
 }
