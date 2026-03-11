@@ -2,7 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace ItemTradeApp.ApiResultHandling;
+namespace ItemTradeApp.Filters;
 
 public sealed class ValidationActionFilter : IAsyncActionFilter
 {
