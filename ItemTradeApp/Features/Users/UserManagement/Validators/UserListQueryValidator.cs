@@ -13,5 +13,7 @@ public class UserListQueryValidator: AbstractValidator<UserListQuery>
         RuleFor(x => x.RegisteredTo)
             .GreaterThanOrEqualTo(x => x.RegisteredFrom)
             .When(x => x.RegisteredFrom is not null && x.RegisteredTo is not null);
+
+        RuleFor(x => x.SearchText).MaximumLength(150).When(x => x.SearchText is not null);
     }
 }

@@ -9,6 +9,6 @@ public class CreateNotificationRequestValidator : AbstractValidator<CreateNotifi
     {
         RuleFor(x => x.UserId).GreaterThan(0);
         RuleFor(x => x.Title).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Message).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.Message).NotEmpty().MaximumLength(200);
     }
 }
