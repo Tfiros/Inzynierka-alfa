@@ -2,108 +2,73 @@ using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.PatchDTOs;
-using ItemTradeApp.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.CounterOffers;
 
 [ApiController]
 [Route("[controller]")]
-public class CounterOffersController (ICounterOffersService counterOffersService, AppDbContext db): ControllerBase
+[Authorize]
+public class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
 {
     private string? GetNormalizedAuth0UserId()
     {
-        var rawInput = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(rawInput)) return null;
+        var user = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(user)) return null;
 
-        var pipePosition = rawInput.IndexOf('|');
-        return (pipePosition >= 0 && pipePosition < rawInput.Length - 1) ? rawInput[(pipePosition + 1)..] : rawInput;
+        var pipePosition = user.IndexOf('|');
+        return (pipePosition >= 0 && pipePosition < user.Length - 1)
+            ? user[(pipePosition + 1)..]
+            : user;
     }
-    
+
     [HttpGet("{offerId:int}/info")]
-    [Authorize]
     public async Task<ActionResult<Result<OfferInformationDTO>>> GetOfferInfo(int offerId, CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
         var result = await counterOffersService.GetOfferInfoAsync(auth0UserId, offerId, ct);
         return result.ToActionResult();
     }
-    
-    [HttpGet("sent")]
+
     [Authorize]
+    [HttpGet("sent")]
     public async Task<ActionResult<Result<IReadOnlyList<CounterOfferListItemDto>>>> GetSent(CancellationToken ct = default)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
-        var userId = await db.Users
-            .AsNoTracking()
-            .Where(u => u.Auth0UserID == auth0UserId && !u.IsDeleted)
-            .Select(u => (int?)u.ID)
-            .FirstOrDefaultAsync(ct);
-
-        if (userId is null)
-            return Unauthorized();
-
-        var result = await counterOffersService.GetSentCounterOffers(userId.Value, ct);
+        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, ct);
         return result.ToActionResult();
     }
 
-    [HttpGet("received")]
     [Authorize]
+    [HttpGet("received")]
     public async Task<ActionResult<Result<IReadOnlyList<CounterOfferListItemDto>>>> GetReceived(CancellationToken ct = default)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
-        var userId = await db.Users
-            .AsNoTracking()
-            .Where(u => u.Auth0UserID == auth0UserId && !u.IsDeleted)
-            .Select(u => (int?)u.ID)
-            .FirstOrDefaultAsync(ct);
-
-        if (userId is null)
-            return Unauthorized();
-
-        var result = await counterOffersService.GetRecivedCounterOffers(userId.Value, ct);
+        var result = await counterOffersService.GetRecivedCounterOffers(auth0UserId, ct);
         return result.ToActionResult();
     }
-    
 
-    [HttpPost("{offerId:int}/counter")]
     [Authorize]
+    [HttpPost("{offerId:int}/counter")]
     public async Task<ActionResult<Result<CounterOfferDto>>> CreateCounterOffer(
         [FromRoute] int offerId,
         [FromBody] CounterOfferDraftRequest request,
         CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
         var result = await counterOffersService.CreateCounterOfferAsync(auth0UserId, offerId, request, ct);
-
         return result.ToActionResult();
     }
 
-    [HttpPatch("{counterOfferId:int}")]
     [Authorize]
+    [HttpPatch("{counterOfferId:int}")]
     public async Task<ActionResult<Result<CounterOfferDto>>> UpdateCounterOfferStatus(
         [FromRoute] int counterOfferId,
         [FromBody] UpdateCounterOfferStatusRequest request,
         CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
         var result = await counterOffersService.UpdateCounterOfferStatusAsync(
             auth0UserId,
             counterOfferId,
@@ -112,16 +77,14 @@ public class CounterOffersController (ICounterOffersService counterOffersService
 
         return result.ToActionResult();
     }
-    [HttpPost("{counterOfferId:int}/accept")]
+
     [Authorize]
+    [HttpPost("{counterOfferId:int}/accept")]
     public async Task<ActionResult<Result<AcceptCounterOfferResponse>>> AcceptCounterOffer(
         [FromRoute] int counterOfferId,
         CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        if (auth0UserId is null)
-            return Unauthorized();
-
         var result = await counterOffersService.AcceptCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
     }
