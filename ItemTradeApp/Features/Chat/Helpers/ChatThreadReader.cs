@@ -35,36 +35,39 @@ public sealed class ChatThreadsReader : IChatThreadsReader
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
-
-        var myChatsQ =
-            from m in _db.ConversationMembers
-            where m.UserId == userId
-            select new
+        var myChatsQ = _db.ConversationMembers
+            .Where(m => m.UserId == userId)
+            .Select(m => new
             {
                 m.ChatConversationId,
                 m.LastReadMessageId
-            };
+            });
 
-        var lastMsgQ =
-            from msg in _db.ChatMessages
-            where msg.DeletedAt == null
-            group msg by msg.ChatConversationId into g
-            select new
+        var lastMsgQ = _db.ChatMessages
+            .Where(msg => msg.DeletedAt == null)
+            .GroupBy(msg => msg.ChatConversationId)
+            .Select(g => new
             {
                 ChatId = g.Key,
                 LastId = (long?)g.Max(x => x.Id)
-            };
+            });
 
-        var baseQ =
-            from mc in myChatsQ
-            join lm in lastMsgQ on mc.ChatConversationId equals lm.ChatId into lmj
-            from lm in lmj.DefaultIfEmpty()
-            select new
-            {
-                mc.ChatConversationId,
-                mc.LastReadMessageId,
-                LastId = lm == null ? (long?)null : lm.LastId
-            };
+        var baseQ = myChatsQ
+            .GroupJoin(
+                lastMsgQ,
+                mc => mc.ChatConversationId,
+                lm => lm.ChatId,
+                (mc, lmj) => new { mc, lmj }
+            )
+            .SelectMany(
+                x => x.lmj.DefaultIfEmpty(),
+                (x, lm) => new
+                {
+                    x.mc.ChatConversationId,
+                    x.mc.LastReadMessageId,
+                    LastId = lm == null ? (long?)null : lm.LastId
+                }
+            );
 
         var pageRows = await baseQ
             .OrderByDescending(x => x.LastId ?? 0L)

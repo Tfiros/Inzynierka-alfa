@@ -41,7 +41,7 @@ public interface IChatService
         MarkReadRequest? request,
         string? auth0UserId,
         CancellationToken ct);
-
+    Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct);
     Task<ChatMessageDto> AddMessageAsync(int chatConversationId, string auth0UserId, string message, CancellationToken ct = default);
 }
 
@@ -70,7 +70,8 @@ public sealed class ChatService : IChatService
         _chatRealtimePublisher = chatRealtimePublisher;
         _chatUserResolver = chatUserResolver;
     }
-
+    public async Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct) => 
+        await _repo.IsMemberAsync(chatId, auth0UserId, ct);
     public async Task<Result<CreateDmChatResponse>> CreateDmAsync(int otherUserId, string? auth0UserId, CancellationToken ct)
     {
         if (otherUserId <= 0)

@@ -60,6 +60,14 @@ public sealed class ChatHub : Hub
 
     public async Task JoinChat(int chatConversationId)
     {
+        var auth0UserId = Context.UserIdentifier;
+        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
+            ? auth0UserId.Substring("auth0|".Length)
+            : auth0UserId;
+        if (!await _chatService.IsMemberAsync(chatConversationId, trimmedAuth0UserId, Context.ConnectionAborted))
+        {
+            throw new HubException("not_a_chat_member");
+        }
         await Groups.AddToGroupAsync(Context.ConnectionId, $"chat:{chatConversationId}");
     }
 

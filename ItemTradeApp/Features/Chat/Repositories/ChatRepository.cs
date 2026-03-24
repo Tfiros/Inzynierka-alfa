@@ -13,6 +13,8 @@ public interface IChatRepository
     Task<bool> ChatExistsAsync(int chatConversationId, CancellationToken ct);
 
     Task<bool> IsMemberAsync(int chatId, int userId, CancellationToken ct);
+    Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct);
+
     Task<ConversationMember?> GetMemberAsync(int chatId, int userId, CancellationToken ct);
     Task<IReadOnlyList<(int UserId, string Auth0UserId)>> GetMemberAuth0Async(int chatId, CancellationToken ct);
 
@@ -63,6 +65,14 @@ public sealed class ChatRepository : IChatRepository
             .AsNoTracking()
             .AnyAsync(m => m.ChatConversationId == chatId && m.UserId == userId, ct);
 
+    public async Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId);
+        if (user == null) return false;
+        return await _db.ConversationMembers
+            .AsNoTracking()
+            .AnyAsync(m => m.ChatConversationId == chatId && m.UserId == user.ID, ct);
+    }
     public Task<ConversationMember?> GetMemberAsync(int chatId, int userId, CancellationToken ct)
         => _db.ConversationMembers
             .FirstOrDefaultAsync(m => m.ChatConversationId == chatId && m.UserId == userId, ct);

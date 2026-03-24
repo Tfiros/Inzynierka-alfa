@@ -11,12 +11,15 @@ public sealed class PresenceTracker
         string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
             ? auth0UserId.Substring("auth0|".Length)
             : auth0UserId;
-        return _connections.TryGetValue(auth0UserId, out var c) && c > 0;
+        return _connections.TryGetValue(trimmedAuth0UserId, out var c) && c > 0;
     }
 
     public bool UserConnected(string auth0UserId)
     {
-        var count = _connections.AddOrUpdate(auth0UserId, 1, (_, c) => c + 1);
+        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
+            ? auth0UserId.Substring("auth0|".Length)
+            : auth0UserId;
+        var count = _connections.AddOrUpdate(trimmedAuth0UserId, 1, (_, c) => c + 1);
         return count == 1;
     }
 
@@ -25,15 +28,25 @@ public sealed class PresenceTracker
         string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
             ? auth0UserId.Substring("auth0|".Length)
             : auth0UserId;
-        if (!_connections.TryGetValue(trimmedAuth0UserId, out var c)) return false;
 
-        if (c <= 1)
+        while (true)
         {
-            _connections.TryRemove(trimmedAuth0UserId, out _);
-            return true;
-        }
+            if (!_connections.TryGetValue(trimmedAuth0UserId, out var current))
+                return false;
 
-        _connections[trimmedAuth0UserId] = c - 1;
-        return false;
+            if (current <= 1)
+            {
+                if (_connections.TryRemove(
+                        new KeyValuePair<string, int>(trimmedAuth0UserId, current)))
+                {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (_connections.TryUpdate(trimmedAuth0UserId, current - 1, current))
+                return false;
+        }
     }
 }

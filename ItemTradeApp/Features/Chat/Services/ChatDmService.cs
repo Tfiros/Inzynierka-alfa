@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Persistence.Models;
+﻿using ItemTradeApp.Persistence;
+using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Chat.Services;
 
@@ -9,10 +10,12 @@ public interface IChatDmService
 public sealed class ChatDmService : IChatDmService
 {
     private readonly IChatRepository _repo;
+    private readonly AppDbContext _db;
 
-    public ChatDmService(IChatRepository repo)
+    public ChatDmService(IChatRepository repo, AppDbContext db)
     {
         _repo = repo;
+        _db = db;
     }
 
     public async Task<int> GetOrCreateDmAsync(int userId1, int userId2, CancellationToken ct)
@@ -23,23 +26,31 @@ public sealed class ChatDmService : IChatDmService
         var existing = await _repo.FindExistingDmAsync(a, b, ct);
         if (existing.HasValue)
             return existing.Value;
-
-        var chatId = await _repo.CreateConversationAsync("testing", ct);
-
-        await _repo.AddConversationMembersAsync(chatId, new[]
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            new ConversationMember
-            {
-                UserId = a,
-                Role = 1
-            },
-            new ConversationMember
-            {
-                UserId = b,
-                Role = 1
-            }
-        }, ct);
+            var chatId = await _repo.CreateConversationAsync("testing", ct);
 
-        return chatId;
+            await _repo.AddConversationMembersAsync(chatId, new[]
+            {
+                new ConversationMember
+                {
+                    UserId = a,
+                    Role = 1
+                },
+                new ConversationMember
+                {
+                    UserId = b,
+                    Role = 1
+                }
+            }, ct);
+            await transaction.CommitAsync();
+            return chatId;
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            return 0;
+        }
     }
 }
