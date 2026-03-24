@@ -8,6 +8,5 @@ public sealed record OfferListingItemDTO(
      int GenreId,
      string GenreName,
      int RarityId,
-     string RarityName,
-     bool isWanted
+     string RarityName
 );

@@ -41,8 +41,7 @@ public static class OfferQueryExtentions
                         li.Item.Game.Genre.ID,
                         li.Item.Game.Genre.Name,
                         li.Item.ItemRarity.ID,
-                        li.Item.ItemRarity.RarityName,
-                        li.IsWanted
+                        li.Item.ItemRarity.RarityName
                     )).ToList(),
             o.Offer.ListingItems.Where(li => li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
@@ -55,8 +54,7 @@ public static class OfferQueryExtentions
                         li.Item.Game.Genre.ID,
                         li.Item.Game.Genre.Name,
                         li.Item.ItemRarity.ID,
-                        li.Item.ItemRarity.RarityName,
-                        li.IsWanted
+                        li.Item.ItemRarity.RarityName
                     )).ToList(),
             o.Offer.ListingItems.Count(li => !li.IsWanted),
             o.Offer.ListingItems.Count(li => li.IsWanted)
@@ -87,8 +85,7 @@ public static class OfferQueryExtentions
                 li.Item.Game.Genre.ID,
                 li.Item.Game.Genre.Name,
                 li.Item.ItemRarity.ID,
-                li.Item.ItemRarity.RarityName,
-                li.IsWanted
+                li.Item.ItemRarity.RarityName
             )).ToList(),
             o.Offer.ListingItems.Where(li => li.IsWanted).Select(li =>      new OfferListingItemDTO
             (
@@ -99,8 +96,7 @@ public static class OfferQueryExtentions
                 li.Item.Game.Genre.ID,
                 li.Item.Game.Genre.Name,
                 li.Item.ItemRarity.ID,
-                li.Item.ItemRarity.RarityName,
-                li.IsWanted
+                li.Item.ItemRarity.RarityName
             )).ToList()
         ));
 }

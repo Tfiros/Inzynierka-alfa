@@ -1,6 +1,4 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
-using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
-using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +13,6 @@ public interface ICounterOffersRepository
     Task<Offer?> GetOfferAsync(int offerId, CancellationToken ct);
     Task<CounterOffer?> GetCounterOfferWithOfferAndItemsAsync(int counterOfferId, CancellationToken ct);
     Task<bool> TradeExistsForOfferAsync(int offerId, CancellationToken ct);
-    Task<List<OfferListingItemDTO>> GetOfferListingItemsAsync(int offerId, CancellationToken ct);
     Task<IReadOnlyList<CounterOfferListItemDto>> GetSentCounterOffersAsync(int userId, CancellationToken ct);
     Task<IReadOnlyList<CounterOfferListItemDto>> GetReceivedCounterOffersAsync(int userId, CancellationToken ct);
     Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct);
@@ -24,6 +21,10 @@ public interface ICounterOffersRepository
     void AddTrade(Trade trade);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
+    Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
+        int offerId,
+        int acceptedCounterOfferId,
+        CancellationToken ct);
 }
 
 public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
@@ -31,7 +32,6 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     public async Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct)
     {
         return await db.Users
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
     }
 
@@ -61,36 +61,7 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
             .AsNoTracking()
             .AnyAsync(t => t.Offer_ID == offerId && t.TradeStatus_ID != (int)TradeStatuses.Failed, ct);
     }
-
-    public async Task<List<OfferListingItemDTO>> GetOfferListingItemsAsync(int offerId, CancellationToken ct)
-    {
-        return await db.ListingItems
-            .AsNoTracking()
-            .Where(li => li.Offer_ID == offerId)
-            .Include(li => li.Item).ThenInclude(i => i.Game).ThenInclude(g => g.Genre)
-            .Include(li => li.Item).ThenInclude(i => i.ItemRarity)
-            .Select(li => new OfferListingItemDTO(
-                new ItemDTO(
-                    li.Item.ID,
-                    li.Item.Name,
-                    li.Item.Photo_URL,
-                    li.Item.EstimatedTokenValue,
-                    new GameDTO(
-                        li.Item.Game_ID,
-                        li.Item.Game.Name,
-                        li.Item.Game.Photo_URL,
-                        li.Item.Game.Genre_ID
-                    )
-                ),
-                li.Quantity,
-                li.Item.Game.Genre_ID,
-                li.Item.Game.Genre.Name,
-                li.Item.ItemRarityId,
-                li.Item.ItemRarity.RarityName,
-                li.IsWanted
-            ))
-            .ToListAsync(ct);
-    }
+    
 
     public async Task<IReadOnlyList<CounterOfferListItemDto>> GetSentCounterOffersAsync(int userId, CancellationToken ct)
     {
@@ -125,7 +96,7 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
                 OfferTitle: counterOffer.Offer?.Title ?? "",
                 OfferOwnerUserId: counterOffer.Offer?.User_ID ?? 0,
                 CounterOfferUserId: counterOffer.User_ID,
-                CounterOfferUserNickname: ownerNick ?? "",
+                OtherPartyNickname: ownerNick ?? "",
                 CreationDate: counterOffer.CreationDate,
                 TokensOffered: counterOffer.TokensOffered,
                 StatusId: counterOffer.CounterOfferStatus_Id,
@@ -177,7 +148,7 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
                 OfferTitle: counterOffer.Offer?.Title ?? "",
                 OfferOwnerUserId: counterOffer.Offer?.User_ID ?? 0,
                 CounterOfferUserId: counterOffer.User_ID,
-                CounterOfferUserNickname: senderNickname ?? "",
+                OtherPartyNickname: senderNickname ?? "",
                 CreationDate: counterOffer.CreationDate,
                 TokensOffered: counterOffer.TokensOffered,
                 StatusId: counterOffer.CounterOfferStatus_Id,
@@ -229,5 +200,17 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     public Task SaveChangesAsync(CancellationToken ct)
     {
         return db.SaveChangesAsync(ct);
+    }
+    
+    public async Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
+        int offerId,
+        int acceptedCounterOfferId,
+        CancellationToken ct)
+    {
+        return await db.CounterOffers
+            .Where(co => co.Offer_Id == offerId
+                         && co.ID != acceptedCounterOfferId
+                         && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
+            .ToListAsync(ct);
     }
 }

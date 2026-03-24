@@ -7,7 +7,7 @@ public sealed record CounterOfferListItemDto(
     int OfferOwnerUserId,
 
     int CounterOfferUserId,
-    string? CounterOfferUserNickname,
+    string? OtherPartyNickname,
 
     DateTime CreationDate,
     int TokensOffered,
