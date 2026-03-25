@@ -18,6 +18,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using FluentValidation;
+using ItemTradeApp.Filters;
+using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
 
 
@@ -25,8 +28,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddControllers();
-
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationActionFilter>();
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -135,6 +140,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
+builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p
@@ -146,6 +152,7 @@ builder.Services.AddCors(opts =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();

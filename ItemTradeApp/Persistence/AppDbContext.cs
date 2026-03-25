@@ -65,6 +65,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
+            
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Auth0UserID).IsUnique();
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
@@ -202,6 +205,10 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("listing_user");
+            
+            entity.Property(e => e.Title).HasMaxLength(120);
+            
+            entity.Property(e => e.Description).HasMaxLength(2000);
         });
 
         modelBuilder.Entity<OfferStatus>(entity =>
@@ -307,7 +314,7 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
             entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(50).IsRequired();
-            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(200).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.ReadAt).HasColumnName("read_at");
@@ -325,8 +332,8 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
-            entity.Property(x => x.Subject).HasColumnName("subject").IsRequired();
-            entity.Property(x => x.Body).HasColumnName("body").IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Body).HasColumnName("body").HasMaxLength(10000).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.SentAt).HasColumnName("sent_at");
