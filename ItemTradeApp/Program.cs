@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using ItemTradeApp.Features.Chat;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,11 +101,13 @@ builder.Services
                 var path = ctx.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/api/hubs/notifications"))
+                    (path.StartsWithSegments("/api/hubs/notifications") ||
+                     path.StartsWithSegments("/api/hubs/chat")))
                 {
                     ctx.Token = accessToken;
                     return Task.CompletedTask;
                 }
+
                 if (ctx.Request.Cookies.TryGetValue("at", out var token) && !string.IsNullOrWhiteSpace(token))
                     ctx.Token = token;
 
@@ -147,6 +150,7 @@ builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
+builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();
 
@@ -202,5 +206,6 @@ app.MapGroup("/api")
 
 app.MapHub<NotificationsHub>("/api/hubs/notifications")
     .RequireRateLimiting("limiterGlobal");
+app.MapHub<ChatHub>("/api/hubs/chat");
 
 app.Run();

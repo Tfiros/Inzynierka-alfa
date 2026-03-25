@@ -41,5 +41,6 @@ public partial class User
 
     public virtual ICollection<Trade> OwningTrades { get; set; } = new List<Trade>();
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
+    public virtual ICollection<ConversationMember> Chats {get; set; } = new List<ConversationMember>();
 
 }

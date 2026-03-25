@@ -41,6 +41,10 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<EmailOutbox> Emails { get; set; }
     public virtual DbSet<Rate> Rates { get; set; }
+    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+    public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
+
+    public virtual DbSet<ChatConversation> ChatConversations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -332,6 +336,95 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_email_outbox_user");
+        });
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.ToTable("chat_conversation");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestampz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.Name)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(x => x.IsDeleted)
+                .HasDefaultValue(false);
+
+            entity.HasMany(x => x.Members)
+                .WithOne(x => x.ChatConversation)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(x => x.Messages)
+                .WithOne(x => x.ChatConversation)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.IsDeleted);
+        });
+        modelBuilder.Entity<ConversationMember>(entity =>
+        {
+            entity.ToTable("conversation_member");
+
+            entity.HasKey(x => new { x.UserId, x.ChatConversationId });
+
+            entity.Property(x => x.Role).IsRequired();
+
+            entity.HasOne(x => x.User)
+                .WithMany(u => u.Chats)
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(u => u.ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ChatConversation)
+                .WithMany(c => c.Members)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.LastReadMessage)
+                .WithMany()
+                .HasForeignKey(x => new { x.LastReadMessageId, x.LastReadMessageChatConversationId })
+                .HasPrincipalKey(m => new { m.Id, m.ChatConversationId })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.ChatConversationId);
+            entity.HasIndex(x => x.UserId);
+        });
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("chat_messages");
+            entity.HasKey(x => new { x.Id, x.ChatConversationId });
+
+            entity.Property(x => x.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Message)
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestampz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.EditedAt).HasColumnType("timestampz");
+            entity.Property(x => x.DeletedAt).HasColumnType("timestampz");
+
+            entity.HasOne(x => x.ChatConversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new { x.ChatConversationId, x.CreatedAt });
+            entity.HasIndex(x => x.SenderId);
         });
         OnModelCreatingPartial(modelBuilder);
     }
