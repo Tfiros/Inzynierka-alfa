@@ -1,5 +1,4 @@
-using ItemTradeApp.Features.CounterOffers.DTOs;
-
+namespace ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
 
 public sealed record CounterOfferDto
 {
@@ -12,5 +11,3 @@ public sealed record CounterOfferDto
 
     public IReadOnlyCollection<CounterOfferItemDto> Items { get; init; } = Array.Empty<CounterOfferItemDto>();
 }
-
-

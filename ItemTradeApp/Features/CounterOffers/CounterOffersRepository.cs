@@ -51,6 +51,7 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     {
         return await db.CounterOffers
             .Include(co => co.Offer)
+            .ThenInclude(o => o.ListingItems)
             .Include(co => co.ListingCounterOfferItems)
             .FirstOrDefaultAsync(co => co.ID == counterOfferId, ct);
     }

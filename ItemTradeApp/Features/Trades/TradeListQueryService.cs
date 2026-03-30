@@ -4,7 +4,7 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.Trades;
+namespace ItemTradeApp.Features.Trades.Services;
 
 public interface ITradeListQueryService
 {

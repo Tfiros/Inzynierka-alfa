@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.PatchDTOs;
+using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -68,7 +69,7 @@ public class CounterOffersController(ICounterOffersService counterOffersService)
     }
     
     [HttpPost("{counterOfferId:int}/accept")]
-    public async Task<ActionResult<Result<AcceptCounterOfferResponse>>> AcceptCounterOffer(
+    public async Task<ActionResult<Result<AcceptCounterOfferAsyncDTO>>> AcceptCounterOffer(
         [FromRoute] int counterOfferId,
         CancellationToken ct)
     {

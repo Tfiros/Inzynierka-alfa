@@ -1,6 +1,7 @@
 
 
 using ItemTradeApp.Features.Offers.DTOs;
+using ItemTradeApp.Features.Shared.DTOs;
 
 namespace ItemTradeApp.Features.CounterOffers.DTOs;
 

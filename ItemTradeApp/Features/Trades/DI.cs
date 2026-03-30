@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.Trades.Repositories;
+using ItemTradeApp.Features.Trades.Services;
 
 namespace ItemTradeApp.Features.Trades;
 
