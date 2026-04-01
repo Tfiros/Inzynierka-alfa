@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Features\ContactPage\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

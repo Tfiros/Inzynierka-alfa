@@ -11,8 +11,6 @@ namespace ItemTradeApp.Features.Trades;
 
 public interface ITradesService
 {
-    Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct);
-
     Task<Result<string>> AssignMiddlemanAsync(AssignMiddlemanRequest? request, string? auth0UserId, CancellationToken ct);
 
     Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct);
@@ -36,10 +34,6 @@ public interface ITradesService
 
 public sealed class TradesService(
     ITradeRepository tradeRepo,
-    IOfferRepository offerRepo,
-    ICounterOfferRepository counterOfferRepo,
-    IUserRepository userRepo,
-    IUnitOfWork unitOfWork,
     IUserContext userContext,
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery
@@ -277,117 +271,6 @@ public sealed class TradesService(
         );
 
         return Result<TradeDetailsResponse>.Success(dto, "Successfully retrieved.");
-    }
-    
-
-    public async Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct)
-    {
-        if (request is null)
-            return Result<int>.BadRequest("Body is required.");
-
-        var tryGetUser = await TryGetUser(auth0UserId, ct);
-        if (tryGetUser.Error is not null)
-            return Result<int>.Unauthorized(tryGetUser.Error);
-
-        var caller = tryGetUser.User!;
-
-        var offer = await offerRepo.GetByIdAsync(request.OfferId, ct);
-        if (offer is null)
-            return Result<int>.NotFound("Offer not found.");
-
-        if (await tradeRepo.ExistsActiveForOfferAsync(request.OfferId, ct))
-            return Result<int>.Conflict("Trade already exists for this offer.");
-
-        if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
-            return Result<int>.BadRequest("Offer is not active.");
-
-        var postingUserId = offer.User_ID;
-
-        int customerId;
-        int tokenCost;
-        CounterOffer? acceptedCounterOffer = null;
-
-        if (request.CounterOfferId is not null)
-        {
-            if (caller.ID != postingUserId)
-                return Result<int>.Forbidden("Only offer owner can accept a counteroffer.");
-
-            var counterOffer = await counterOfferRepo.GetByIdAsync(request.CounterOfferId.Value, ct);
-            if (counterOffer is null)
-                return Result<int>.NotFound("CounterOffer not found.");
-
-            if (counterOffer.Offer_Id != request.OfferId)
-                return Result<int>.BadRequest("CounterOffer does not belong to given Offer.");
-
-            if (counterOffer.CounterOfferStatus_Id != (int)CounterOfferStatuses.Pending)
-                return Result<int>.BadRequest("CounterOffer is not pending.");
-
-            customerId = counterOffer.User_ID;
-            if (customerId == postingUserId)
-                return Result<int>.BadRequest("Offer owner cannot accept their own counteroffer.");
-
-            tokenCost = counterOffer.TokensOffered;
-            acceptedCounterOffer = counterOffer;
-        }
-        else
-        {
-            customerId = request.CustomerId;
-
-            var customer = await userRepo.GetByIdAsync(customerId, ct);
-            if (customer is null)
-                return Result<int>.NotFound("Customer not found.");
-
-            if (caller.ID != customerId)
-                return Result<int>.Forbidden("You cannot create trade for another customer.");
-
-            if (customerId == postingUserId)
-                return Result<int>.BadRequest("Customer cannot buy their own offer.");
-
-            tokenCost = offer.TokenCost;
-        }
-
-        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
-        try
-        {
-            offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
-
-            if (acceptedCounterOffer is not null)
-            {
-                acceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted;
-
-                await counterOfferRepo.DenyOtherPendingForOfferAsync(
-                    request.OfferId,
-                    acceptedCounterOffer.ID,
-                    ct);
-            }
-
-            var trade = new Trade
-            {
-                Offer_ID = request.OfferId,
-                Customer_ID = customerId,
-                User_ID = postingUserId,
-                TokenCost = tokenCost,
-
-                CreationDate = DateTime.UtcNow,
-                CompletitionDate = null,
-                TradeStatus_ID = (int)TradeStatuses.New,
-
-                HasBuyersItems = false,
-                HasSellersItems = false,
-            };
-
-            await tradeRepo.AddAsync(trade, ct);
-
-            await unitOfWork.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-
-            return Result<int>.Success(trade.ID);
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
     }
 
     public async Task<Result<string>> AssignMiddlemanAsync(AssignMiddlemanRequest? request, string? auth0UserId, CancellationToken ct)

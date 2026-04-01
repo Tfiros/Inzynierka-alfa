@@ -1,5 +1,7 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
+using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
@@ -30,7 +32,9 @@ public interface ICounterOffersService
         CancellationToken ct = default);
 }
 
-public class CounterOffersService(ICounterOffersRepository repository) : ICounterOffersService
+public class CounterOffersService(
+    ICounterOffersRepository repository,
+    IPostAcceptPipeline postAcceptPipeline) : ICounterOffersService
 {
     private const int CounterOfferCreationFee = 20;
 
@@ -303,105 +307,99 @@ public class CounterOffersService(ICounterOffersRepository repository) : ICounte
         }
     }
 
-public async Task<Result<AcceptCounterOfferAsyncDTO>> AcceptCounterOfferAsync(
-    string auth0UserId,
-    int counterOfferId,
-    CancellationToken ct = default)
-{
-    var validationResult = await ValidateAcceptCounterOffer(auth0UserId, counterOfferId, ct);
-    if (validationResult is not null)
-        return validationResult;
-
-    await using var transaction = await repository.BeginTransactionAsync(ct);
-
-    try
+    public async Task<Result<AcceptCounterOfferAsyncDTO>> AcceptCounterOfferAsync(
+        string auth0UserId,
+        int counterOfferId,
+        CancellationToken ct = default)
     {
-        var counterOffer = await repository.GetCounterOfferWithOfferAndItemsAsync(counterOfferId, ct);
-        if (counterOffer is null || counterOffer.Offer is null)
-            return Result<AcceptCounterOfferAsyncDTO>.NotFound("KO nie znalezione");
+        var validationResult = await ValidateAcceptCounterOffer(auth0UserId, counterOfferId, ct);
+        if (validationResult is not null)
+            return validationResult;
 
-        var offer = counterOffer.Offer;
+        await using var transaction = await repository.BeginTransactionAsync(ct);
 
-        var tradeExists = await repository.TradeExistsForOfferAsync(offer.ID, ct);
-        if (tradeExists)
+        try
         {
-            await transaction.RollbackAsync(ct);
-            return Result<AcceptCounterOfferAsyncDTO>.Conflict("Trade już istnieje");
-        }
+            var counterOffer = await repository.GetCounterOfferWithOfferAndItemsAsync(counterOfferId, ct);
+            if (counterOffer is null || counterOffer.Offer is null)
+                return Result<AcceptCounterOfferAsyncDTO>.NotFound("KO nie znalezione");
 
-        counterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted;
-        offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
+            var offer = counterOffer.Offer;
 
-        var otherPendingCounterOffers = await repository.GetOtherPendingCounterOffersForOfferAsync(
-            offer.ID,
-            counterOffer.ID,
-            ct);
-
-        foreach (var otherCounterOffer in otherPendingCounterOffers)
-        {
-            otherCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
-
-            if (otherCounterOffer.TokensOffered > 0)
+            var tradeExists = await repository.TradeExistsForOfferAsync(offer.ID, ct);
+            if (tradeExists)
             {
-                var sender = await repository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
-                if (sender is not null && !sender.IsDeleted)
+                await transaction.RollbackAsync(ct);
+                return Result<AcceptCounterOfferAsyncDTO>.Conflict("Trade już istnieje");
+            }
+
+            counterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted;
+            offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
+
+            var otherPendingCounterOffers = await repository.GetOtherPendingCounterOffersForOfferAsync(
+                offer.ID,
+                counterOffer.ID,
+                ct);
+
+            foreach (var otherCounterOffer in otherPendingCounterOffers)
+            {
+                otherCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+
+                if (otherCounterOffer.TokensOffered > 0)
                 {
-                    sender.Tokens += otherCounterOffer.TokensOffered;
+                    var sender = await repository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
+                    if (sender is not null && !sender.IsDeleted)
+                    {
+                        sender.Tokens += otherCounterOffer.TokensOffered;
+                    }
                 }
             }
-        }
-        
-        var oldWantedItems = offer.ListingItems
-            .Where(x => x.IsWanted)
-            .ToList();
 
-        foreach (var wantedItem in oldWantedItems)
-        {
-            offer.ListingItems.Remove(wantedItem);
-        }
-        
-        foreach (var counterItem in counterOffer.ListingCounterOfferItems)
-        {
-            offer.ListingItems.Add(new ListingItems
+            var oldWantedItems = offer.ListingItems
+                .Where(x => x.IsWanted)
+                .ToList();
+
+            foreach (var wantedItem in oldWantedItems)
             {
-                Offer_ID = offer.ID,
-                Item_ID = counterItem.Item_ID,
-                Quantity = counterItem.Quantity,
-                IsWanted = true
-            });
-        }
+                offer.ListingItems.Remove(wantedItem);
+            }
 
-        var trade = new Trade
-        {
-            Offer_ID = offer.ID,
-            Customer_ID = counterOffer.User_ID,
-            User_ID = offer.User_ID,
-            TokenCost = counterOffer.TokensOffered,
-            CreationDate = DateTime.UtcNow,
-            CompletitionDate = null,
-            TradeStatus_ID = (int)TradeStatuses.New,
-            MiddlemanUser_ID = null,
-            HasBuyersItems = false,
-            HasSellersItems = false,
-        };
+            foreach (var counterItem in counterOffer.ListingCounterOfferItems)
+            {
+                offer.ListingItems.Add(new ListingItems
+                {
+                    Offer_ID = offer.ID,
+                    Item_ID = counterItem.Item_ID,
+                    Quantity = counterItem.Quantity,
+                    IsWanted = true
+                });
+            }
 
-        repository.AddTrade(trade);
-
-        await repository.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-
-        return Result<AcceptCounterOfferAsyncDTO>.Success(
-            new AcceptCounterOfferAsyncDTO(
-                TradeId: trade.ID,
+            var context = new CreateTradeDTO(
                 OfferId: offer.ID,
-                AcceptedCounterOfferId: counterOffer.ID
-            )
-        );
+                CustomerId: counterOffer.User_ID,
+                UserId: offer.User_ID,
+                TokenCost: counterOffer.TokensOffered,
+                MiddlemanUserId: null
+            );
+
+            var createdTrade = await postAcceptPipeline.RunAsync(context, ct);
+
+            await repository.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            return Result<AcceptCounterOfferAsyncDTO>.Success(
+                new AcceptCounterOfferAsyncDTO(
+                    TradeId: createdTrade.ID,
+                    OfferId: offer.ID,
+                    AcceptedCounterOfferId: counterOffer.ID
+                )
+            );
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            return Result<AcceptCounterOfferAsyncDTO>.InternalServerError("Akceptacja nie powiodła się");
+        }
     }
-    catch
-    {
-        await transaction.RollbackAsync(ct);
-        return Result<AcceptCounterOfferAsyncDTO>.InternalServerError("Akceptacja nie powiodła się");
-    }
-}
 }

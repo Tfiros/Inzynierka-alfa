@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Trades.Repositories;
+﻿using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Features.Trades.Services;
 
 namespace ItemTradeApp.Features.Trades;
@@ -17,6 +18,8 @@ public static class DI
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<ICounterOfferRepository, CounterOfferRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ITradeCreation, TradeCreator>();
+        services.AddScoped<IPostAcceptPipeline, PostAcceptPipeline>();
 
         return services;
     }
