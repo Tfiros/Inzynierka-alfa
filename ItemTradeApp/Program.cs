@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using ItemTradeApp.Features.ContactPage;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllers();
+builder.Services.AddScoped<IContactPageService, ContactPageService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -61,6 +63,8 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ItemTradeApp", Version = "v1" });
 
+    c.CustomSchemaIds(type => type.FullName!.Replace("+", "."));
+
     var scheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -70,9 +74,13 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Wpisz: Bearer {token}"
     };
+
     c.DocumentFilter<PrefixDocumentFilter>("/api");
     c.AddSecurityDefinition("Bearer", scheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { scheme, Array.Empty<string>() }
+    });
 });
 
 builder.Services.AddSignalR();
@@ -185,6 +193,7 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
