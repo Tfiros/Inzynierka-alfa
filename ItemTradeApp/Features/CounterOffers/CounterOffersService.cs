@@ -359,20 +359,23 @@ public class CounterOffersService(
                 .Where(x => x.IsWanted)
                 .ToList();
 
-            foreach (var wantedItem in oldWantedItems)
+            if (oldWantedItems.Any())
             {
-                offer.ListingItems.Remove(wantedItem);
+                repository.RemoveListingItems(oldWantedItems);
             }
 
-            foreach (var counterItem in counterOffer.ListingCounterOfferItems)
+            if (counterOffer.ListingCounterOfferItems.Any())
             {
-                offer.ListingItems.Add(new ListingItems
+                foreach (var counterItem in counterOffer.ListingCounterOfferItems)
                 {
-                    Offer_ID = offer.ID,
-                    Item_ID = counterItem.Item_ID,
-                    Quantity = counterItem.Quantity,
-                    IsWanted = true
-                });
+                    offer.ListingItems.Add(new ListingItems
+                    {
+                        Offer_ID = offer.ID,
+                        Item_ID = counterItem.Item_ID,
+                        Quantity = counterItem.Quantity,
+                        IsWanted = true
+                    });
+                }
             }
 
             var context = new CreateTradeDTO(
@@ -399,7 +402,9 @@ public class CounterOffersService(
         catch
         {
             await transaction.RollbackAsync(ct);
-            return Result<AcceptCounterOfferAsyncDTO>.InternalServerError("Akceptacja nie powiodła się");
+            return Result<AcceptCounterOfferAsyncDTO>.InternalServerError(
+                $"Akceptacja nie powiodła się"
+            );
         }
     }
 }

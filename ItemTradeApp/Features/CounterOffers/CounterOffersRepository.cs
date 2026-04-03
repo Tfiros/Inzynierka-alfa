@@ -25,6 +25,7 @@ public interface ICounterOffersRepository
         int offerId,
         int acceptedCounterOfferId,
         CancellationToken ct);
+    void RemoveListingItems(IEnumerable<ListingItems> items);
 }
 
 public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
@@ -213,5 +214,9 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
                          && co.ID != acceptedCounterOfferId
                          && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
             .ToListAsync(ct);
+    }
+    public void RemoveListingItems(IEnumerable<ListingItems> items)
+    {
+        db.ListingItems.RemoveRange(items);
     }
 }
