@@ -1,6 +1,9 @@
 using System.Text.RegularExpressions;
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.ContactPage.DTOs;
+using ItemTradeApp.Features.EmaillsNotifications.Emails.Settings;
 using MailKit.Security;
+using Microsoft.Extensions.Options;
 using MimeKit;
 using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 
@@ -8,40 +11,62 @@ namespace ItemTradeApp.Features.ContactPage;
 
 public interface IContactPageService
 {
-    Task SendAsync(ContactDTO request, CancellationToken ct);
+    Task<Result<string>> SendAsync(ContactDTO? request, CancellationToken ct);
 }
 
-public sealed class ContactPageService(IConfiguration configuration) : IContactPageService
+public sealed class ContactPageService(
+    IOptions<SmtpEmailOptions> smtpOptions) : IContactPageService
 {
-    public async Task SendAsync(ContactDTO request, CancellationToken ct)
+    public async Task<Result<string>> SendAsync(ContactDTO? request, CancellationToken ct)
     {
-        ValidateRequest(request);
-        var smtpSettings = GetSmtpSettings();
+        var validationResult = ValidateRequest(request);
+        if (!validationResult.IsSuccess)
+            return validationResult;
 
-        var email = BuildMessage(request, smtpSettings);
+        var smtpSettings = smtpOptions.Value;
 
-        var secureSocketOptions = smtpSettings.EnableSsl
-            ? SecureSocketOptions.StartTls
-            : SecureSocketOptions.None;
+        try
+        {
+            var email = BuildMessage(request!, smtpSettings);
 
-        using var smtp = new SmtpClient();
+            var secureSocketOptions = smtpSettings.EnableSsl
+                ? SecureSocketOptions.StartTls
+                : SecureSocketOptions.None;
 
-        await smtp.ConnectAsync(smtpSettings.Host, smtpSettings.Port, secureSocketOptions, ct);
-        await smtp.AuthenticateAsync(smtpSettings.Username, smtpSettings.Password, ct);
-        await smtp.SendAsync(email, ct);
-        await smtp.DisconnectAsync(true, ct);
+            using var smtp = new SmtpClient();
+
+            await smtp.ConnectAsync(
+                smtpSettings.Host,
+                smtpSettings.Port,
+                secureSocketOptions,
+                ct);
+
+            await smtp.AuthenticateAsync(
+                smtpSettings.Username,
+                smtpSettings.Password,
+                ct);
+
+            await smtp.SendAsync(email, ct);
+            await smtp.DisconnectAsync(true, ct);
+
+            return Result<string>.Success(null, "Wiadomość została wysłana.");
+        }
+        catch
+        {
+            return Result<string>.InternalServerError("Nie udało się wysłać wiadomości.");
+        }
     }
 
-    private static void ValidateRequest(ContactDTO request)
+    private static Result<string> ValidateRequest(ContactDTO? request)
     {
         if (request is null)
-            throw new ArgumentNullException(nameof(request));
+            return Result<string>.BadRequest("Brak danych formularza.");
 
         if (string.IsNullOrWhiteSpace(request.Name))
-            throw new ArgumentException("Imię i nazwisko jest wymagane.", nameof(request.Name));
+            return Result<string>.BadRequest("Imię i nazwisko jest wymagane.");
 
         if (string.IsNullOrWhiteSpace(request.Email))
-            throw new ArgumentException("Email jest wymagany.", nameof(request.Email));
+            return Result<string>.BadRequest("Email jest wymagany.");
 
         var email = request.Email.Trim();
 
@@ -50,71 +75,49 @@ public sealed class ContactPageService(IConfiguration configuration) : IContactP
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         if (!emailRegex.IsMatch(email))
-            throw new ArgumentException("Email ma nieprawidłowy format.", nameof(request.Email));
+            return Result<string>.BadRequest("Email ma nieprawidłowy format.");
 
         if (string.IsNullOrWhiteSpace(request.Subject))
-            throw new ArgumentException("Temat jest wymagany.", nameof(request.Subject));
+            return Result<string>.BadRequest("Temat jest wymagany.");
 
         if (string.IsNullOrWhiteSpace(request.Message))
-            throw new ArgumentException("Wiadomość jest wymagana.", nameof(request.Message));
+            return Result<string>.BadRequest("Wiadomość jest wymagana.");
 
         var message = request.Message.Trim();
 
         if (message.Length < 20)
-            throw new ArgumentException("Wiadomość musi mieć co najmniej 20 znaków.", nameof(request.Message));
+            return Result<string>.BadRequest("Wiadomość musi mieć co najmniej 20 znaków.");
+
+        return Result<string>.Success(null);
     }
 
-    private SmptDTO GetSmtpSettings()
+    private static MimeMessage BuildMessage(ContactDTO request, SmtpEmailOptions smtp)
     {
-        var host = configuration["Mails:Host"];
-        var portValue = configuration["Mails:Port"];
-        var senderName = configuration["Mails:SenderName"];
-        var senderEmail = configuration["Mails:SenderEmail"];
-        var username = configuration["Mails:Username"];
-        var password = configuration["Mails:Password"];
-        var enableSslValue = configuration["Mails:EnableSsl"];
+        if (string.IsNullOrWhiteSpace(smtp.Host))
+            throw new InvalidOperationException("Brak konfiguracji SMTP host.");
 
-        if (string.IsNullOrWhiteSpace(host))
-            throw new InvalidOperationException("Brak konfiguracji: Mails:Host");
+        if (smtp.Port <= 0)
+            throw new InvalidOperationException("Brak poprawnej konfiguracji SMTP port.");
 
-        if (string.IsNullOrWhiteSpace(portValue) || !int.TryParse(portValue, out var port))
-            throw new InvalidOperationException("Brak lub nieprawidłowa konfiguracja: Mails:Port");
+        if (string.IsNullOrWhiteSpace(smtp.SenderName))
+            throw new InvalidOperationException("Brak konfiguracji SMTP sender name.");
 
-        if (string.IsNullOrWhiteSpace(senderName))
-            throw new InvalidOperationException("Brak konfiguracji: Mails:SenderName");
+        if (string.IsNullOrWhiteSpace(smtp.SenderEmail))
+            throw new InvalidOperationException("Brak konfiguracji SMTP sender email.");
 
-        if (string.IsNullOrWhiteSpace(senderEmail))
-            throw new InvalidOperationException("Brak konfiguracji: Mails:SenderEmail");
+        if (!MailboxAddress.TryParse(smtp.SenderEmail, out _))
+            throw new InvalidOperationException("Nieprawidłowy sender email.");
 
-        if (!MailboxAddress.TryParse(senderEmail, out _))
-            throw new InvalidOperationException("Nieprawidłowa konfiguracja: Mails:SenderEmail");
+        if (string.IsNullOrWhiteSpace(smtp.Username))
+            throw new InvalidOperationException("Brak konfiguracji SMTP username.");
 
-        if (string.IsNullOrWhiteSpace(username))
-            throw new InvalidOperationException("Brak konfiguracji: Mails:Username");
+        if (string.IsNullOrWhiteSpace(smtp.Password))
+            throw new InvalidOperationException("Brak konfiguracji SMTP password.");
 
-        if (string.IsNullOrWhiteSpace(password))
-            throw new InvalidOperationException("Brak konfiguracji: Mails:Password");
-
-        if (string.IsNullOrWhiteSpace(enableSslValue) || !bool.TryParse(enableSslValue, out var enableSsl))
-            throw new InvalidOperationException("Brak lub nieprawidłowa konfiguracja: Mails:EnableSsl");
-
-        return new SmptDTO(
-            Host: host,
-            Port: port,
-            SenderName: senderName,
-            SenderEmail: senderEmail,
-            Username: username,
-            Password: password,
-            EnableSsl: enableSsl
-        );
-    }
-
-    private static MimeMessage BuildMessage(ContactDTO request, SmptDTO smpt)
-    {
         var email = new MimeMessage();
 
-        email.From.Add(new MailboxAddress(smpt.SenderName, smpt.SenderEmail));
-        email.To.Add(MailboxAddress.Parse(smpt.SenderEmail));
+        email.From.Add(new MailboxAddress(smtp.SenderName, smtp.SenderEmail));
+        email.To.Add(MailboxAddress.Parse(smtp.SenderEmail));
         email.ReplyTo.Add(new MailboxAddress(request.Name, request.Email));
         email.Subject = $"Formularz kontaktowy: {request.Subject}";
 
@@ -135,5 +138,4 @@ Wiadomość:
 
         return email;
     }
-    
 }

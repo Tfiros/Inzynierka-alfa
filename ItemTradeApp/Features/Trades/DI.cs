@@ -19,7 +19,7 @@ public static class DI
         services.AddScoped<ICounterOfferRepository, CounterOfferRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITradeCreation, TradeCreator>();
-        services.AddScoped<IPostAcceptPipeline, PostAcceptPipeline>();
+        services.AddScoped<IPostAcceptHandler, PostAcceptHandler>();
 
         return services;
     }

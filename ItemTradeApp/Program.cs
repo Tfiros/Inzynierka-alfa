@@ -26,7 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddControllers();
-builder.Services.AddScoped<IContactPageService, ContactPageService>();
+builder.Services.RegisterContactPageFeatureDI();
 
 builder.Services.AddRateLimiter(options =>
 {

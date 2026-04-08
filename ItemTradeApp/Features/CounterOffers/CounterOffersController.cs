@@ -69,7 +69,7 @@ public class CounterOffersController(ICounterOffersService counterOffersService)
     }
     
     [HttpPost("{counterOfferId:int}/accept")]
-    public async Task<ActionResult<Result<AcceptCounterOfferAsyncDTO>>> AcceptCounterOffer(
+    public async Task<ActionResult<Result<AcceptCounterOfferResponse>>> AcceptCounterOffer(
         [FromRoute] int counterOfferId,
         CancellationToken ct)
     {

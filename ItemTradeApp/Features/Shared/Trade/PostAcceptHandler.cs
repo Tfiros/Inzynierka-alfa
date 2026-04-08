@@ -3,12 +3,12 @@ using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Shared;
 
-public interface IPostAcceptPipeline
+public interface IPostAcceptHandler
 {
     Task<Trade> RunAsync(CreateTradeDTO context, CancellationToken ct);
 }
 
-public sealed class PostAcceptPipeline(ITradeCreation tradeCreationExecutor) : IPostAcceptPipeline
+public sealed class PostAcceptHandler(ITradeCreation tradeCreationExecutor) : IPostAcceptHandler
 {
     public async Task<Trade> RunAsync(CreateTradeDTO context, CancellationToken ct)
     {
