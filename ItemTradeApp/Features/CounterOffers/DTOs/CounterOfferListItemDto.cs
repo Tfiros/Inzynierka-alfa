@@ -1,3 +1,5 @@
+using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
+
 namespace ItemTradeApp.Features.CounterOffers.DTOs;
 
 public sealed record CounterOfferListItemDto(

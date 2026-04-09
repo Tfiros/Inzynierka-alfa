@@ -14,8 +14,6 @@ public static class DI
         serviceCollection.AddScoped<IGenresRepository, GenresRepository>();
         serviceCollection.AddScoped<IRaritiesRepository, RaritiesRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
-        serviceCollection.AddScoped<ICounterOffersService, CounterOffersService>();
-        serviceCollection.AddScoped<ICounterOffersRepository, CounterOffersRepository>();
 
         return serviceCollection;
     }

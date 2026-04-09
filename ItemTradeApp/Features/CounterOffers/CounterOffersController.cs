@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
-using ItemTradeApp.Features.CounterOffers.DTOs.PatchDTOs;
-using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
+using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
+using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

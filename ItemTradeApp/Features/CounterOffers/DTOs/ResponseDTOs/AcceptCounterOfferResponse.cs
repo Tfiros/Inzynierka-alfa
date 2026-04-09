@@ -1,4 +1,4 @@
-namespace ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
+namespace ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
 
 public sealed record AcceptCounterOfferResponse(
     int TradeId,

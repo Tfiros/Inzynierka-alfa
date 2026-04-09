@@ -1,8 +1,8 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
+using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ItemTradeApp.Features.CounterOffers;
 
@@ -18,7 +18,6 @@ public interface ICounterOffersRepository
     Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct);
     Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct);
     void AddCounterOffer(CounterOffer counterOffer);
-    Task SaveChangesAsync(CancellationToken ct);
     Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
         int offerId,
         int acceptedCounterOfferId,
@@ -169,7 +168,11 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
 
     public async Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct)
     {
-        var existingCount = await db.Items.CountAsync(i => itemIds.Contains(i.ID), ct);
+        var existingCount = await db.Items.CountAsync(
+            i => itemIds.Contains(i.ID) && !i.IsDeleted,
+            ct
+        );
+
         return existingCount == itemIds.Length;
     }
 
@@ -186,11 +189,7 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     {
         db.CounterOffers.Add(counterOffer);
     }
-
-    public Task SaveChangesAsync(CancellationToken ct)
-    {
-        return db.SaveChangesAsync(ct);
-    }
+    
     
     public async Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
         int offerId,

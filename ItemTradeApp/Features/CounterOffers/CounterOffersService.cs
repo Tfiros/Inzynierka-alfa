@@ -1,6 +1,6 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
-using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
-using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
+using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.Trade;
 using ItemTradeApp.Persistence;
@@ -98,6 +98,9 @@ public class CounterOffersService(
 
         if (request.TokensOffered < 0)
             return Result<CounterOfferDto>.BadRequest("Niepoprawna ilość tokenów");
+        
+        if ((request.Items is null || request.Items.Count == 0) && request.TokensOffered <= 0)
+            return Result<CounterOfferDto>.BadRequest("Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny.");
 
         return null;
     }
