@@ -18,7 +18,6 @@ public interface ICounterOffersRepository
     Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct);
     Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct);
     void AddCounterOffer(CounterOffer counterOffer);
-    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
         int offerId,
@@ -186,11 +185,6 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     public void AddCounterOffer(CounterOffer counterOffer)
     {
         db.CounterOffers.Add(counterOffer);
-    }
-
-    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct)
-    {
-        return db.Database.BeginTransactionAsync(ct);
     }
 
     public Task SaveChangesAsync(CancellationToken ct)

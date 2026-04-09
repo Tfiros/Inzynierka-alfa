@@ -1,5 +1,6 @@
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Trade;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
@@ -7,7 +8,7 @@ namespace ItemTradeApp.Features.Trades;
 
 public sealed class TradeCreator(AppDbContext db) : ITradeCreation
 {
-    public async Task<Trade> ExecuteAsync(CreateTradeDTO context, CancellationToken ct)
+    public async Task<Trade> ExecuteAsync(CreateTradeContext context, CancellationToken ct)
     {
         var trade = new Trade
         {

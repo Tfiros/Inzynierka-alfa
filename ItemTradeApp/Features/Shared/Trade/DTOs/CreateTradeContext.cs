@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.Shared.DTOs;
 
-public sealed record CreateTradeDTO(
+public sealed record CreateTradeContext(
     int OfferId,
     int BuyerId,
     int SellerId,

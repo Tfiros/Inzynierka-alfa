@@ -2,6 +2,7 @@ using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTO;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Trade;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
@@ -350,7 +351,7 @@ public class CounterOffersService(
                 });
             }
 
-            var context = new CreateTradeDTO(
+            var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
                 SellerId: offer.User_ID,

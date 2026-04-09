@@ -16,9 +16,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using ItemTradeApp.Features.ContactPage;
+using ItemTradeApp.Features.CounterOffers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -156,6 +156,7 @@ builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
+builder.Services.RegisterCounterOffersDI();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
