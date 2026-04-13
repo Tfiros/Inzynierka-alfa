@@ -1,4 +1,4 @@
-namespace ItemTradeApp.Features.Shared.DTOs;
+namespace ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 
 public sealed record CreateTradeContext(
     int OfferId,

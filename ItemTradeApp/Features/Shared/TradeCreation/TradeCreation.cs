@@ -1,8 +1,9 @@
-using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
+using ItemTradeApp.Persistence.Models;
 
-namespace ItemTradeApp.Features.Shared.Trade;
+namespace ItemTradeApp.Features.Shared.TradeCreation;
 
 public interface ITradeCreation
 {
-    Task<Persistence.Models.Trade> ExecuteAsync(CreateTradeContext context, CancellationToken ct);
+    Task<Trade> ExecuteAsync(CreateTradeContext context, CancellationToken ct);
 }

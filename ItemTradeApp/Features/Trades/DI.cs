@@ -1,5 +1,5 @@
 ﻿using ItemTradeApp.Features.Shared;
-using ItemTradeApp.Features.Shared.Trade;
+using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Trades.Repositories;
 
 namespace ItemTradeApp.Features.Trades;

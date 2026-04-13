@@ -1,4 +1,3 @@
-using ItemTradeApp.Features.CounterOffers;
 using ItemTradeApp.Features.Offers.Repositories;
 
 namespace ItemTradeApp.Features.Offers;

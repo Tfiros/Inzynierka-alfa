@@ -1,6 +1,7 @@
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
-using ItemTradeApp.Features.Shared.Trade;
+using ItemTradeApp.Features.Shared.TradeCreation;
+using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
