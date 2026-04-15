@@ -77,4 +77,21 @@ public class CounterOffersController(ICounterOffersService counterOffersService)
         var result = await counterOffersService.AcceptCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
     }
+    
+    [HttpPost("{offerId:int}/quote")]
+    public async Task<ActionResult<Result<CounterOfferCostDto>>> QuoteCounterOffer(
+        [FromRoute] int offerId,
+        [FromBody] CounterOfferDraftRequest request,
+        CancellationToken ct)
+    {
+        var auth0UserId = GetNormalizedAuth0UserId();
+
+        var result = await counterOffersService.QuoteCounterOfferAsync(
+            auth0UserId,
+            offerId,
+            request,
+            ct);
+
+        return result.ToActionResult();
+    }
 }

@@ -31,6 +31,12 @@ public interface ICounterOffersService
         string auth0UserId,
         int counterOfferId,
         CancellationToken ct = default);
+
+    Task<Result<CounterOfferCostDto>> QuoteCounterOfferAsync(
+        string auth0UserId,
+        int offerId,
+        CounterOfferDraftRequest request,
+        CancellationToken ct = default);
 }
 
 public class CounterOffersService(
@@ -380,5 +386,69 @@ public class CounterOffersService(
             await transaction.RollbackAsync(ct);
             return Result<AcceptCounterOfferResponse>.InternalServerError("Akceptacja nie powiodła się");
         }
+    }
+    
+    public async Task<Result<CounterOfferCostDto>> QuoteCounterOfferAsync(
+        string auth0UserId,
+        int offerId,
+        CounterOfferDraftRequest request,
+        CancellationToken ct = default)
+    {
+        var validation = await ValidateCounterOfferForQuote(auth0UserId, offerId, request, ct);
+        if (validation is not null)
+            return validation;
+
+        var finalCost = request.TokensOffered + CounterOfferCreationFee;
+
+        return Result<CounterOfferCostDto>.Success(
+            new CounterOfferCostDto(
+                TotalCost: finalCost
+            )
+        );
+    }
+    
+    private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
+        string auth0UserId,
+        int offerId,
+        CounterOfferDraftRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<CounterOfferCostDto>.Unauthorized("missing_sub_claim");
+
+        if (offerId <= 0)
+            return Result<CounterOfferCostDto>.BadRequest("Niepoprawne ID oferty");
+
+        if (request.Items.Any(x => x.ItemId <= 0))
+            return Result<CounterOfferCostDto>.BadRequest("Niepoprawne ID przedmiotu");
+
+        if (request.Items.Any(x => x.Quantity <= 0))
+            return Result<CounterOfferCostDto>.BadRequest("Niepoprawna ilość");
+
+        if (request.TokensOffered < 0)
+            return Result<CounterOfferCostDto>.BadRequest("Niepoprawna ilość tokenów");
+
+        if ((request.Items is null || request.Items.Count == 0) && request.TokensOffered <= 0)
+            return Result<CounterOfferCostDto>.BadRequest("Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny.");
+
+        var (user, userError) = await GetActiveUser<CounterOfferCostDto>(auth0UserId, ct);
+        if (userError is not null)
+            return userError;
+
+        var offer = await repository.GetOfferAsync(offerId, ct);
+
+        var offerValidation = ValidateOfferForCounterOffer<CounterOfferCostDto>(offer, user!.ID);
+        if (offerValidation is not null)
+            return offerValidation;
+
+        var itemIds = request.Items.Select(x => x.ItemId).ToArray();
+        if (itemIds.Length != itemIds.Distinct().Count())
+            return Result<CounterOfferCostDto>.BadRequest("Przedmioty w kontrofercie muszą być unikalne");
+
+        var allItemsExist = await repository.AllItemsExistAsync(itemIds, ct);
+        if (!allItemsExist)
+            return Result<CounterOfferCostDto>.BadRequest("Jeden z przedmiotów nie istnieje.");
+
+        return null;
     }
 }
