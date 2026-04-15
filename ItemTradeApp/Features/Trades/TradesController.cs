@@ -16,6 +16,16 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     private string? GetAuth0UserId()
         => User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+    [HttpPost]
+    [Authorize]
+    public async Task<ActionResult<Result<int>>> Create(
+        [FromBody] CreateTradeRequest? request,
+        CancellationToken ct)
+    {
+        var res = await tradesService.CreateAsync(request, GetAuth0UserId(), ct);
+        return res.ToActionResult();
+    }
+
     [HttpPost("assign-middleman")]
     [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<string>>> AssignMiddleman(

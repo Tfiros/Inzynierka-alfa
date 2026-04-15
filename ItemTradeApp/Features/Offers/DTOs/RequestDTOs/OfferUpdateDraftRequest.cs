@@ -1,5 +1,3 @@
-using ItemTradeApp.Features.Shared.DTOs;
-
 namespace ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 
 public sealed class OfferUpdateDraftRequest

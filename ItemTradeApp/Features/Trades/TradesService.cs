@@ -10,6 +10,8 @@ namespace ItemTradeApp.Features.Trades;
 
 public interface ITradesService
 {
+    Task<Result<int>> CreateAsync(CreateTradeRequest? request, string? auth0UserId, CancellationToken ct);
+
     Task<Result<string>> AssignMiddlemanAsync(AssignMiddlemanRequest? request, string? auth0UserId, CancellationToken ct);
 
     Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct);
@@ -33,6 +35,10 @@ public interface ITradesService
 
 public sealed class TradesService(
     ITradeRepository tradeRepo,
+    IOfferRepository offerRepo,
+    ICounterOfferRepository counterOfferRepo,
+    IUserRepository userRepo,
+    IUnitOfWork unitOfWork,
     IUserContext userContext,
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery
