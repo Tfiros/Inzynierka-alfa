@@ -18,13 +18,17 @@ public partial class Offer
     public int TokenCost { get; set; }
     [Column("offer_status_id")]
     public int OfferStatus_ID { get; set; }
-    
+
     [Column("title")] 
     public string Title { get; set; } = null!;
     [Column("description")] 
     public string Description { get; set; } = null!;
     [Column("is_highlighted")]
     public bool IsHighlighted { get; set; }
+    [Column("tokens_offered")] 
+    public int TokensOffered { get; set; }
+    [Column("tokens_wanted")] 
+    public int TokensWanted { get; set; }
 
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 

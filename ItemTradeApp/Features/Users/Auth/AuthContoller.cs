@@ -29,18 +29,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         if (req is null)
             return Result<AuthZeroBodyResponse>.BadRequest("Body is required.").ToActionResult();
 
-        if (string.IsNullOrWhiteSpace(req.Email))
-            ModelState.AddModelError(nameof(req.Email), "Email is required.");
-        if (string.IsNullOrWhiteSpace(req.Password))
-            ModelState.AddModelError(nameof(req.Password), "Password is required.");
-
-        if (!ModelState.IsValid)
-        {
-            var msg = string.Join(" | ",
-                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
-            return Result<AuthZeroBodyResponse>.BadRequest(msg).ToActionResult();
-        }
-
         var result = await authService.RegisterAsync(req);
         return result.ToActionResult();
     }
@@ -51,18 +39,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     {
         if (req is null)
             return Result<LoginResponse>.BadRequest("Body is required.").ToActionResult();
-
-        if (string.IsNullOrWhiteSpace(req.Email))
-            ModelState.AddModelError(nameof(req.Email), "Email is required.");
-        if (string.IsNullOrWhiteSpace(req.Password))
-            ModelState.AddModelError(nameof(req.Password), "Password is required.");
-
-        if (!ModelState.IsValid)
-        {
-            var msg = string.Join(" | ",
-                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
-            return Result<LoginResponse>.BadRequest(msg).ToActionResult();
-        }
 
         var result = await authService.LoginAsync(req);
         if (!result.IsSuccess || result.Data is null)
@@ -87,16 +63,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     {
         if (req is null)
             return Result<AuthZeroBodyResponse>.BadRequest("Body is required.").ToActionResult();
-
-        if (string.IsNullOrWhiteSpace(req.Email))
-            ModelState.AddModelError(nameof(req.Email), "Email is required.");
-
-        if (!ModelState.IsValid)
-        {
-            var msg = string.Join(" | ",
-                ModelState.SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)));
-            return Result<AuthZeroBodyResponse>.BadRequest(msg).ToActionResult();
-        }
 
         var result = await authService.ForgotPasswordAsync(req);
         return result.ToActionResult();

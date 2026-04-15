@@ -16,18 +16,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
-using ItemTradeApp.Features.ContactPage;
-using ItemTradeApp.Features.CounterOffers;
+using FluentValidation;
+using ItemTradeApp.Filters;
+using Microsoft.AspNetCore.Mvc;
+using ItemTradeApp.Features.Chat;
 
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseNpgsql(builder.Configuration.GetConnectionString("DBConnection")));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddControllers();
-builder.Services.RegisterContactPageFeatureDI();
-
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationActionFilter>();
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -63,8 +67,6 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ItemTradeApp", Version = "v1" });
 
-    c.CustomSchemaIds(type => type.FullName!.Replace("+", "."));
-
     var scheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -74,13 +76,9 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Wpisz: Bearer {token}"
     };
-
     c.DocumentFilter<PrefixDocumentFilter>("/api");
     c.AddSecurityDefinition("Bearer", scheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { scheme, Array.Empty<string>() }
-    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
 });
 
 builder.Services.AddSignalR();
@@ -108,11 +106,13 @@ builder.Services
                 var path = ctx.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/api/hubs/notifications"))
+                    (path.StartsWithSegments("/api/hubs/notifications") ||
+                     path.StartsWithSegments("/api/hubs/chat")))
                 {
                     ctx.Token = accessToken;
                     return Task.CompletedTask;
                 }
+
                 if (ctx.Request.Cookies.TryGetValue("at", out var token) && !string.IsNullOrWhiteSpace(token))
                     ctx.Token = token;
 
@@ -140,6 +140,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
+builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p
@@ -151,12 +152,13 @@ builder.Services.AddCors(opts =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
+builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
-builder.Services.RegisterCounterOffersDI();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -194,7 +196,6 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
@@ -212,5 +213,6 @@ app.MapGroup("/api")
 
 app.MapHub<NotificationsHub>("/api/hubs/notifications")
     .RequireRateLimiting("limiterGlobal");
+app.MapHub<ChatHub>("/api/hubs/chat");
 
 app.Run();

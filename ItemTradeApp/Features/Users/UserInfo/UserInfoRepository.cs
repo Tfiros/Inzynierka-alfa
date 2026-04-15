@@ -6,6 +6,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 
 public interface IUserInfoRepository
 {
+    Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct);
     Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
     Task UpdateUserWithProfileInfoAsync(ProfileInfo profile, CancellationToken ct);
@@ -25,10 +26,26 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .AsNoTracking()
             .Where(u => !u.IsDeleted)
             .Include(u => u.ProfileInfo)
+            .Include(u => u.Chats)
+            .ThenInclude(c => c.ChatConversation)
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
     }
-    
+    public async Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct)
+    {
+        var q =
+            from cm in dbContext.ConversationMembers.AsNoTracking()
+            where cm.UserId == userId
+            where dbContext.ChatMessages.AsNoTracking().Any(m =>
+                m.ChatConversationId == cm.ChatConversationId &&
+                m.DeletedAt == null &&
+                m.SenderId != userId &&
+                (cm.LastReadMessageId == null || m.Id > cm.LastReadMessageId)
+            )
+            select 1;
+
+        return await q.CountAsync(ct);
+    }
     public async Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?> GetUserStatsByUserIdAsync(int id, CancellationToken ct)
     {
         var res = await dbContext.Users.AsNoTracking().Where(u => u.ID == id && !u.IsDeleted)
