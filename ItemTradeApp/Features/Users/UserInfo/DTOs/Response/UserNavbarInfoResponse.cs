@@ -5,10 +5,6 @@ public sealed record UserNavbarInfoResponse(
     string Nickname,
     string Email,
     int    Tokens,
-    int    EscrowedTokens,
     int    Experience,
-    int    Level,
-    List<int> ChatIds,
-    int ChatUnreadTotal
+    int    Level
 );
-public sealed record ChatInfos(int ChatId, int UnreadCount);

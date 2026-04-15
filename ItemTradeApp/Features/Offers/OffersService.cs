@@ -100,7 +100,7 @@ public class OffersService(
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
 
     
-        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.Title, offerDraftRequest.Description,offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.DurationDays, offerDraftRequest.IsHighlighted, offerDraftRequest.TokensOffered, offerDraftRequest.TokensWanted, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.Title, offerDraftRequest.Description,offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.DurationDays, offerDraftRequest.IsHighlighted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
         if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
@@ -109,8 +109,8 @@ public class OffersService(
         if (!okUser) return Result<OfferDetailsDTO>.Unauthorized(errUser!);
         if (userState is null) return Result<OfferDetailsDTO>.BadRequest("user_fetch_error");
 
-        var requiredBalance = draft.TokenCost + draft.TokensOffered;
-        if (userState.Tokens < requiredBalance) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
+        
+        if (userState.Tokens < draft.TokenCost) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -132,8 +132,6 @@ public class OffersService(
                 User_ID = userState.Id,
                 OfferStatus_ID = (int)OfferStatuses.Active,
                 IsHighlighted = draft.IsHighlighted,
-                TokensOffered = draft.TokensOffered,
-                TokensWanted = draft.TokensWanted,
                 ListingItems = draft.Offered.Select(kv => new ListingItems
                 {
                     Item_ID = kv.Key,
@@ -176,7 +174,7 @@ public class OffersService(
         if (offer is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferDetailsDTO>.BadRequest("offer_not_active");
-        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted, offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
         if (draft is null) return Result<OfferDetailsDTO>.BadRequest("draft_creation_failed");
@@ -186,8 +184,7 @@ public class OffersService(
         
         
         var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
-        var requiredBalance = updateFeeTokens + draft.TokensOffered;
-        if (userState.Tokens < requiredBalance) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
+        if (userState.Tokens < updateFeeTokens) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
         
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -205,8 +202,7 @@ public class OffersService(
             offer.ExpDate = draft.ExpDate;
             offer.TokenCost = draft.TokenCost;
             offer.IsHighlighted = draft.IsHighlighted;
-            offer.TokensOffered = draft.TokensOffered;
-            offer.TokensWanted = draft.TokensWanted;
+            
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
             var response = await offersRepository.GetOfferByIdAsync(offer.ID, ct);
@@ -251,7 +247,7 @@ public class OffersService(
     public async Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default)
     {
         var (okDraft, errDraft, draft) =
-            await BuildDraftAsync(req.Title,req.Description,req.OfferedItems, req.WantedItems, req.DurationDays, req.IsHighlighted,req.TokensOffered, req.TokensWanted, ct);
+            await BuildDraftAsync(req.Title,req.Description,req.OfferedItems, req.WantedItems, req.DurationDays, req.IsHighlighted, ct);
         if (!okDraft) return Result<OfferQuoteResponse>.BadRequest(errDraft);
         if (draft is null) return Result<OfferQuoteResponse>.BadRequest("draft_creation_failed");
 
@@ -350,7 +346,7 @@ public class OffersService(
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferUpdateQuoteResponse>.BadRequest("offer_not_active");
         
-        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
+        var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, ct);
         if (!okDraft)
             return Result<OfferUpdateQuoteResponse>.BadRequest(errDraft);
         if (draft is null) return Result<OfferUpdateQuoteResponse>.BadRequest("draft_creation_failed");
@@ -398,36 +394,23 @@ public class OffersService(
 
     }
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
-        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, int tokensOffered, int tokensWanted, CancellationToken ct)
+        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(title) || title.Length < 3)
+        if (string.IsNullOrWhiteSpace(title))
         {
             return (false, "title_required", null);
         }
-        if (string.IsNullOrWhiteSpace(description) || description.Length < 3)
+        if (string.IsNullOrWhiteSpace(description))
         {
             return (false, "description_required", null);
         }
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
-        if (offered.Count == 0 && wanted.Count == 0)
-        {
-            return (false, "at_least_one_side_must_have_items", null);
-        }
-        if (offered.Count == 0 && tokensOffered <= 0)
-        {
-            return (false, "must_offer_tokens_when_no_items_offered", null);
-        }
-        if (wanted.Count == 0 && tokensWanted <= 0)
-        {
-            return (false, "must_want_tokens_when_no_items_wanted", null);
-        }
-
-        if (tokensWanted < 0)
-            return (false, "tokens_wanted_negative", null);
-        if (tokensOffered < 0)
-            return (false, "tokens_offered_negative", null);
+        if (offered.Count == 0)
+            return (false, "offered_items_required", null);
+        if (wanted.Count == 0)
+            return (false, "wanted_items_required", null);
         var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
         
         var (expOk, err, expCalcDate, extraDayCost) = ResolveExpiry(durationDays);
@@ -442,51 +425,37 @@ public class OffersService(
         int tokenCost;
         try
         {
-            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee, tokensOffered,tokensWanted);
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee);
         }
         catch (OverflowException)
         {
             return (false, "token_cost_overflow", null);
         }
 
-        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expCalcDate, tokenCost, isHighlighted, tokensOffered, tokensWanted);
+        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expCalcDate, tokenCost, isHighlighted);
 
         return (true, null, draft);
 
     }
     private async Task<(bool Ok, string? err, OfferDraft? offerDraft)> BuildDraftForUpdateAsync(string title, string description, IReadOnlyCollection<OfferItemDTO> offeredItems,
-        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, DateOnly currentExpDate, int tokensOffered, int tokensWanted, CancellationToken ct)
+        IReadOnlyCollection<OfferItemDTO> wantedItems, int durationDays, bool isHighlighted, DateOnly currentExpDate, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(title) || title.Length < 3)
+        if (string.IsNullOrWhiteSpace(title))
         {
             return (false, "title_required", null);
         }
-        if (string.IsNullOrWhiteSpace(description) || description.Length < 3)
+        if (string.IsNullOrWhiteSpace(description))
         {
             return (false, "description_required", null);
         }
         var offered = offeredItems.ToDictionary(x => x.ItemId, x => x.Quantity); 
         var wanted = wantedItems.ToDictionary(x => x.ItemId, x => x.Quantity);
 
-        if (offered.Count == 0 && wanted.Count == 0)
-        {
-            return (false, "at_least_one_side_must_have_items", null);
-        }
-        if (offered.Count == 0 && tokensOffered <= 0)
-        {
-            return (false, "must_offer_tokens_when_no_items_offered", null);
-        }
-        if (wanted.Count == 0 && tokensWanted <= 0)
-        {
-            return (false, "must_want_tokens_when_no_items_wanted", null);
-        }
-        
+        if (offered.Count == 0)
+            return (false, "offered_items_required", null);
+        if (wanted.Count == 0)
+            return (false, "wanted_items_required", null);
         var highlightFee = isHighlighted ? OffersConsts.HighlightCost : 0;
-        
-        if (tokensWanted < 0)
-            return (false, "tokens_wanted_negative", null);
-        if (tokensOffered < 0)
-            return (false, "tokens_offered_negative", null);
 
         DateOnly expDate;
         int extraDayCost;
@@ -513,20 +482,20 @@ public class OffersService(
         int tokenCost;
         try
         {
-            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee, tokensOffered, tokensWanted);
+            tokenCost = CalculateTokenCost(offeredLines, wantedLines, extraDayCost, highlightFee);
         }
         catch (OverflowException)
         {
             return (false, "token_cost_overflow", null);
         }
 
-        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expDate, tokenCost, isHighlighted, tokensOffered, tokensWanted);
+        var draft = new OfferDraft(title,description, offeredLines,wantedLines, expDate, tokenCost, isHighlighted);
 
         return (true, null, draft);
 
     }
 
-    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost, int highlightFee, int tokensOffered, int tokensWanted)
+    private static int CalculateTokenCost(Dictionary<int,DictItemQuantity> offered, Dictionary<int,DictItemQuantity> wanted, int extraDayCost, int highlightFee)
     {
         long totalValue = 0;
 
@@ -543,18 +512,8 @@ public class OffersService(
             }
         }
 
-        var itemContribution = (int)Math.Ceiling(totalValue * OffersConsts.BaseCostRate);
-        var tokenContribution = (int)Math.Ceiling((tokensOffered + tokensWanted) * OffersConsts.BaseCostRate);
-
-        int baseTokenCost;
-        if (itemContribution < OffersConsts.MinBaseTokenCost)
-        {
-            baseTokenCost = OffersConsts.MinBaseTokenCost + tokenContribution;
-        }
-        else
-        {
-            baseTokenCost = tokenContribution + itemContribution;
-        }
+        var baseTokenCost = (int)Math.Ceiling(totalValue * OffersConsts.BaseCostRate);
+        if (baseTokenCost < OffersConsts.MinBaseTokenCost) baseTokenCost = OffersConsts.MinBaseTokenCost;
 
 
         checked
