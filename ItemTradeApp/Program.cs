@@ -16,12 +16,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.ContactPage;
+using ItemTradeApp.Features.CounterOffers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +33,8 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationActionFilter>();
 });
+builder.Services.RegisterContactPageFeatureDI();
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -67,6 +70,8 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ItemTradeApp", Version = "v1" });
 
+    c.CustomSchemaIds(type => type.FullName!.Replace("+", "."));
+
     var scheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -76,9 +81,13 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Wpisz: Bearer {token}"
     };
+
     c.DocumentFilter<PrefixDocumentFilter>("/api");
     c.AddSecurityDefinition("Bearer", scheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { scheme, Array.Empty<string>() }
+    });
 });
 
 builder.Services.AddSignalR();
@@ -159,6 +168,7 @@ builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
+builder.Services.RegisterCounterOffersDI();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -196,6 +206,7 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
