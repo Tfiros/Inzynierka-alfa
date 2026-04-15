@@ -18,8 +18,6 @@ public partial class User
     public DateOnly DateOfBirth { get; set; }
     [Column("tokens")]
     public int Tokens { get; set; }
-    [Column("escrowed_tokens")] 
-    public int EscrowedTokens { get; set; }
     [Column("experience")]
     public int Experience { get; set; }
     [Column("token_exp_date")]
@@ -41,6 +39,5 @@ public partial class User
 
     public virtual ICollection<Trade> OwningTrades { get; set; } = new List<Trade>();
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
-    public virtual ICollection<ConversationMember> Chats {get; set; } = new List<ConversationMember>();
 
 }
