@@ -41,6 +41,10 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<EmailOutbox> Emails { get; set; }
     public virtual DbSet<Rate> Rates { get; set; }
+    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+    public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
+
+    public virtual DbSet<ChatConversation> ChatConversations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +65,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
+            
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Auth0UserID).IsUnique();
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
@@ -198,6 +205,10 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.User_ID)
                 .HasConstraintName("listing_user");
+            
+            entity.Property(e => e.Title).HasMaxLength(120);
+            
+            entity.Property(e => e.Description).HasMaxLength(2000);
         });
 
         modelBuilder.Entity<OfferStatus>(entity =>
@@ -303,7 +314,7 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
             entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(50).IsRequired();
-            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(200).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.ReadAt).HasColumnName("read_at");
@@ -321,8 +332,8 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
-            entity.Property(x => x.Subject).HasColumnName("subject").IsRequired();
-            entity.Property(x => x.Body).HasColumnName("body").IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Body).HasColumnName("body").HasMaxLength(10000).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.SentAt).HasColumnName("sent_at");
@@ -332,6 +343,95 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_email_outbox_user");
+        });
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.ToTable("chat_conversation");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestampz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.Name)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(x => x.IsDeleted)
+                .HasDefaultValue(false);
+
+            entity.HasMany(x => x.Members)
+                .WithOne(x => x.ChatConversation)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(x => x.Messages)
+                .WithOne(x => x.ChatConversation)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.IsDeleted);
+        });
+        modelBuilder.Entity<ConversationMember>(entity =>
+        {
+            entity.ToTable("conversation_member");
+
+            entity.HasKey(x => new { x.UserId, x.ChatConversationId });
+
+            entity.Property(x => x.Role).IsRequired();
+
+            entity.HasOne(x => x.User)
+                .WithMany(u => u.Chats)
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(u => u.ID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ChatConversation)
+                .WithMany(c => c.Members)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.LastReadMessage)
+                .WithMany()
+                .HasForeignKey(x => new { x.LastReadMessageId, x.LastReadMessageChatConversationId })
+                .HasPrincipalKey(m => new { m.Id, m.ChatConversationId })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.ChatConversationId);
+            entity.HasIndex(x => x.UserId);
+        });
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("chat_messages");
+            entity.HasKey(x => new { x.Id, x.ChatConversationId });
+
+            entity.Property(x => x.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Message)
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestampz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.EditedAt).HasColumnType("timestampz");
+            entity.Property(x => x.DeletedAt).HasColumnType("timestampz");
+
+            entity.HasOne(x => x.ChatConversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(x => x.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new { x.ChatConversationId, x.CreatedAt });
+            entity.HasIndex(x => x.SenderId);
         });
         OnModelCreatingPartial(modelBuilder);
     }

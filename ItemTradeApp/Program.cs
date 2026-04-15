@@ -22,8 +22,6 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
-using ItemTradeApp.Features.ContactPage;
-using ItemTradeApp.Features.CounterOffers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,8 +32,6 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationActionFilter>();
 });
-builder.Services.RegisterContactPageFeatureDI();
-
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -110,11 +106,13 @@ builder.Services
                 var path = ctx.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/api/hubs/notifications"))
+                    (path.StartsWithSegments("/api/hubs/notifications") ||
+                     path.StartsWithSegments("/api/hubs/chat")))
                 {
                     ctx.Token = accessToken;
                     return Task.CompletedTask;
                 }
+
                 if (ctx.Request.Cookies.TryGetValue("at", out var token) && !string.IsNullOrWhiteSpace(token))
                     ctx.Token = token;
 
@@ -142,6 +140,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
 builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
+builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p
@@ -153,10 +152,12 @@ builder.Services.AddCors(opts =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterUserFeatureDi();
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
+builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 var app = builder.Build();
 
@@ -212,5 +213,6 @@ app.MapGroup("/api")
 
 app.MapHub<NotificationsHub>("/api/hubs/notifications")
     .RequireRateLimiting("limiterGlobal");
+app.MapHub<ChatHub>("/api/hubs/chat");
 
 app.Run();
