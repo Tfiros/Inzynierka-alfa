@@ -13,7 +13,6 @@ public static class DI
         serviceCollection.AddScoped<IGenresRepository, GenresRepository>();
         serviceCollection.AddScoped<IRaritiesRepository, RaritiesRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
-
         return serviceCollection;
     }
 }

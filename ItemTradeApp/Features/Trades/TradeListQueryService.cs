@@ -60,31 +60,56 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
         IQueryable<Trade> query,
         bool isMiddlemanView)
         => query
-            .Select(t => new TradeListItemDTO(
+            .Select(t => new
+            {
                 t.ID,
                 t.Offer_ID,
                 t.TokenCost,
                 t.TradeStatus_ID,
                 t.CreationDate,
+                t.MiddlemanUser_ID,
+
+                CustomerId = t.Customer.ID,
+                CustomerNick = t.Customer.ProfileInfo.Nickname,
+                CustomerEmail = isMiddlemanView ? t.Customer.Email : null,
+
+                PostingId = t.PostingUser.ID,
+                PostingNick = t.PostingUser.ProfileInfo.Nickname,
+                PostingEmail = isMiddlemanView ? t.PostingUser.Email : null,
+
+                PostingUserItems = t.Offer.ListingItems
+                    .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                    .ToList(),
+
+                AcceptedCounter = t.Offer.CounterOffers
+                    .Where(co => co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Accepted)
+                    .Select(co => new
+                    {
+                        BuyerItems = co.ListingCounterOfferItems
+                            .Select(li => new ItemInfoDTO(li.Item.Name, li.Quantity))
+                            .ToList()
+                    })
+                    .SingleOrDefault()
+            })
+            .Select(x => new TradeListItemDTO(
+                x.ID,
+                x.Offer_ID,
+                x.TokenCost,
+                x.TradeStatus_ID,
+                x.CreationDate,
                 new InTradeUserDTO(
-                    t.Customer.ID,
-                    t.Customer.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.Customer.Email : null,
-                    t.Offer.ListingItems
-                        .Where(x => x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
-                        .ToList()
+                    x.CustomerId,
+                    x.CustomerNick,
+                    x.CustomerEmail,
+                    x.AcceptedCounter != null ? x.AcceptedCounter.BuyerItems : null
                 ),
                 new InTradeUserDTO(
-                    t.PostingUser.ID,
-                    t.PostingUser.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.PostingUser.Email : null,
-                    t.Offer.ListingItems
-                        .Where(x => !x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
-                        .ToList()
+                    x.PostingId,
+                    x.PostingNick,
+                    x.PostingEmail,
+                    x.PostingUserItems
                 ),
-                t.MiddlemanUser_ID
+                x.MiddlemanUser_ID
             ));
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
