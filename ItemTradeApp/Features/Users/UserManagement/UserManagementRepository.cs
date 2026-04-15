@@ -93,7 +93,7 @@ public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLa
 
     var totalCount = await filteredQuery.CountAsync(ct);
 
-    var orderedQuery = ApplyOrdering(filteredQuery, query.OrderBy);
+    var orderedQuery = ApplyOrdering(filteredQuery, (UserListOrderBy)query.OrderBy);
 
     var items = await orderedQuery
         .Skip((page - 1) * pageSize)
