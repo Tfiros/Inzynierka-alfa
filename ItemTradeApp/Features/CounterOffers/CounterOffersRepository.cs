@@ -30,13 +30,13 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     public async Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct)
     {
         return await db.Users
-            .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
+            .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
     }
 
     public async Task<User?> GetUserEntityByIdAsync(int userId, CancellationToken ct)
     {
         return await db.Users
-            .FirstOrDefaultAsync(u => u.ID == userId, ct);
+            .FirstOrDefaultAsync(u => u.ID == userId && !u.IsDeleted, ct);
     }
 
     public async Task<Offer?> GetOfferAsync(int offerId, CancellationToken ct)
@@ -168,12 +168,14 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
 
     public async Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct)
     {
+        var uniqueItemIds = itemIds.Distinct().ToArray();
+
         var existingCount = await db.Items.CountAsync(
-            i => itemIds.Contains(i.ID) && !i.IsDeleted,
+            i => uniqueItemIds.Contains(i.ID) && !i.IsDeleted,
             ct
         );
 
-        return existingCount == itemIds.Length;
+        return existingCount == uniqueItemIds.Length;
     }
 
     public async Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct)

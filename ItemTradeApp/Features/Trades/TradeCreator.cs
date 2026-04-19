@@ -1,13 +1,12 @@
-using ItemTradeApp.Features.Shared;
-using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
+using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Trades;
 
-public sealed class TradeCreator(AppDbContext db) : ITradeCreation
+public sealed class TradeCreator(ITradeRepository tradeRepository) : ITradeCreation
 {
     public async Task<Trade> ExecuteAsync(CreateTradeContext context, CancellationToken ct)
     {
@@ -25,7 +24,7 @@ public sealed class TradeCreator(AppDbContext db) : ITradeCreation
             HasSellersItems = false
         };
 
-        await db.Trades.AddAsync(trade, ct);
+        await tradeRepository.AddAsync(trade, ct);
         return trade;
     }
 }

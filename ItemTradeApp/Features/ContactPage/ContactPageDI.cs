@@ -1,6 +1,6 @@
 namespace ItemTradeApp.Features.ContactPage;
 
-using Microsoft.Extensions.DependencyInjection;
+
 
 
 public static class ContactPageDI

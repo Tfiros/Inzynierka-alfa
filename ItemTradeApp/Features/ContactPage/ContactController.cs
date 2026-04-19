@@ -1,10 +1,12 @@
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.ContactPage.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.Features.ContactPage;
 
 [ApiController]
+[AllowAnonymous]
 [Route("[controller]")]
 public sealed class ContactController(IContactPageService contactService) : ControllerBase
 {

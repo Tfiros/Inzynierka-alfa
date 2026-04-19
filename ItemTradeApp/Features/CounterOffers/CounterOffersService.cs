@@ -1,7 +1,7 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
-using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
@@ -44,7 +44,7 @@ public class CounterOffersService(
     IUnitOfWork unitOfWork,
     ITradeCreation tradeCreation) : ICounterOffersService
 {
-    private const int CounterOfferCreationFee = 20;
+
 
     private async Task<User?> GetUserAsync(string auth0UserId, CancellationToken ct)
     {
@@ -180,7 +180,7 @@ public class CounterOffersService(
         if (!allItemsExist)
             return Result<CounterOfferDto>.BadRequest("Jeden z przedmiotów nie istnieje.");
 
-        var totalToCharge = request.TokensOffered + CounterOfferCreationFee;
+        var totalToCharge = request.TokensOffered + Consts.CounterOfferCreationFee;
 
         await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
 
@@ -398,7 +398,7 @@ public class CounterOffersService(
         if (validation is not null)
             return validation;
 
-        var finalCost = request.TokensOffered + CounterOfferCreationFee;
+        var finalCost = request.TokensOffered + Consts.CounterOfferCreationFee;
 
         return Result<CounterOfferCostDto>.Success(
             new CounterOfferCostDto(
