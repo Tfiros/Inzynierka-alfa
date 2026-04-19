@@ -39,7 +39,7 @@ public interface ICounterOffersService
         CancellationToken ct = default);
 }
 
-public class CounterOffersService(
+public sealed class CounterOffersService(
     ICounterOffersRepository repository,
     IUnitOfWork unitOfWork,
     ITradeCreation tradeCreation) : ICounterOffersService
@@ -62,9 +62,7 @@ public class CounterOffersService(
 
         if (user is null)
             return (null, Result<T>.Unauthorized("Nie znaleziono użytkownika"));
-
-        if (user.IsDeleted)
-            return (null, Result<T>.Unauthorized("Użytkownik nie istnieje"));
+        
 
         return (user, null);
     }
@@ -189,8 +187,10 @@ public class CounterOffersService(
             if (totalToCharge > 0)
             {
                 if (user.Tokens < totalToCharge)
+                {
+                    await transaction.RollbackAsync(ct);
                     return Result<CounterOfferDto>.BadRequest("Za mało tokenów");
-
+                }
                 user.Tokens -= totalToCharge;
             }
 
@@ -260,7 +260,7 @@ public class CounterOffersService(
             if (counterOffer.TokensOffered > 0)
             {
                 var sender = await repository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
-                if (sender is not null && !sender.IsDeleted)
+                if (sender is not null)
                 {
                     sender.Tokens += counterOffer.TokensOffered;
                 }
@@ -334,7 +334,7 @@ public class CounterOffersService(
                 if (otherCounterOffer.TokensOffered > 0)
                 {
                     var sender = await repository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
-                    if (sender is not null && !sender.IsDeleted)
+                    if (sender is not null )
                     {
                         sender.Tokens += otherCounterOffer.TokensOffered;
                     }

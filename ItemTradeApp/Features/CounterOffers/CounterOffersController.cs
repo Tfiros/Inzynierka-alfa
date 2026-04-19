@@ -11,7 +11,7 @@ namespace ItemTradeApp.Features.CounterOffers;
 [ApiController]
 [Route("[controller]")]
 [Authorize]
-public class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
+public sealed class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
 {
     private string GetNormalizedAuth0UserId()
     {

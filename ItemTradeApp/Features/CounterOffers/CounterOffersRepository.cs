@@ -1,5 +1,6 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Offers;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ public interface ICounterOffersRepository
     void RemoveListingItems(IEnumerable<ListingItems> items);
 }
 
-public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
+public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
 {
     public async Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct)
     {
@@ -62,110 +63,122 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     }
     
 
-    public async Task<IReadOnlyList<CounterOfferListItemDto>> GetSentCounterOffersAsync(int userId, CancellationToken ct)
+    public async Task<IReadOnlyList<CounterOfferListItemDto>> GetSentCounterOffersAsync(
+    int userId,
+    CancellationToken ct)
+{
+    IQueryable<CounterOffer> query = db.CounterOffers
+        .AsNoTracking()
+        .Where(co => co.User_ID == userId);
+
+    query = query
+        .Include(co => co.Offer)
+        .Include(co => co.OfferStatus)
+        .Include(co => co.ListingCounterOfferItems)
+        .ThenInclude(i => i.Item)
+        .ThenInclude(it => it.Game);
+
+    query = ApplyOrdering(query, CounterOffersOrderByEnum.CreationDateDesc);
+
+    var counterOffers = await query.ToListAsync(ct);
+
+    if (counterOffers.Count == 0)
+        return Array.Empty<CounterOfferListItemDto>();
+
+    var ownerIds = counterOffers.Select(x => x.Offer.User_ID).Distinct().ToArray();
+
+    var ownerNickByUserId = await db.ProfileInfos
+        .AsNoTracking()
+        .Where(p => ownerIds.Contains(p.User_ID))
+        .Select(p => new { p.User_ID, p.Nickname })
+        .ToDictionaryAsync(x => x.User_ID, x => x.Nickname, ct);
+
+    return counterOffers.Select(counterOffer =>
     {
-        var counterOffers = await db.CounterOffers
-            .AsNoTracking()
-            .Where(co => co.User_ID == userId)
-            .Include(co => co.Offer)
-            .Include(co => co.OfferStatus)
-            .Include(co => co.ListingCounterOfferItems)
-            .ThenInclude(i => i.Item)
-            .ThenInclude(it => it.Game)
-            .ToListAsync(ct);
+        ownerNickByUserId.TryGetValue(counterOffer.Offer.User_ID, out var ownerNick);
 
-        if (counterOffers.Count == 0)
-            return Array.Empty<CounterOfferListItemDto>();
+        return new CounterOfferListItemDto(
+            CounterOfferId: counterOffer.ID,
+            OfferId: counterOffer.Offer_Id,
+            OfferTitle: counterOffer.Offer?.Title ?? "",
+            OfferOwnerUserId: counterOffer.Offer?.User_ID ?? 0,
+            CounterOfferUserId: counterOffer.User_ID,
+            OtherPartyNickname: ownerNick ?? "",
+            CreationDate: counterOffer.CreationDate,
+            TokensOffered: counterOffer.TokensOffered,
+            StatusId: counterOffer.CounterOfferStatus_Id,
+            StatusName: counterOffer.OfferStatus?.StatusName ?? "",
+            Items: counterOffer.ListingCounterOfferItems
+                .Select(i => new CounterOfferItemsDto(
+                    i.Item_ID,
+                    i.Item?.Name ?? "",
+                    i.Item?.Photo_URL ?? "",
+                    i.Item?.Game_ID ?? 0,
+                    i.Item?.Game?.Name ?? "",
+                    i.Quantity
+                ))
+                .ToList()
+        );
+    }).ToList();
+}
+public async Task<IReadOnlyList<CounterOfferListItemDto>> GetReceivedCounterOffersAsync(
+    int userId,
+    CancellationToken ct)
+{
+    IQueryable<CounterOffer> query = db.CounterOffers
+        .AsNoTracking()
+        .Where(co => co.User_ID == userId);
 
-        var ownerIds = counterOffers.Select(x => x.Offer.User_ID).Distinct().ToArray();
+    query = query
+        .Include(co => co.Offer)
+        .Include(co => co.OfferStatus)
+        .Include(co => co.ListingCounterOfferItems)
+        .ThenInclude(i => i.Item)
+        .ThenInclude(it => it.Game);
 
-        var ownerNickByUserId = await db.ProfileInfos
-            .AsNoTracking()
-            .Where(p => ownerIds.Contains(p.User_ID))
-            .Select(p => new { p.User_ID, p.Nickname })
-            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname ?? "", ct);
+    query = ApplyOrdering(query, CounterOffersOrderByEnum.CreationDateDesc);
 
-        return counterOffers.Select(counterOffer =>
-        {
-            ownerNickByUserId.TryGetValue(counterOffer.Offer.User_ID, out var ownerNick);
+    var counterOffers = await query.ToListAsync(ct);
 
-            return new CounterOfferListItemDto(
-                CounterOfferId: counterOffer.ID,
-                OfferId: counterOffer.Offer_Id,
-                OfferTitle: counterOffer.Offer?.Title ?? "",
-                OfferOwnerUserId: counterOffer.Offer?.User_ID ?? 0,
-                CounterOfferUserId: counterOffer.User_ID,
-                OtherPartyNickname: ownerNick ?? "",
-                CreationDate: counterOffer.CreationDate,
-                TokensOffered: counterOffer.TokensOffered,
-                StatusId: counterOffer.CounterOfferStatus_Id,
-                StatusName: counterOffer.OfferStatus?.StatusName ?? "",
-                Items: counterOffer.ListingCounterOfferItems
-                    .Select(i => new CounterOfferItemsDto(
-                        i.Item_ID,
-                        i.Item?.Name ?? "",
-                        i.Item?.Photo_URL ?? "",
-                        i.Item?.Game_ID ?? 0,
-                        i.Item?.Game?.Name ?? "",
-                        i.Quantity
-                    ))
-                    .ToList()
-            );
-        }).ToList();
-    }
+    if (counterOffers.Count == 0)
+        return Array.Empty<CounterOfferListItemDto>();
 
-    public async Task<IReadOnlyList<CounterOfferListItemDto>> GetReceivedCounterOffersAsync(int userId, CancellationToken ct)
+    var senderIds = counterOffers.Select(x => x.User_ID).Distinct().ToArray();
+
+    var senderNickByUserId = await db.ProfileInfos
+        .AsNoTracking()
+        .Where(p => senderIds.Contains(p.User_ID))
+        .Select(p => new { p.User_ID, p.Nickname })
+        .ToDictionaryAsync(x => x.User_ID, x => x.Nickname ?? "", ct);
+
+    return counterOffers.Select(counterOffer =>
     {
-        var counterOffers = await db.CounterOffers
-            .AsNoTracking()
-            .Where(co => co.Offer.User_ID == userId)
-            .Include(co => co.Offer)
-            .Include(co => co.OfferStatus)
-            .Include(co => co.ListingCounterOfferItems)
-            .ThenInclude(i => i.Item)
-            .ThenInclude(it => it.Game)
-            .ToListAsync(ct);
+        senderNickByUserId.TryGetValue(counterOffer.User_ID, out var senderNickname);
 
-        if (counterOffers.Count == 0)
-            return Array.Empty<CounterOfferListItemDto>();
-
-        var senderIds = counterOffers.Select(x => x.User_ID).Distinct().ToArray();
-
-        var senderNickByUserId = await db.ProfileInfos
-            .AsNoTracking()
-            .Where(p => senderIds.Contains(p.User_ID))
-            .Select(p => new { p.User_ID, p.Nickname })
-            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname ?? "", ct);
-
-        return counterOffers.Select(counterOffer =>
-        {
-            senderNickByUserId.TryGetValue(counterOffer.User_ID, out var senderNickname);
-
-            return new CounterOfferListItemDto(
-                CounterOfferId: counterOffer.ID,
-                OfferId: counterOffer.Offer_Id,
-                OfferTitle: counterOffer.Offer?.Title ?? "",
-                OfferOwnerUserId: counterOffer.Offer?.User_ID ?? 0,
-                CounterOfferUserId: counterOffer.User_ID,
-                OtherPartyNickname: senderNickname ?? "",
-                CreationDate: counterOffer.CreationDate,
-                TokensOffered: counterOffer.TokensOffered,
-                StatusId: counterOffer.CounterOfferStatus_Id,
-                StatusName: counterOffer.OfferStatus?.StatusName ?? "",
-                Items: counterOffer.ListingCounterOfferItems
-                    .Select(i => new CounterOfferItemsDto(
-                        i.Item_ID,
-                        i.Item?.Name ?? "",
-                        i.Item?.Photo_URL ?? "",
-                        i.Item?.Game_ID ?? 0,
-                        i.Item?.Game?.Name ?? "",
-                        i.Quantity
-                    ))
-                    .ToList()
-            );
-        }).ToList();
-    }
-
+        return new CounterOfferListItemDto(
+            CounterOfferId: counterOffer.ID,
+            OfferId: counterOffer.Offer_Id,
+            OfferTitle: counterOffer.Offer.Title,
+            OfferOwnerUserId: counterOffer.Offer.User_ID,
+            CounterOfferUserId: counterOffer.User_ID,
+            OtherPartyNickname: senderNickname ?? "",
+            CreationDate: counterOffer.CreationDate,
+            TokensOffered: counterOffer.TokensOffered,
+            StatusId: counterOffer.CounterOfferStatus_Id,
+            StatusName: counterOffer.OfferStatus.StatusName,
+            Items: counterOffer.ListingCounterOfferItems
+                .Select(i => new CounterOfferItemsDto(
+                    i.Item_ID,
+                    i.Item.Name,
+                    i.Item?.Photo_URL ?? "",
+                    i.Item?.Game_ID ?? 0,
+                    i.Item.Game.Name,
+                    i.Quantity
+                ))
+                .ToList()
+        );
+    }).ToList();
+}
     public async Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct)
     {
         var uniqueItemIds = itemIds.Distinct().ToArray();
@@ -208,4 +221,27 @@ public class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
     {
         db.ListingItems.RemoveRange(items);
     }
+    
+    private static IQueryable<CounterOffer> ApplyOrdering(
+        IQueryable<CounterOffer> counterOffers,
+        CounterOffersOrderByEnum orderByEnum)
+    {
+        return orderByEnum switch
+        {
+            CounterOffersOrderByEnum.CreationDateAsc =>
+                counterOffers.OrderBy(co => co.CreationDate),
+
+            CounterOffersOrderByEnum.CreationDateDesc =>
+                counterOffers.OrderByDescending(co => co.CreationDate),
+
+            CounterOffersOrderByEnum.TokensAsc =>
+                counterOffers.OrderBy(co => co.TokensOffered),
+
+            CounterOffersOrderByEnum.TokensDesc =>
+                counterOffers.OrderByDescending(co => co.TokensOffered),
+
+            _ => counterOffers.OrderByDescending(co => co.CreationDate)
+        };
+    }
+    
 }
