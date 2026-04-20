@@ -3,6 +3,7 @@ using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,18 +27,22 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
     }
     
     [HttpGet("sent")]
-    public async Task<ActionResult<Result<IReadOnlyList<CounterOfferListItemDto>>>> GetSent(CancellationToken ct = default)
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, ct);
+        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
-    
+
     [HttpGet("received")]
-    public async Task<ActionResult<Result<IReadOnlyList<CounterOfferListItemDto>>>> GetReceived(CancellationToken ct = default)
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
     {
         var auth0UserId = GetNormalizedAuth0UserId();
-        var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, ct);
+        var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
     
