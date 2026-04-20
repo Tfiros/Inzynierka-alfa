@@ -48,13 +48,17 @@ public interface ICounterOffersService
 
 public sealed class CounterOffersService(
     ICounterOffersRepository repository,
+    IOfferRepository offerRepository,
+    ITradeRepository tradeRepository,
+    IItemsRepository itemsRepository,
+    IUserRepository userRepository,
     IUnitOfWork unitOfWork,
     ITradeCreation tradeCreation) : ICounterOffersService
 {
     
     private async Task<User?> GetUserAsync(string auth0UserId, CancellationToken ct)
     {
-        return await repository.GetUserInfo(auth0UserId, ct);
+        return await userRepository.GetUserInfo(auth0UserId, ct);
     }
 
     private async Task<(User? User, Result<T>? Error)> GetActiveUser<T>(
@@ -216,7 +220,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (userError is not null)
             return userError;
 
-        var offer = await repository.GetOfferAsync(offerId, ct);
+        var offer = await offerRepository.GetOfferAsync(offerId, ct);
 
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferDto>(offer, user!.ID);
         if (offerValidation is not null)
@@ -226,7 +230,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (itemIds.Length != itemIds.Distinct().Count())
             return Result<CounterOfferDto>.BadRequest("Przedmioty w kontrofercie muszą być unikalne");
 
-        var allItemsExist = await repository.AllItemsExistAsync(itemIds, ct);
+        var allItemsExist = await itemsRepository.AllItemsExistAsync(itemIds, ct);
         if (!allItemsExist)
             return Result<CounterOfferDto>.BadRequest("Jeden z przedmiotów nie istnieje.");
 
@@ -300,7 +304,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
             if (counterOffer is null)
                 return Result<CounterOfferDto>.NotFound("Nie znaleziono kontroferty");
 
-            var offerOwnerId = await repository.GetOfferOwnerIdAsync(counterOffer.Offer_Id, ct);
+            var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(counterOffer.Offer_Id, ct);
             if (offerOwnerId != user!.ID)
                 return Result<CounterOfferDto>.Unauthorized();
 
@@ -311,7 +315,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             if (counterOffer.TokensOffered > 0)
             {
-                var sender = await repository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
+                var sender = await userRepository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
                 if (sender is not null)
                 {
                     sender.Tokens += counterOffer.TokensOffered;
@@ -367,7 +371,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
             if (offer.ExpDate < DateOnly.FromDateTime(DateTime.UtcNow))
                 return Result<AcceptCounterOfferResponse>.BadRequest("Oferta jest przeterminowana");
 
-            var tradeExists = await repository.TradeExistsForOfferAsync(offer.ID, ct);
+            var tradeExists = await tradeRepository.TradeExistsForOfferAsync(offer.ID, ct);
             if (tradeExists)
                 return Result<AcceptCounterOfferResponse>.Conflict("Trade już istnieje");
 
@@ -385,7 +389,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
                 if (otherCounterOffer.TokensOffered > 0)
                 {
-                    var sender = await repository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
+                    var sender = await userRepository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
                     if (sender is not null )
                     {
                         sender.Tokens += otherCounterOffer.TokensOffered;
@@ -399,7 +403,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             if (oldWantedItems.Any())
             {
-                repository.RemoveListingItems(oldWantedItems);
+                offerRepository.RemoveListingItems(oldWantedItems);
             }
 
             foreach (var counterItem in counterOffer.ListingCounterOfferItems)
@@ -487,7 +491,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (userError is not null)
             return userError;
 
-        var offer = await repository.GetOfferAsync(offerId, ct);
+        var offer = await offerRepository.GetOfferAsync(offerId, ct);
 
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferCostDto>(offer, user!.ID);
         if (offerValidation is not null)
@@ -497,7 +501,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (itemIds.Length != itemIds.Distinct().Count())
             return Result<CounterOfferCostDto>.BadRequest("Przedmioty w kontrofercie muszą być unikalne");
 
-        var allItemsExist = await repository.AllItemsExistAsync(itemIds, ct);
+        var allItemsExist = await itemsRepository.AllItemsExistAsync(itemIds, ct);
         if (!allItemsExist)
             return Result<CounterOfferCostDto>.BadRequest("Jeden z przedmiotów nie istnieje.");
 

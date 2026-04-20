@@ -9,11 +9,8 @@ namespace ItemTradeApp.Features.CounterOffers;
 
 public interface ICounterOffersRepository
 {
-    Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct);
-    Task<User?> GetUserEntityByIdAsync(int userId, CancellationToken ct);
-    Task<Offer?> GetOfferAsync(int offerId, CancellationToken ct);
     Task<CounterOffer?> GetCounterOfferWithOfferAndItemsAsync(int counterOfferId, CancellationToken ct);
-    Task<bool> TradeExistsForOfferAsync(int offerId, CancellationToken ct);
+
     Task<(List<CounterOfferListItemDto> items, int totalCount)> GetSentCounterOffersAsync(
         int userId,
         CounterOfferListingsQuery query,
@@ -23,36 +20,17 @@ public interface ICounterOffersRepository
         int userId,
         CounterOfferListingsQuery query,
         CancellationToken ct);
-    Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct);
-    Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct);
+    
     void AddCounterOffer(CounterOffer counterOffer);
     Task<List<CounterOffer>> GetOtherPendingCounterOffersForOfferAsync(
         int offerId,
         int acceptedCounterOfferId,
         CancellationToken ct);
-    void RemoveListingItems(IEnumerable<ListingItems> items);
+
 }
 
 public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
 {
-    public async Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct)
-    {
-        return await db.Users
-            .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
-    }
-
-    public async Task<User?> GetUserEntityByIdAsync(int userId, CancellationToken ct)
-    {
-        return await db.Users
-            .FirstOrDefaultAsync(u => u.ID == userId && !u.IsDeleted, ct);
-    }
-
-    public async Task<Offer?> GetOfferAsync(int offerId, CancellationToken ct)
-    {
-        return await db.Offers
-            .FirstOrDefaultAsync(o => o.ID == offerId, ct);
-    }
-
     public async Task<CounterOffer?> GetCounterOfferWithOfferAndItemsAsync(int counterOfferId, CancellationToken ct)
     {
         return await db.CounterOffers
@@ -61,15 +39,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .Include(co => co.ListingCounterOfferItems)
             .FirstOrDefaultAsync(co => co.ID == counterOfferId, ct);
     }
-
-    public async Task<bool> TradeExistsForOfferAsync(int offerId, CancellationToken ct)
-    {
-        return await db.Trades
-            .AsNoTracking()
-            .AnyAsync(t => t.Offer_ID == offerId && t.TradeStatus_ID != (int)TradeStatuses.Failed, ct);
-    }
-
- public async Task<(List<CounterOfferListItemDto> items, int totalCount)> GetSentCounterOffersAsync(
+    public async Task<(List<CounterOfferListItemDto> items, int totalCount)> GetSentCounterOffersAsync(
         int userId,
         CounterOfferListingsQuery query,
         CancellationToken ct)
@@ -104,7 +74,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .AsNoTracking()
             .Where(p => ownerIds.Contains(p.User_ID))
             .Select(p => new { p.User_ID, p.Nickname })
-            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname ?? "", ct);
+            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname, ct);
 
         var items = counterOffers.Select(counterOffer =>
         {
@@ -116,7 +86,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
                 OfferTitle: counterOffer.Offer.Title,
                 OfferOwnerUserId: counterOffer.Offer.User_ID,
                 CounterOfferUserId: counterOffer.User_ID,
-                OtherPartyNickname: ownerNick ?? "",
+                OtherPartyNickname: ownerNick,
                 CreationDate: counterOffer.CreationDate,
                 TokensOffered: counterOffer.TokensOffered,
                 StatusId: counterOffer.CounterOfferStatus_Id,
@@ -172,7 +142,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .AsNoTracking()
             .Where(p => senderIds.Contains(p.User_ID))
             .Select(p => new { p.User_ID, p.Nickname })
-            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname ?? "", ct);
+            .ToDictionaryAsync(x => x.User_ID, x => x.Nickname, ct);
 
         var items = counterOffers.Select(counterOffer =>
         {
@@ -184,7 +154,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
                 OfferTitle: counterOffer.Offer.Title,
                 OfferOwnerUserId: counterOffer.Offer.User_ID,
                 CounterOfferUserId: counterOffer.User_ID,
-                OtherPartyNickname: senderNickname ?? "",
+                OtherPartyNickname: senderNickname,
                 CreationDate: counterOffer.CreationDate,
                 TokensOffered: counterOffer.TokensOffered,
                 StatusId: counterOffer.CounterOfferStatus_Id,
@@ -205,26 +175,6 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         return (items, totalCount);
     }
     
-    public async Task<bool> AllItemsExistAsync(int[] itemIds, CancellationToken ct)
-    {
-        var uniqueItemIds = itemIds.Distinct().ToArray();
-
-        var existingCount = await db.Items.CountAsync(
-            i => uniqueItemIds.Contains(i.ID) && !i.IsDeleted,
-            ct
-        );
-
-        return existingCount == uniqueItemIds.Length;
-    }
-
-    public async Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct)
-    {
-        return await db.Offers
-            .AsNoTracking()
-            .Where(o => o.ID == offerId)
-            .Select(o => (int?)o.User_ID)
-            .FirstOrDefaultAsync(ct);
-    }
 
     public void AddCounterOffer(CounterOffer counterOffer)
     {
@@ -243,10 +193,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
                          && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
             .ToListAsync(ct);
     }
-    public void RemoveListingItems(IEnumerable<ListingItems> items)
-    {
-        db.ListingItems.RemoveRange(items);
-    }
+
     
     private static IQueryable<CounterOffer> ApplyOrdering(
         IQueryable<CounterOffer> counterOffers,
