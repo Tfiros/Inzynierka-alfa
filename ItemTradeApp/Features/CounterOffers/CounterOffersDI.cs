@@ -8,6 +8,10 @@ public static class CounterOffersDI
     {
         services.AddScoped<ICounterOffersService, CounterOffersService>();
         services.AddScoped<ICounterOffersRepository, CounterOffersRepository>();
+        services.AddScoped<IItemsRepository, ItemsRepository>();
+        services.AddScoped<IOfferRepository, OfferRepository>();
+        services.AddScoped<ITradeRepository, TradeRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }
