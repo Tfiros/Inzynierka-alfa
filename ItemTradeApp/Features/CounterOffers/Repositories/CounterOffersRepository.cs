@@ -5,7 +5,7 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.CounterOffers;
+namespace ItemTradeApp.Features.CounterOffers.Repositories;
 
 public interface ICounterOffersRepository
 {

@@ -1,6 +1,7 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.CounterOffers.Repositories;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.TradeCreation;
@@ -105,6 +106,9 @@ public sealed class CounterOffersService(
         if (offerId <= 0)
             return Result<CounterOfferDto>.BadRequest("Niepoprawne ID oferty");
 
+        if (request.Items is null)
+            return Result<CounterOfferDto>.BadRequest("Brak listy przedmiotów");
+
         if (request.Items.Any(x => x.ItemId <= 0))
             return Result<CounterOfferDto>.BadRequest("Niepoprawne ID przedmiotu");
 
@@ -113,9 +117,11 @@ public sealed class CounterOffersService(
 
         if (request.TokensOffered < 0)
             return Result<CounterOfferDto>.BadRequest("Niepoprawna ilość tokenów");
-        
-        if ((request.Items is null || request.Items.Count == 0) && request.TokensOffered <= 0)
-            return Result<CounterOfferDto>.BadRequest("Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny.");
+
+        if (request.Items.Count == 0 && request.TokensOffered <= 0)
+            return Result<CounterOfferDto>.BadRequest(
+                "Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny."
+            );
 
         return null;
     }
@@ -306,7 +312,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(counterOffer.Offer_Id, ct);
             if (offerOwnerId != user!.ID)
-                return Result<CounterOfferDto>.Unauthorized();
+                return Result<CounterOfferDto>.Forbidden();
 
             if (counterOffer.CounterOfferStatus_Id != (int)CounterOfferStatuses.Pending)
                 return Result<CounterOfferDto>.BadRequest("Kontroferta nie jest pending");
@@ -475,6 +481,9 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (offerId <= 0)
             return Result<CounterOfferCostDto>.BadRequest("Niepoprawne ID oferty");
 
+        if (request.Items is null)
+            return Result<CounterOfferCostDto>.BadRequest("Brak listy przedmiotów");
+
         if (request.Items.Any(x => x.ItemId <= 0))
             return Result<CounterOfferCostDto>.BadRequest("Niepoprawne ID przedmiotu");
 
@@ -484,8 +493,10 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (request.TokensOffered < 0)
             return Result<CounterOfferCostDto>.BadRequest("Niepoprawna ilość tokenów");
 
-        if ((request.Items is null || request.Items.Count == 0) && request.TokensOffered <= 0)
-            return Result<CounterOfferCostDto>.BadRequest("Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny.");
+        if (request.Items.Count == 0 && request.TokensOffered <= 0)
+            return Result<CounterOfferCostDto>.BadRequest(
+                "Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny."
+            );
 
         var (user, userError) = await GetActiveUser<CounterOfferCostDto>(auth0UserId, ct);
         if (userError is not null)

@@ -1,7 +1,7 @@
 using ItemTradeApp.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.CounterOffers;
+namespace ItemTradeApp.Features.CounterOffers.Repositories;
 
 public interface ITradeRepository
 {

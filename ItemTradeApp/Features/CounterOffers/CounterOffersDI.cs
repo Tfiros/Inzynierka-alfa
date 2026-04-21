@@ -1,3 +1,5 @@
+using ItemTradeApp.Features.CounterOffers.Repositories;
+
 namespace ItemTradeApp.Features.CounterOffers;
 
 public static class CounterOffersDI
