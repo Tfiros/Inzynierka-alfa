@@ -1,4 +1,6 @@
-﻿namespace ItemTradeApp.Features.Users.UserManagement.DTOs;
+﻿using ItemTradeApp.Features.Users.UserManagement.Enums;
+
+namespace ItemTradeApp.Features.Users.UserManagement.DTOs;
 
 public sealed class UserListQuery
 {
@@ -6,7 +8,7 @@ public sealed class UserListQuery
     public int PageSize { get; set; } = 10;
 
     public string? SearchText { get; set; }
-    public byte OrderBy { get; set; }
+    public UserListOrderBy OrderBy { get; set; } = UserListOrderBy.RegisteredAtDesc;
 
     public string? Role { get; set; }
     public DateTime? RegisteredFrom { get; set; }
