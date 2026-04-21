@@ -18,7 +18,7 @@ public partial class Offer
     public int TokenCost { get; set; }
     [Column("offer_status_id")]
     public int OfferStatus_ID { get; set; }
-
+    
     [Column("title")] 
     public string Title { get; set; } = null!;
     [Column("description")] 
