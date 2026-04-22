@@ -35,7 +35,9 @@ public sealed class TradesService(
     ITradeRepository tradeRepo,
     IUserContext userContext,
     ITradesRequestValidator validator,
-    ITradeListQueryService listQuery
+    ITradeListQueryService listQuery,
+    IUnitOfWork unitOfWork,
+    IUserRepository userRepo
 ) : ITradesService
 {
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
