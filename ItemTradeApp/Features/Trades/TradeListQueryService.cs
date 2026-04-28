@@ -35,8 +35,16 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
 
         var query = tradeRepo.QueryNoTracking()
             .Where(t => t.TradeStatus_ID == (int)status);
-        if (!isMiddlemanView)
+        if (isMiddlemanView)
+        {
+            query = status == TradeStatuses.New
+                ? query.Where(t => t.MiddlemanUser_ID == null)
+                : query.Where(t => t.MiddlemanUser_ID == callerUserId);
+        }
+        else
+        {
             query = query.Where(t => t.PostingUser.ID == callerUserId);
+        }
 
         if (onlyWithItemsToReturn)
             query = query.Where(t => t.HasBuyersItems || t.HasSellersItems);

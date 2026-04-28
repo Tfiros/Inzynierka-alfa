@@ -1,5 +1,5 @@
+using System.Net;
 using System.Security.Claims;
-using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.Offers;
 using ItemTradeApp;
 using ItemTradeApp.Features.EmaillsNotifications;
@@ -7,8 +7,6 @@ using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
 using ItemTradeApp.Features.Trades;
 using ItemTradeApp.Features.Users;
-using ItemTradeApp.Middlewares;
-using ItemTradeApp.Middlewares.Requirements;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Users.AuthZeroCommunication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,6 +21,9 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Policies;
+using ItemTradeApp.Policies.Requirements;
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,20 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<ValidationActionFilter>();
 });
 builder.Services.RegisterContactPageFeatureDI();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    var knownProxy = builder.Configuration["ForwardedHeaders:KnownProxy"];
+
+    if (!string.IsNullOrWhiteSpace(knownProxy) &&
+        IPAddress.TryParse(knownProxy, out var proxyIp))
+    {
+        options.KnownProxies.Add(proxyIp);
+    }
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -45,8 +60,15 @@ builder.Services.AddRateLimiter(options =>
         
         var type = isAuth ? "auth" : "api";
 
+        var userId =
+            ctx.User.FindFirstValue("sub") ??
+            ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var key = $"{type}:ip:{ip}";
+
+        var key = !string.IsNullOrWhiteSpace(userId)
+            ? $"{type}:user:{userId}"
+            : $"{type}:ip:{ip}";
 
         //It might need to be adjusted later
         var permitLimit = isAuth ? 20 : 30;
@@ -175,6 +197,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("AppCors");

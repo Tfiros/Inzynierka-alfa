@@ -40,7 +40,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
 
         return await query
             .OrderBy(g => g.Name)
-            .Take(Consts.DROPDOWN_LIMIT)
+            .Take(Consts.DropdownLimit)
             .ToListAsync(ct);
     }
 

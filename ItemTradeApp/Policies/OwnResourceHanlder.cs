@@ -1,12 +1,9 @@
-﻿using System.Net;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ItemTradeApp.Features.Users.UserInfo;
-using ItemTradeApp.Middlewares.Requirements;
-using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Policies.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace ItemTradeApp.Middlewares;
+namespace ItemTradeApp.Policies;
 
 public class OwnResourceHanlder : AuthorizationHandler<OwnResourceRequirement>
 {

@@ -1,5 +1,4 @@
-﻿using ItemTradeApp.Features.Trades.DTOs;
-using ItemTradeApp.Persistence;
+﻿using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 

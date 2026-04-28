@@ -51,7 +51,7 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
         
         return await q
             .OrderBy(r => r.RarityName)
-            .Take(Consts.DROPDOWN_LIMIT)
+            .Take(Consts.DropdownLimit)
             .ToListAsync(ct);
     }
 

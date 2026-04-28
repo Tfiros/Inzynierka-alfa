@@ -444,18 +444,18 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
 
-            var buyersRate = new Rate()
+            var buyersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.BuyersID,
+                UserId = trade.Customer_ID,
                 Mark = request.BuyersGrade,
                 Description = request.BuyersDescription
             };
-        
-            var sellersRate = new Rate()
+
+            var sellersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.SellersID,
+                UserId = trade.User_ID,
                 Mark = request.SellersGrade,
                 Description = request.SellersDescription
             };

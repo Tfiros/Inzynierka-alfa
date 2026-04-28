@@ -1,4 +1,6 @@
-﻿public enum TradeSortBy
+﻿namespace ItemTradeApp.Features.Trades.DTOs;
+
+public enum TradeSortBy
 {
     CreationDateDesc = 1,
     CreationDateAsc = 2,

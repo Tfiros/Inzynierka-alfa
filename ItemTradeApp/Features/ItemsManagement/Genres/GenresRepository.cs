@@ -30,7 +30,7 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
 
         return await query
             .OrderBy(x => x.Name)
-            .Take(Consts.DROPDOWN_LIMIT)
+            .Take(Consts.DropdownLimit)
             .ToListAsync(ct);
     }
     

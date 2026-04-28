@@ -38,7 +38,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpGet("created")]
-    [Authorize]
+    [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetAvailableNew(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -50,7 +50,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpGet("in-realization")]
-    [Authorize]
+    [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyInRealization(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -62,7 +62,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpGet("completed")]
-    [Authorize]
+    [Authorize(Roles = "Middleman")]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyCompleted(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
