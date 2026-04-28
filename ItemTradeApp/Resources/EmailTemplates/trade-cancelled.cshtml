@@ -1,0 +1,89 @@
+@model ItemTradeApp.Resources.EmailTemplates.Models.TradeFinishedEmailModel
+@{
+    Layout = "Layouts/MainLayout.cshtml";
+    ViewBag.Title = "Trade anulowany";
+    ViewBag.Header = "Trade został anulowany";
+    ViewBag.Subtitle = "Wymiana nie została zakończona i została oznaczona jako anulowana.";
+}
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
+
+<table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
+<tr>
+<td style="color:#64748b;width:40%;">Kupujący</td>
+<td style="font-weight:500;">@Model.BuyerNickname</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Sprzedający</td>
+<td style="font-weight:500;">@Model.SellerNickname</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Data utworzenia</td>
+<td>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Middleman</td>
+<td style="font-weight:500;">@Model.MiddlemanNickname</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;">
+
+<div style="font-size:14px;font-weight:600;margin-bottom:10px;">
+Informacja o anulowaniu
+</div>
+
+<p style="margin:0 0 10px 0;font-size:13px;line-height:1.6;color:#475569;">
+Trade został anulowany przez naszego pracownika po weryfikacji przebiegu wymiany.
+</p>
+
+<p style="margin:0;font-size:13px;line-height:1.6;color:#475569;">
+Jeżeli masz pytania dotyczące tej decyzji lub potrzebujesz dodatkowych informacji, sprawdź szczegóły trade'a na platformie albo skontaktuj się z obsługą.
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
+
+<div style="font-weight:600;margin-bottom:8px;">
+Podsumowanie
+</div>
+
+<table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
+<tr>
+<td style="color:#64748b;width:40%;">Koszt tokenów</td>
+<td style="font-weight:500;">@Model.TokensCost</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Status</td>
+<td style="font-weight:500;color:#dc2626;">Anulowany</td>
+</tr>
+</table>
+
+<div style="margin-top:20px;text-align:center;">
+<a href="@Model.TradeUrl" style="display:inline-block;background-color:#0f172a;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">
+Zobacz trade
+</a>
+</div>
+
+</td>
+</tr>

@@ -39,7 +39,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
     public virtual DbSet<Notification> Notifications { get; set; }
-    public virtual DbSet<EmailOutbox> Emails { get; set; }
+    public virtual DbSet<Emails> Emails { get; set; }
     public virtual DbSet<Rate> Rates { get; set; }
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
     public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
@@ -324,9 +324,8 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_notification_user");
         });
-        modelBuilder.Entity<EmailOutbox>(entity =>
+        modelBuilder.Entity<Emails>(entity =>
         {
-            entity.ToTable("email_outbox");
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.Id).HasColumnName("id");

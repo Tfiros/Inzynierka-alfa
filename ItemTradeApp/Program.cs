@@ -2,8 +2,6 @@ using System.Security.Claims;
 using ItemTradeApp.AuthZeroCommunication;
 using ItemTradeApp.Features.Offers;
 using ItemTradeApp;
-using ItemTradeApp.Features.EmaillsNotifications;
-using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
 using ItemTradeApp.Features.Trades;
 using ItemTradeApp.Features.Users;
@@ -23,6 +21,8 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Shared.Notifications;
 
 
 var builder = WebApplication.CreateBuilder(args);

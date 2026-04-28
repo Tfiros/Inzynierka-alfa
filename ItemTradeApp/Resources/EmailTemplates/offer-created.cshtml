@@ -1,0 +1,106 @@
+@model ItemTradeApp.Resources.EmailTemplates.Models.OfferCreatedEmailModel
+@{
+    Layout = "Layouts/MainLayout.cshtml";
+    ViewBag.Title = "Nowa oferta";
+    ViewBag.Header = "Oferta została utworzona";
+    ViewBag.Subtitle = "Twoja oferta jest już aktywna i widoczna dla innych użytkowników.";
+}
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
+
+<table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
+<tr>
+<td style="color:#64748b;width:40%;">Nazwa</td>
+<td style="font-weight:500;">@Model.Name</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Data utworzenia</td>
+<td>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;">
+
+<div style="font-size:14px;font-weight:600;margin-bottom:10px;">
+Zawartość oferty
+</div>
+
+<table width="100%" cellpadding="10" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;font-size:13px;">
+<tr style="background-color:#f8fafc;color:#64748b;">
+<th align="left">Item</th>
+<th align="left">Ilość</th>
+</tr>
+
+@foreach (var item in Model.Items)
+{
+<tr>
+<td>@item.Name</td>
+<td>@item.Amount</td>
+</tr>
+}
+
+</table>
+
+<div style="margin-top:12px;font-size:13px;color:#475569;">
+Tokeny w ofercie: <strong>@Model.TokenAmount</strong>
+</div>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
+
+<div style="font-weight:600;margin-bottom:8px;">
+Podsumowanie
+</div>
+
+<table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
+<tr>
+<td style="color:#64748b;width:40%;">Pobrane tokeny</td>
+<td style="font-weight:500;">@Model.TokensSpent</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Wygasa</td>
+<td>@Model.ExpiresAt.ToString("yyyy-MM-dd HH:mm")</td>
+</tr>
+<tr>
+<td style="color:#64748b;">Wyróżniona</td>
+<td>
+@if (Model.IsFeatured)
+{
+<span style="color:#16a34a;">Tak</span>
+}
+else
+{
+<span style="color:#64748b;">Nie</span>
+}
+</td>
+</tr>
+</table>
+
+<div style="margin-top:20px;text-align:center;">
+<a href="@Model.OfferUrl" style="display:inline-block;background-color:#0f172a;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">
+Zobacz ofertę
+</a>
+</div>
+
+</td>
+</tr>
