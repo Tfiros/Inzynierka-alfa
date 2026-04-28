@@ -21,7 +21,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .FirstOrDefaultAsync(i => i.ID == id, ct);
 
     public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-            => db.Items.AsNoTracking().AnyAsync(i => i.Game.Name == name, ct);
+            => db.Items.AsNoTracking().AnyAsync(i => i.Name == name, ct);
 
     public async Task AddAsync(Item item, CancellationToken ct)
         => await db.Items.AddAsync(item, ct).AsTask();

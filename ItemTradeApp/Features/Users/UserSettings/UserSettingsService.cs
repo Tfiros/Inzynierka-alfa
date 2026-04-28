@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Users.UserSettings.DTOs;
+﻿using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
+using ItemTradeApp.Features.Users.UserSettings.DTOs;
 using ItemTradeApp.Users.AuthZeroCommunication;
 
 namespace ItemTradeApp.Features.Users.UserSettings;

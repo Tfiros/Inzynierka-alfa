@@ -2,12 +2,13 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using ItemTradeApp.AuthZeroCommunication.Dto.Response;
-using ItemTradeApp.Users.AuthZeroCommunication.Mappers;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
+using ItemTradeApp.Users.AuthZeroCommunication;
+using ItemTradeApp.Users.AuthZeroCommunication.Mappers;
 using Microsoft.Extensions.Options;
 
-namespace ItemTradeApp.Users.AuthZeroCommunication;
+namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 
 public interface IAuthZeroAPIClient
 {
@@ -56,15 +57,23 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
     {
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
-
     public string BaseUrl { get; }
+    private readonly ILogger<AuthZeroAPIClient> _logger;
 
-    public AuthZeroAPIClient(IHttpClientFactory httpFactory, IOptions<AuthZeroOptions> opts)
+    public AuthZeroAPIClient(
+        IHttpClientFactory httpFactory,
+        IOptions<AuthZeroOptions> opts,
+        ILogger<AuthZeroAPIClient> logger)
     {
         _httpFactory = httpFactory;
+        _logger = logger;
+
         var domain = opts.Value.Domain?.Trim().TrimEnd('/')
                      ?? throw new InvalidOperationException("Auth0:Domain is missing");
-        BaseUrl = domain.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? domain : $"https://{domain}";
+
+        BaseUrl = domain.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? domain
+            : $"https://{domain}";
     }
 
     public Task<Result<AuthZeroBodyResponse>> SignupAsync(
@@ -167,13 +176,13 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
     {
         try
         {
-            var http = _httpFactory.CreateClient();
+            var httpClient = _httpFactory.CreateClient("Auth0Public");
             using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path));
             var json = JsonSerializer.Serialize(payload, _jsonOpts);
             req.Content = new StringContent(json, Encoding.UTF8, "application/json");
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            using var resp = await http.SendAsync(req, ct);
+            using var resp = await httpClient.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
 
             if (resp.IsSuccessStatusCode)
@@ -202,14 +211,14 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
     {
         try
         {
-            var http = _httpFactory.CreateClient();
+            var httpClient = _httpFactory.CreateClient("Auth0Public");
             using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path))
             {
                 Content = new FormUrlEncodedContent(form)
             };
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            using var resp = await http.SendAsync(req, ct);
+            using var resp = await httpClient.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
 
             if (resp.IsSuccessStatusCode)
@@ -231,23 +240,28 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         }
     }
 
-    private static Result<AuthZeroBodyResponse> MapHttpErrorToResult(
+    private Result<AuthZeroBodyResponse> MapHttpErrorToResult(
         string body,
         HttpStatusCode statusCode,
         string operationName,
         string? reason)
     {
-        var msg = $"auth0_error {(int)statusCode} {reason}";
-        var data = AuthZeroDetailsMapper.Build(msg, body);
+        _logger.LogWarning(
+            "Auth0 operation failed. Operation: {Operation}, Status: {StatusCode}, Reason: {Reason}, Body: {Body}",
+            operationName,
+            statusCode,
+            reason,
+            body);
+
+        var data = AuthZeroDetailsMapper.Build($"{operationName}_failed", body);
 
         var status = statusCode switch
         {
-            HttpStatusCode.BadRequest    => ResultStatus.BadRequest,
-            HttpStatusCode.Unauthorized  => ResultStatus.Unauthorized,
-            HttpStatusCode.NotFound      => ResultStatus.NotFound,
-            HttpStatusCode.Conflict      => ResultStatus.Conflict,
-            _ when (int)statusCode is >= 500 and < 600
-                => ResultStatus.InternalServerError,
+            HttpStatusCode.BadRequest => ResultStatus.BadRequest,
+            HttpStatusCode.Unauthorized => ResultStatus.Unauthorized,
+            HttpStatusCode.NotFound => ResultStatus.NotFound,
+            HttpStatusCode.Conflict => ResultStatus.Conflict,
+            _ when (int)statusCode is >= 500 and < 600 => ResultStatus.InternalServerError,
             _ => ResultStatus.BadRequest
         };
 

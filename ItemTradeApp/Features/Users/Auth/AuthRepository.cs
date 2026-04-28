@@ -1,9 +1,9 @@
-﻿using ItemTradeApp.Persistence;
+﻿using ItemTradeApp.Features.Users.Shared.DTOs;
+using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
-using ItemTradeApp.Users.Shared.DTOs;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Users.Auth;
+namespace ItemTradeApp.Features.Users.Auth;
 
 public interface IAuthRepository
 {
