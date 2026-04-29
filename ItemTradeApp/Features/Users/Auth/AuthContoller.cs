@@ -1,14 +1,14 @@
 ﻿using System.Security.Claims;
-using ItemTradeApp.AuthZeroCommunication.Dto.Response;
 using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Users.Auth.DTOs.RequestDtos;
-using ItemTradeApp.Users.Auth.DTOs.ResponseDtos;
-using ItemTradeApp.Users.Shared.DTOs;
+using ItemTradeApp.Features.Users.Auth.DTOs.RequestDtos;
+using ItemTradeApp.Features.Users.Auth.DTOs.ResponseDtos;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
+using ItemTradeApp.Features.Users.Shared.DTOs;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ItemTradeApp.Users.Auth;
+namespace ItemTradeApp.Features.Users.Auth;
 
 [ApiController]
 [Route("[controller]")]

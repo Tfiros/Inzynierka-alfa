@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.AuthZeroCommunication.Dto.Response;
+﻿namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 
 public sealed class Auth0RoleResponse
 {

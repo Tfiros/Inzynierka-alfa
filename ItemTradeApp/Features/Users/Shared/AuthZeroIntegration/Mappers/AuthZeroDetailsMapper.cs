@@ -1,5 +1,5 @@
 ﻿using System.Text.Json;
-using ItemTradeApp.AuthZeroCommunication.Dto.Response;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 
 namespace ItemTradeApp.Users.AuthZeroCommunication.Mappers;
 

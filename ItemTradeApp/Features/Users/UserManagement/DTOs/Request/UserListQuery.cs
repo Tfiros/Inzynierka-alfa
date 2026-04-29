@@ -1,6 +1,6 @@
 ﻿using ItemTradeApp.Features.Users.UserManagement.Enums;
 
-namespace ItemTradeApp.Features.Users.UserManagement.DTOs;
+namespace ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 
 public sealed class UserListQuery
 {

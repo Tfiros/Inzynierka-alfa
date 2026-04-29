@@ -6,4 +6,5 @@ public sealed class UserListPagedResponse : PagedResponse<UserListItemDTO>
 {
     public int RegisteredLastMonthCount { get; set; }
     public int MiddlemenCount { get; set; }
+    public int TotalUsers { get; set; }
 }
