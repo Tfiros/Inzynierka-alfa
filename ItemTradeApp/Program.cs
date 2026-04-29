@@ -149,7 +149,6 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
 builder.Services.AddCors(opts =>
 {
@@ -164,7 +163,7 @@ builder.Services.AddCors(opts =>
 builder.Services.AddHttpClient();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterPoliciesDi();
-builder.Services.RegisterUserFeatureDi();
+builder.Services.RegisterUserFeatureDi(builder.Configuration);
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();

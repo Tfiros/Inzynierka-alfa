@@ -11,19 +11,27 @@ namespace ItemTradeApp.Features.Users.UserManagement;
 public interface IUserManagementRepository
 {
     Task<User?> GetUserByAuth0IdAsync(string auth0UserId, CancellationToken ct = default);
-    Task UpdateUserAsync(User user, CancellationToken ct = default);
 
-    Task ExecuteUserDeletionAsync(
+    Task<int> UpdateOfferStatusesForUserAsync(
         int userId,
-        string auth0UserId,
-        IReadOnlyCollection<int> offerStatusesToCancel,
-        IReadOnlyCollection<int> tradeStatusesToFail,
-        int canceledOfferStatusId,
-        int failedTradeStatusId,
-        int deniedCounterOfferStatusId,
+        IReadOnlyCollection<int> currentStatuses,
+        int newStatus,
         CancellationToken ct = default);
 
-    Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount)>
+    Task<int> UpdateTradeStatusesForUserAsync(
+        int userId,
+        IReadOnlyCollection<int> currentStatuses,
+        int newStatus,
+        CancellationToken ct = default);
+
+    Task<int> UpdateCounterOfferStatusesForUserAsync(
+        int userId,
+        int newStatus,
+        CancellationToken ct = default);
+
+    void SoftDeleteUser(User user);
+
+    Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount, int TotalUsers)>
         GetUsersPageWithStatsAsync(
             UserListQuery query,
             IReadOnlyCollection<string>? auth0IdFilter = null,
@@ -43,65 +51,59 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
             .SingleOrDefaultAsync(u => u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
     }
 
-    public async Task UpdateUserAsync(User user, CancellationToken ct = default)
-    {
-        dbContext.Users.Update(user);
-        await dbContext.SaveChangesAsync(ct);
-    }
-
-    public async Task ExecuteUserDeletionAsync(
+    public Task<int> UpdateOfferStatusesForUserAsync(
         int userId,
-        string auth0UserId,
-        IReadOnlyCollection<int> offerStatusesToCancel,
-        IReadOnlyCollection<int> tradeStatusesToFail,
-        int canceledOfferStatusId,
-        int failedTradeStatusId,
-        int deniedCounterOfferStatusId,
+        IReadOnlyCollection<int> currentStatuses,
+        int newStatus,
         CancellationToken ct = default)
     {
-        await using var tx = await dbContext.Database.BeginTransactionAsync(ct);
-
-        var user = await dbContext.Users
-            .SingleOrDefaultAsync(u => u.ID == userId && u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
-
-        if (user is null)
-        {
-            await tx.CommitAsync(ct);
-            return;
-        }
-
-        await dbContext.Offers
+        return dbContext.Offers
             .Where(o =>
                 o.User_ID == userId &&
-                offerStatusesToCancel.Contains(o.OfferStatus_ID))
+                currentStatuses.Contains(o.OfferStatus_ID))
             .ExecuteUpdateAsync(
-                s => s.SetProperty(o => o.OfferStatus_ID, canceledOfferStatusId),
+                s => s.SetProperty(o => o.OfferStatus_ID, newStatus),
                 ct);
+    }
 
-        await dbContext.Trades
+    public Task<int> UpdateTradeStatusesForUserAsync(
+        int userId,
+        IReadOnlyCollection<int> currentStatuses,
+        int newStatus,
+        CancellationToken ct = default)
+    {
+        return dbContext.Trades
             .Where(t =>
-                (t.Customer_ID == userId || t.User_ID == userId || t.MiddlemanUser_ID == userId) &&
-                tradeStatusesToFail.Contains(t.TradeStatus_ID))
+                (t.Customer_ID == userId ||
+                 t.User_ID == userId ||
+                 t.MiddlemanUser_ID == userId) &&
+                currentStatuses.Contains(t.TradeStatus_ID))
             .ExecuteUpdateAsync(
-                s => s.SetProperty(t => t.TradeStatus_ID, failedTradeStatusId),
+                s => s.SetProperty(t => t.TradeStatus_ID, newStatus),
                 ct);
+    }
 
-        await dbContext.CounterOffers
+    public Task<int> UpdateCounterOfferStatusesForUserAsync(
+        int userId,
+        int newStatus,
+        CancellationToken ct = default)
+    {
+        return dbContext.CounterOffers
             .Where(co => co.User_ID == userId)
             .ExecuteUpdateAsync(
-                s => s.SetProperty(co => co.CounterOfferStatus_Id, deniedCounterOfferStatusId),
+                s => s.SetProperty(co => co.CounterOfferStatus_Id, newStatus),
                 ct);
+    }
 
+    public void SoftDeleteUser(User user)
+    {
         user.IsDeleted = true;
         user.Auth0UserID = null;
         user.StripeCustomerID = null;
         user.Email = null;
-
-        await dbContext.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
     }
 
-    public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount)>
+    public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount, int TotalUsers)>
         GetUsersPageWithStatsAsync(
             UserListQuery query,
             IReadOnlyCollection<string>? auth0IdFilter = null,
@@ -137,11 +139,15 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
 
         var stats = await dbContext.Users
             .AsNoTracking()
+            .Where(u => !u.IsDeleted)
             .GroupBy(_ => 1)
             .Select(g => new
             {
+                TotalUsers = g.Count(),
+
                 RegisteredLastMonthCount = g.Count(u =>
-                    u.RegistrationDate >= monthAgo && u.RegistrationDate <= today),
+                    u.RegistrationDate >= monthAgo &&
+                    u.RegistrationDate <= today),
 
                 MiddlemenCount = middlemanIds.Length == 0
                     ? 0
@@ -149,13 +155,17 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
             })
             .FirstOrDefaultAsync(ct);
 
-        var registeredLastMonth = stats?.RegisteredLastMonthCount ?? 0;
-        var middlemenCount = stats?.MiddlemenCount ?? 0;
-
-        return (items, totalCount, registeredLastMonth, middlemenCount);
+        return (
+            items,
+            totalCount,
+            stats?.RegisteredLastMonthCount ?? 0,
+            stats?.MiddlemenCount ?? 0,
+            stats?.TotalUsers ?? 0);
     }
 
-    private IQueryable<User> BuildBaseQuery(UserListQuery query, IReadOnlyCollection<string>? auth0IdFilter)
+    private IQueryable<User> BuildBaseQuery(
+        UserListQuery query,
+        IReadOnlyCollection<string>? auth0IdFilter)
     {
         IQueryable<User> q = dbContext.Users
             .Where(u => !u.IsDeleted)
@@ -164,6 +174,7 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         if (auth0IdFilter is { Count: > 0 })
         {
             var ids = NormalizeAuth0Ids(auth0IdFilter);
+
             if (ids.Length == 0)
                 return q.Where(_ => false);
 
@@ -173,6 +184,7 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
             var pattern = $"%{query.SearchText.Trim()}%";
+
             q = q.Where(u =>
                 u.ProfileInfo != null &&
                 u.ProfileInfo.Nickname != null &&

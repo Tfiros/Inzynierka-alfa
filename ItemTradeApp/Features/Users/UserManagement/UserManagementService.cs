@@ -1,11 +1,8 @@
 ﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
-using ItemTradeApp.Features.Users.UserManagement.DTOs;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
-using ItemTradeApp.Features.Users.UserManagement.Enums;
 using ItemTradeApp.Persistence;
-using ItemTradeApp.Users.AuthZeroCommunication;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.UserManagement;
@@ -20,9 +17,23 @@ public interface IUserManagementService
 public sealed class UserManagementService(
     IAuthZeroManagementClient authZeroManagementClient,
     IUserManagementRepository userManagementRepository,
+    IUnitOfWork unitOfWork,
     IOptions<AuthZeroOptions> auth0Options) : IUserManagementService
 {
     private const string MiddlemanRoleName = "Middleman";
+
+    private static readonly int[] OfferStatusesToCancel =
+    [
+        (int)OfferStatuses.Active,
+        (int)OfferStatuses.InRealization,
+        (int)OfferStatuses.Expired
+    ];
+
+    private static readonly int[] TradeStatusesToFail =
+    [
+        (int)TradeStatuses.New,
+        (int)TradeStatuses.InRealization
+    ];
 
     private static string EnsureAuth0Prefix(string auth0UserId)
         => auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
@@ -86,13 +97,7 @@ public sealed class UserManagementService(
 
             var auth0PatchRes = await authZeroManagementClient.PatchUserAsync(fullAuth0UserId, payload, ct);
             if (!auth0PatchRes.IsSuccess)
-            {
-                return new Result<string>(
-                    isSuccess: false,
-                    status: auth0PatchRes.Status,
-                    data: default,
-                    message: auth0PatchRes.Message ?? "auth0_admin_update_user_failed");
-            }
+                return new Result<string>(false, auth0PatchRes.Status, default, auth0PatchRes.Message ?? "auth0_admin_update_user_failed");
         }
 
         if (hasRolesChange)
@@ -150,10 +155,10 @@ public sealed class UserManagementService(
         if (hasEmailChange)
             user.Email = request.Email!;
 
-        if (hasNicknameChange)
+        if (hasNicknameChange && user.ProfileInfo is not null)
             user.ProfileInfo.Nickname = request.Nickname!;
 
-        await userManagementRepository.UpdateUserAsync(user, ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<string>.Success(null, "user_updated");
     }
@@ -172,34 +177,41 @@ public sealed class UserManagementService(
 
         var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuth0UserId, ct);
         if (!auth0Result.IsSuccess)
+            return new Result<string>(false, auth0Result.Status, default, auth0Result.Message ?? "auth0_admin_delete_user_failed");
+
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+
+        try
         {
-            return new Result<string>(
-                isSuccess: false,
-                status: auth0Result.Status,
-                data: default,
-                message: auth0Result.Message ?? "auth0_admin_delete_user_failed");
+            await userManagementRepository.UpdateOfferStatusesForUserAsync(
+                user.ID,
+                OfferStatusesToCancel,
+                (int)OfferStatuses.Canceled,
+                ct);
+
+            await userManagementRepository.UpdateTradeStatusesForUserAsync(
+                user.ID,
+                TradeStatusesToFail,
+                (int)TradeStatuses.Failed,
+                ct);
+
+            await userManagementRepository.UpdateCounterOfferStatusesForUserAsync(
+                user.ID,
+                (int)CounterOfferStatuses.Denied,
+                ct);
+
+            userManagementRepository.SoftDeleteUser(user);
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return Result<string>.NoContent("user_deleted");
         }
-
-        await userManagementRepository.ExecuteUserDeletionAsync(
-            userId: user.ID,
-            auth0UserId: trimmedAuth0UserId,
-            offerStatusesToCancel:
-            [
-                (int)OfferStatuses.Active,
-                (int)OfferStatuses.InRealization,
-                (int)OfferStatuses.Expired
-            ],
-            tradeStatusesToFail:
-            [
-                (int)TradeStatuses.New,
-                (int)TradeStatuses.InRealization
-            ],
-            canceledOfferStatusId: (int)OfferStatuses.Canceled,
-            failedTradeStatusId: (int)TradeStatuses.Failed,
-            deniedCounterOfferStatusId: (int)CounterOfferStatuses.Denied,
-            ct);
-
-        return Result<string>.NoContent("user_deleted");
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public async Task<Result<UserListPagedResponse>> GetUsersAsync(UserListQuery query, CancellationToken ct = default)
@@ -210,65 +222,58 @@ public sealed class UserManagementService(
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
-        var repoQuery = BuildRepoQuery(query, page, pageSize);
+        var repoQuery = new UserListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            SearchText = query.SearchText,
+            OrderBy = query.OrderBy,
+            RegisteredFrom = query.RegisteredFrom,
+            RegisteredTo = query.RegisteredTo,
+            Role = query.Role
+        };
 
         var roleIdByNameRes = await GetRoleIdByNameAsync(ct);
         if (!roleIdByNameRes.IsSuccess || roleIdByNameRes.Data is null)
             return FailPaged(roleIdByNameRes.Status, roleIdByNameRes.Message ?? "auth0_get_roles_failed");
 
-        var roleIdByName = roleIdByNameRes.Data;
-
-        var roleFilterRes = await BuildAuth0RoleFilterAsync(query.Role, roleIdByName, ct);
+        var roleFilterRes = await BuildAuth0RoleFilterAsync(query.Role, roleIdByNameRes.Data, ct);
         if (!roleFilterRes.IsSuccess)
             return FailPaged(roleFilterRes.Status, roleFilterRes.Message ?? "auth0_get_users_in_role_failed");
 
         if (roleFilterRes.Data?.IsEmpty == true)
             return EmptyPaged(page, pageSize);
 
-        var middlemenIdsRes = await GetMiddlemanAuth0IdsAsync(roleIdByName, ct);
+        var middlemenIdsRes = await GetMiddlemanAuth0IdsAsync(roleIdByNameRes.Data, ct);
         if (!middlemenIdsRes.IsSuccess || middlemenIdsRes.Data is null)
             return FailPaged(middlemenIdsRes.Status, middlemenIdsRes.Message ?? "auth0_get_users_in_role_failed");
 
-        var tuple = await userManagementRepository.GetUsersPageWithStatsAsync(
-            repoQuery,
-            roleFilterRes.Data?.Auth0RoleFilter,
-            middlemenIdsRes.Data,
-            ct);
-
-        var (items, totalCount, registeredLastMonthCount, middlemenCount) = tuple;
+        var (items, totalCount, registeredLastMonthCount, middlemenCount, totalUsers) =
+            await userManagementRepository.GetUsersPageWithStatsAsync(
+                repoQuery,
+                roleFilterRes.Data?.Auth0RoleFilter,
+                middlemenIdsRes.Data,
+                ct);
 
         var enrichRes = await EnrichUsersWithRolesAsync(items, ct);
         if (!enrichRes.IsSuccess)
             return FailPaged(enrichRes.Status, enrichRes.Message ?? "auth0_get_user_roles_failed");
 
-        var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        var totalPages = totalCount == 0
+            ? 1
+            : (int)Math.Ceiling(totalCount / (double)pageSize);
 
-        var response = new UserListPagedResponse
+        return Result<UserListPagedResponse>.Success(new UserListPagedResponse
         {
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,
             TotalPages = totalPages,
+            TotalUsers = totalUsers,
             Elements = items,
             RegisteredLastMonthCount = registeredLastMonthCount,
             MiddlemenCount = middlemenCount
-        };
-
-        return Result<UserListPagedResponse>.Success(response, "users_query");
-    }
-
-    private static UserListQuery BuildRepoQuery(UserListQuery src, int page, int pageSize)
-    {
-        return new UserListQuery
-        {
-            Page = page,
-            PageSize = pageSize,
-            SearchText = src.SearchText,
-            OrderBy = src.OrderBy,
-            RegisteredFrom = src.RegisteredFrom,
-            RegisteredTo = src.RegisteredTo,
-            Role = src.Role
-        };
+        }, "users_query");
     }
 
     private async Task<Result<Dictionary<string, string>>> GetRoleIdByNameAsync(CancellationToken ct)
@@ -309,10 +314,9 @@ public sealed class UserManagementService(
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        if (filter.Count == 0)
-            return Result<RoleFilterResult>.Success(new RoleFilterResult(null, true));
-
-        return Result<RoleFilterResult>.Success(new RoleFilterResult(filter, false));
+        return filter.Count == 0
+            ? Result<RoleFilterResult>.Success(new RoleFilterResult(null, true))
+            : Result<RoleFilterResult>.Success(new RoleFilterResult(filter, false));
     }
 
     private async Task<Result<string[]>> GetMiddlemanAuth0IdsAsync(
@@ -344,8 +348,8 @@ public sealed class UserManagementService(
 
         if (pageLocalIds.Count == 0)
         {
-            foreach (var it in items)
-                it.Roles = new List<string>();
+            foreach (var item in items)
+                item.Roles = new List<string>();
 
             return Result<string>.NoContent("no_users_on_page");
         }
@@ -380,15 +384,16 @@ public sealed class UserManagementService(
         foreach (var item in items)
         {
             var localId = TrimAuth0Prefix(item.Auth0UserId);
-            item.Roles = rolesByLocalAuth0Id.TryGetValue(localId, out var roles) ? roles : new List<string>();
+            item.Roles = rolesByLocalAuth0Id.TryGetValue(localId, out var roles)
+                ? roles
+                : new List<string>();
         }
 
         return Result<string>.NoContent("roles_enriched");
     }
 
     private static Result<UserListPagedResponse> EmptyPaged(int page, int pageSize)
-    {
-        return Result<UserListPagedResponse>.Success(new UserListPagedResponse
+        => Result<UserListPagedResponse>.Success(new UserListPagedResponse
         {
             Page = page,
             PageSize = pageSize,
@@ -398,10 +403,7 @@ public sealed class UserManagementService(
             RegisteredLastMonthCount = 0,
             MiddlemenCount = 0
         }, "users_query");
-    }
 
     private static Result<UserListPagedResponse> FailPaged(ResultStatus status, string message)
-    {
-        return new Result<UserListPagedResponse>(false, status, default, message);
-    }
+        => new(false, status, default, message);
 }

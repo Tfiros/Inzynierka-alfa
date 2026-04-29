@@ -54,7 +54,7 @@ public class AuthService(
                     Result<AuthZeroBodyResponse>.Conflict("User with this email already exists."),
 
                 ResultStatus.BadRequest =>
-                    Result<AuthZeroBodyResponse>.BadRequest("Registration failed."),
+                    Result<AuthZeroBodyResponse>.BadRequest("Registration failed. User with such email already exists."),
 
                 ResultStatus.Unauthorized =>
                     Result<AuthZeroBodyResponse>.Unauthorized("Registration failed."),
@@ -135,7 +135,7 @@ public class AuthService(
                     Result<LoginResponse>.Conflict("Login failed."),
 
                 ResultStatus.InternalServerError =>
-                    Result<LoginResponse>.InternalServerError("Login service unavailable."),
+                    Result<LoginResponse>.InternalServerError("Login service unavailable. Check if you have verified your email."),
 
                 _ =>
                     Result<LoginResponse>.BadRequest("Login failed.")

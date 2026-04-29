@@ -3,23 +3,49 @@ using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.UserInfo;
 using ItemTradeApp.Features.Users.UserManagement;
 using ItemTradeApp.Features.Users.UserSettings;
-using ItemTradeApp.Users.AuthZeroCommunication;
+using ItemTradeApp.Policies;
 
 namespace ItemTradeApp.Features.Users;
 
 public static class DI
 {
-    public static IServiceCollection RegisterUserFeatureDi(this IServiceCollection serviceCollection)
+    public static IServiceCollection RegisterUserFeatureDi(this IServiceCollection serviceCollection, IConfiguration configuration)
     {
-        serviceCollection.AddHttpClient("Auth0Public", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
+        serviceCollection.Configure<AuthZeroOptions>(configuration.GetSection("Auth0"));
 
-        serviceCollection.AddHttpClient("Auth0Management", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
+        serviceCollection.AddHttpClient("Auth0Public")
+            .AddPolicyHandler((sp, _) =>
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Auth0Public-Retry");
+
+                return HttpPolicies.GetRetryPolicy(logger);
+            })
+            .AddPolicyHandler((sp, _) =>
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Auth0Public-CircuitBreaker");
+
+                return HttpPolicies.GetCircuitBreakerPolicy(logger);
+            })
+            .AddPolicyHandler(HttpPolicies.GetTimeoutPolicy());
+
+        serviceCollection.AddHttpClient("Auth0Management")
+            .AddPolicyHandler((sp, _) =>
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Auth0Management-Retry");
+
+                return HttpPolicies.GetRetryPolicy(logger);
+            })
+            .AddPolicyHandler((sp, _) =>
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Auth0Management-CircuitBreaker");
+
+                return HttpPolicies.GetCircuitBreakerPolicy(logger);
+            })
+            .AddPolicyHandler(HttpPolicies.GetTimeoutPolicy());
 
         serviceCollection.AddScoped<IAuthZeroAPIClient, AuthZeroAPIClient>();
         serviceCollection.AddScoped<IAuthZeroManagementClient, AuthZeroAPIManagement>(); 
