@@ -2,7 +2,7 @@
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.EmailsNotifications;
+namespace ItemTradeApp.Features.Shared.Notifications.Repositories;
 
 public interface IUserIdentityRepository
 {

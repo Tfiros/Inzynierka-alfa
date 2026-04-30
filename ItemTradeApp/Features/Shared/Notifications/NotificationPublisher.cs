@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.Features.Shared.Notifications.Contracts;
+﻿using ItemTradeApp.Features.Shared.Notifications.DTOs;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Shared.Notifications;

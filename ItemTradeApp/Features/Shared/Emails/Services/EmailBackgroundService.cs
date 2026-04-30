@@ -1,6 +1,6 @@
 ﻿using System.Threading.Channels;
-using ItemTradeApp.Features.EmailsNotifications;
 using ItemTradeApp.Features.Shared.Emails.Contracts;
+using ItemTradeApp.Features.Shared.Notifications.Repositories;
 using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Shared.Emails.Services;

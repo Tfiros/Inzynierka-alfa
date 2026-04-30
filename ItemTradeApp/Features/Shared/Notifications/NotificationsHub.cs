@@ -1,5 +1,5 @@
 ﻿using System.Security.Claims;
-using ItemTradeApp.Features.EmailsNotifications;
+using ItemTradeApp.Features.Shared.Notifications.Repositories;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Shared.Notifications;

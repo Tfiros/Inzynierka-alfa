@@ -1,5 +1,5 @@
 using FluentValidation;
-using ItemTradeApp.Features.Shared.Notifications.Contracts;
+using ItemTradeApp.Features.Shared.Notifications.DTOs;
 
 namespace ItemTradeApp.Features.Shared.Notifications.Validators;
 

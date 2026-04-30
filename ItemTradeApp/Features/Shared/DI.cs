@@ -1,10 +1,11 @@
 ﻿using System.Threading.Channels;
-using ItemTradeApp.Features.EmailsNotifications;
 using ItemTradeApp.Features.Shared.Emails;
 using ItemTradeApp.Features.Shared.Emails.Contracts;
 using ItemTradeApp.Features.Shared.Emails.Services;
 using ItemTradeApp.Features.Shared.Emails.Settings;
 using ItemTradeApp.Features.Shared.Notifications;
+using ItemTradeApp.Features.Shared.Notifications.Repositories;
+using ItemTradeApp.Features.Shared.Notifications.Services;
 
 namespace ItemTradeApp.Features.Shared;
 
@@ -31,6 +32,7 @@ public static class DI
         services.AddScoped<INotificationsService, NotificationsService>();
         services.AddScoped<INotificationsRepository, NotificationsRepository>();
         services.AddScoped<IEmailGenerationService, EmailGenerationService>();
+        services.AddScoped<INotificationSender, NotificationSender>();
         
         services.AddSingleton<IEmailTemplateRenderer, RazorEmailTemplateRenderer>();
         return services;
