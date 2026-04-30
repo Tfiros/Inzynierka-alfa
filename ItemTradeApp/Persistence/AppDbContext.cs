@@ -45,6 +45,11 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
 
     public virtual DbSet<ChatConversation> ChatConversations { get; set; }
+    
+    public virtual DbSet<TradeChat> TradeChats { get; set; }
+    
+    public virtual DbSet<TradeChatMessage> TradeChatMessages { get; set; }
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -433,6 +438,81 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(x => new { x.ChatConversationId, x.CreatedAt });
             entity.HasIndex(x => x.SenderId);
         });
+
+        modelBuilder.Entity<TradeChat>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.ToTable("trade_chat");
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.ClosedAt)
+                .HasColumnType("timestamptz");
+
+            entity.HasOne(x => x.Trade)
+                .WithMany()
+                .HasForeignKey(x => x.TradeId)
+                .HasConstraintName("trade_chat-trade");
+
+            entity.HasOne(x => x.Participant)
+                .WithMany()
+                .HasForeignKey(x => x.ParticipantId)
+                .HasConstraintName("trade_chat-participant");
+
+            entity.HasOne(x => x.Middleman)
+                .WithMany()
+                .HasForeignKey(x => x.MiddlemanId)
+                .HasConstraintName("trade_chat-middleman");
+
+            entity.HasIndex(x => new { x.TradeId, x.ParticipantId })
+                .IsUnique();
+        });
+        modelBuilder.Entity<TradeChatMessage>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.ToTable("trade_chat_message");
+
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Content)
+                .HasColumnType("text")
+                .HasMaxLength(2000)
+                .IsRequired();
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("now()");
+
+            entity.Property(x => x.EditedAt)
+                .HasColumnType("timestamptz");
+
+            entity.HasOne(x => x.TradeChat)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(x => x.TradeChatId)
+                .HasConstraintName("trade_chat-message_chat");
+
+            entity.HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .HasConstraintName("trade_chat-message_sender");
+
+        });
+
+        modelBuilder.Entity<TradeChat>()
+            .HasOne<TradeChatMessage>()
+            .WithMany()
+            .HasForeignKey(x => x.ParticipantLastReadMessageId)
+            .HasConstraintName("trade_chat-participant_last_read")
+            .IsRequired();
+        
+        modelBuilder.Entity<TradeChat>()
+            .HasOne<TradeChatMessage>()
+            .WithMany()
+            .HasForeignKey(x => x.MiddlemanLastReadMessageId)
+            .HasConstraintName("trade_chat-middleman_last_read")
+            .IsRequired();
         OnModelCreatingPartial(modelBuilder);
     }
 
