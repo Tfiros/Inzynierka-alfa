@@ -1,7 +1,7 @@
 using FluentValidation;
-using ItemTradeApp.Users.Auth.DTOs.RequestDtos;
+using ItemTradeApp.Features.Users.Auth.DTOs.RequestDtos;
 
-namespace ItemTradeApp.Users.Auth.Validators;
+namespace ItemTradeApp.Features.Users.Auth.Validators;
 
 public class LoginRequestValidator : AbstractValidator<LoginRequest>
 {

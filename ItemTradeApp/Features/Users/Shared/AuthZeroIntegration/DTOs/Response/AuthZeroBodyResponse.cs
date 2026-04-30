@@ -1,7 +1,6 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-namespace ItemTradeApp.AuthZeroCommunication.Dto.Response;
+namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 
 public sealed class AuthZeroBodyResponse
 {

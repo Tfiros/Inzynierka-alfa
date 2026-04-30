@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.Users.AuthZeroCommunication;
+﻿namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 
 public sealed class AuthZeroOptions
 {
