@@ -10,14 +10,12 @@ public sealed class OfferCreatedEmailModel
 {
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public DateTime ExpiresAt { get; set; }
+    public DateOnly ExpiresAt { get; set; }
     public bool IsFeatured { get; set; }
 
     public int TokenAmount { get; set; }
     public int TokensSpent { get; set; }
-
-    public string OfferUrl { get; set; } = string.Empty;
-
+    
     public List<EmailItemModel> Items { get; set; } = new();
 }
 
@@ -29,7 +27,7 @@ public sealed class TradeCreatedEmailModel
     public DateTime CreatedAt { get; set; }
     public int TokensCost { get; set; }
 
-    public string TradeUrl { get; set; } = string.Empty;
+    public string OfferName { get; set; } = string.Empty;
 }
 
 public sealed class TradeFromCounterOfferCreatedEmailModel
@@ -40,7 +38,7 @@ public sealed class TradeFromCounterOfferCreatedEmailModel
     public DateTime CreatedAt { get; set; }
     public int TokensCost { get; set; }
 
-    public string TradeUrl { get; set; } = string.Empty;
+    public string OfferName { get; set; } = string.Empty;
 
     public List<EmailItemModel> BuyerItems { get; set; } = new();
     public List<EmailItemModel> SellerItems { get; set; } = new();
@@ -55,5 +53,5 @@ public sealed class TradeFinishedEmailModel
     public DateTime CreatedAt { get; set; }
     public int TokensCost { get; set; }
 
-    public string TradeUrl { get; set; } = string.Empty;
+    public string OfferName { get; set; } = string.Empty;
 }

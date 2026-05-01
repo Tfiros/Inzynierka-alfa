@@ -3,16 +3,16 @@ using ItemTradeApp.Persistence.Models;
 
 namespace ItemTradeApp.Features.Shared.Emails;
 
-public interface IEmailOutboxRepository
+public interface IEmailsRepository
 {
-    Task SaveSentAsync(Persistence.Models.Emails row, CancellationToken ct);
+    Task SaveSentAsync(Persistence.Models.Email row, CancellationToken ct);
 }
 
-public sealed class EmailsRepository(AppDbContext db) : IEmailOutboxRepository
+public sealed class EmailsRepository(AppDbContext db) : IEmailsRepository
 {
-    public async Task SaveSentAsync(Persistence.Models.Emails row, CancellationToken ct)
+    public async Task SaveSentAsync(Email row, CancellationToken ct)
     {
-        db.Set<Persistence.Models.Emails>().Add(row);
+        db.Emails.Add(row);
         await db.SaveChangesAsync(ct);
     }
 }

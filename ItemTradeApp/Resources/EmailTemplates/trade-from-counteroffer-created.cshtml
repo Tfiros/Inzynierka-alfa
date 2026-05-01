@@ -7,8 +7,20 @@
 }
 
 <tr>
-<td style="padding:20px 24px;font-size:14px;">
+<td style="padding:20px 24px;">
+<div style="font-size:13px;color:#475569;margin-bottom:8px;">Trade został utworzony na podstawie kontroferty dla:</div>
+<div style="font-size:14px;font-weight:600;">@Model.OfferName</div>
+</td>
+</tr>
 
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
 <table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
 <tr>
 <td style="color:#64748b;width:40%;">Kupujący</td>
@@ -23,7 +35,6 @@
 <td>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
 </tr>
 </table>
-
 </td>
 </tr>
 
@@ -35,10 +46,7 @@
 
 <tr>
 <td style="padding:20px 24px;">
-
-<div style="font-size:14px;font-weight:600;margin-bottom:10px;">
-Szczegóły wymiany
-</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:10px;">Szczegóły wymiany</div>
 
 <div style="margin-bottom:12px;font-size:13px;font-weight:500;">@Model.BuyerNickname przekazuje:</div>
 <table width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;font-size:13px;margin-bottom:12px;">
@@ -69,7 +77,6 @@ Szczegóły wymiany
 </tr>
 }
 </table>
-
 </td>
 </tr>
 
@@ -81,10 +88,7 @@ Szczegóły wymiany
 
 <tr>
 <td style="padding:20px 24px;">
-
-<div style="font-size:14px;font-weight:600;margin-bottom:10px;">
-Co dalej?
-</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:10px;">Co dalej?</div>
 
 <p style="margin:0 0 10px 0;font-size:13px;line-height:1.6;color:#475569;">
 Teraz nasz pracownik, który zajmie się Państwa wymianą, skontaktuje się z Państwem na platformie w indywidualnie utworzonym chacie.
@@ -97,7 +101,6 @@ W trakcie rozmowy otrzymają Państwo instrukcje dotyczące przekazania przedmio
 <p style="margin:0;font-size:13px;line-height:1.6;color:#475569;">
 Prosimy o nieprzekazywanie itemów poza systemem oraz o bieżące monitorowanie wiadomości.
 </p>
-
 </td>
 </tr>
 
@@ -109,10 +112,7 @@ Prosimy o nieprzekazywanie itemów poza systemem oraz o bieżące monitorowanie 
 
 <tr>
 <td style="padding:20px 24px;font-size:14px;">
-
-<div style="font-weight:600;margin-bottom:8px;">
-Podsumowanie
-</div>
+<div style="font-weight:600;margin-bottom:8px;">Podsumowanie</div>
 
 <table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
 <tr>
@@ -124,12 +124,5 @@ Podsumowanie
 <td style="font-weight:500;">Oczekuje na kontakt pracownika</td>
 </tr>
 </table>
-
-<div style="margin-top:20px;text-align:center;">
-<a href="@Model.TradeUrl" style="display:inline-block;background-color:#0f172a;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">
-Przejdź do trade'a
-</a>
-</div>
-
 </td>
 </tr>

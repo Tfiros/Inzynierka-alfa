@@ -19,7 +19,7 @@ public sealed class EmailBackgroundService(
                 await using var scope = scopeFactory.CreateAsyncScope();
 
                 var sender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
-                var repo = scope.ServiceProvider.GetRequiredService<IEmailOutboxRepository>();
+                var repo = scope.ServiceProvider.GetRequiredService<IEmailsRepository>();
                 var userRepo = scope.ServiceProvider.GetRequiredService<IUserIdentityRepository>();
                 var user = await userRepo.GetUserByIdAsync(job.UserId, ct);
                 if (user is null || string.IsNullOrWhiteSpace(user.Email))
@@ -31,7 +31,7 @@ public sealed class EmailBackgroundService(
 
                 var now = DateTimeOffset.UtcNow;
 
-                await repo.SaveSentAsync(new Persistence.Models.Emails
+                await repo.SaveSentAsync(new Persistence.Models.Email
                 {
                     UserId = job.UserId,
                     Subject = job.Subject,

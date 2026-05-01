@@ -403,7 +403,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                 }
             }
 
-            var oldWantedItems = offer.ListingItems
+            /*var oldWantedItems = offer.ListingItems
                 .Where(x => x.IsWanted)
                 .ToList();
 
@@ -421,8 +421,8 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     Quantity = counterItem.Quantity,
                     IsWanted = true
                 });
-            }
-
+            }*/
+            
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,

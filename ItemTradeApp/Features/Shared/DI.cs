@@ -25,7 +25,7 @@ public static class DI
         }));
 
         services.AddSingleton<IEmailDispatcher, EmailDispatcher>();
-        services.AddScoped<IEmailOutboxRepository, EmailsRepository>();
+        services.AddScoped<IEmailsRepository, EmailsRepository>();
         services.AddHostedService<EmailBackgroundService>();
         services.AddScoped<IUserIdentityRepository, UserIdentityRepository>();
         services.AddScoped<INotificationsPublisher, NotificationsPublisher>();

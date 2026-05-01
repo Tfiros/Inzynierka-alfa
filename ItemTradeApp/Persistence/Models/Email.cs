@@ -3,7 +3,7 @@
 namespace ItemTradeApp.Persistence.Models;
 
 [Table("emails")]
-public class Emails
+public class Email
 {
     [Column("id")]
     public int Id { get; set; }

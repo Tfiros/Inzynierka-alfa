@@ -1,36 +1,99 @@
 ﻿using ItemTradeApp.Features.Shared.Emails.Contracts;
+using ItemTradeApp.Features.Shared.Emails.Mappers;
+using ItemTradeApp.Persistence.Models;
 using ItemTradeApp.Resources.EmailTemplates.Models;
 
 namespace ItemTradeApp.Features.Shared.Emails.Services;
 
 public interface IEmailGenerationService
 {
-    Task SendOfferCreatedAsync(int userId, OfferCreatedEmailModel model, CancellationToken ct);
-    Task SendTradeCreatedAsync(int userId, TradeCreatedEmailModel model, CancellationToken ct);
-    Task SendTradeFromCounterOfferCreatedAsync(int userId, TradeFromCounterOfferCreatedEmailModel model, CancellationToken ct);
+    Task SendOfferCreatedAsync(
+        int userId,
+        Offer offer,
+        CancellationToken ct);
 
-    Task SendTradeCompletedAsync(int userId, TradeFinishedEmailModel model, CancellationToken ct);
-    Task SendTradeCancelledAsync(int userId, TradeFinishedEmailModel model, CancellationToken ct);
+    Task SendTradeCreatedAsync(
+        int userId,
+        string buyerNick,
+        string sellerNick,
+        Trade trade,
+        Offer offer,
+        CancellationToken ct);
+
+    Task SendTradeFromCounterOfferCreatedAsync(
+        int userId,
+        string buyerNick,
+        string sellerNick,
+        Trade trade,
+        Offer offer,
+        CancellationToken ct);
+
+    Task SendTradeCompletedAsync(
+        int userId,
+        string buyerNick,
+        string sellerNick,
+        Trade trade,
+        Offer offer,
+        CancellationToken ct);
+
+    Task SendTradeCancelledAsync(
+        int userId,
+        string buyerNick,
+        string sellerNick,
+        string middlemanNick,
+        Trade trade,
+        Offer offer,
+        CancellationToken ct);
 }
 
 public sealed class EmailGenerationService(
     IEmailTemplateRenderer renderer,
-    IEmailDispatcher dispatcher) : IEmailGenerationService
+    IEmailDispatcher dispatcher,
+    IEmailsRepository repository) : IEmailGenerationService
 {
-    public async Task SendOfferCreatedAsync(int userId, OfferCreatedEmailModel model, CancellationToken ct)
-        => await SendAsync(userId, "offer-created", $"New offer \"{model.Name}\"", model, ct);
+    public async Task SendOfferCreatedAsync(int userId, Offer offer , CancellationToken ct)
+    {
+        var emailModel = EmailTemplateMapper.MapToOfferCreatedEmailModel(offer);
+        await SendAsync(userId, "offer-created", $"Oferta \"{emailModel.Name}\" utworzona", emailModel, ct);
+    }
 
-    public async Task SendTradeCreatedAsync(int userId, TradeCreatedEmailModel model, CancellationToken ct)
-        => await SendAsync(userId, "trade-created", $"New trade created", model, ct);
+    public async Task SendTradeCreatedAsync(int userId,
+        string buyerNick, 
+        string sellerNick, 
+        Trade trade,
+        Offer offer, CancellationToken ct)
+    {
+        var emailModel = EmailTemplateMapper.MapToTradeCreatedEmailModel(buyerNick, sellerNick, trade,offer);
+        await SendAsync(userId, "trade-created", $"Nowy trade utworzony", emailModel, ct);
+    }
 
-    public async Task SendTradeFromCounterOfferCreatedAsync(int userId, TradeFromCounterOfferCreatedEmailModel model, CancellationToken ct)
-        => await SendAsync(userId, "trade-from-counteroffer-created", $"Trade created from counter offer", model, ct);
+    public async Task SendTradeFromCounterOfferCreatedAsync(int userId, string buyerNick,
+        string sellerNick,
+        Trade trade,
+        Offer offer, CancellationToken ct)
+    {
+        var emailModel = EmailTemplateMapper.MapToTradeFromCounterOfferCreatedEmailModel(buyerNick, sellerNick, trade,offer);
+        await SendAsync(userId, "trade-from-counteroffer-created", $"Trade created from counter offer", emailModel, ct);
+    }
 
-    public async Task SendTradeCompletedAsync(int userId, TradeFinishedEmailModel model, CancellationToken ct)
-        => await SendAsync(userId, "trade-completed", $"Trade completed successfully", model, ct);
+    public async Task SendTradeCompletedAsync(int userId, string buyerNick,
+        string sellerNick,
+        Trade trade,
+        Offer offer, CancellationToken ct)
+    {
+        var emailModel = EmailTemplateMapper.MapToTradeFinishedEmailModel(buyerNick, sellerNick, trade, offer);
+        await SendAsync(userId, "trade-completed", $"Trade completed successfully", emailModel, ct);
+    }
 
-    public async Task SendTradeCancelledAsync(int userId, TradeFinishedEmailModel model, CancellationToken ct)
-        => await SendAsync(userId, "trade-cancelled", $"Trade cancelled", model, ct);
+    public async Task SendTradeCancelledAsync(int userId, string buyerNick,
+        string sellerNick,
+        string middlemanNick,
+        Trade trade,
+        Offer offer, CancellationToken ct)
+    {
+        var emailModel = EmailTemplateMapper.MapToTradeFinishedEmailModel(buyerNick, sellerNick, trade, offer, middlemanNick); 
+        await SendAsync(userId, "trade-cancelled", $"Trade cancelled", emailModel, ct);
+    }
 
     private async Task SendAsync<TModel>(
         int userId,

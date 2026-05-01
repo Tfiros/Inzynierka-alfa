@@ -39,7 +39,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
     public virtual DbSet<Notification> Notifications { get; set; }
-    public virtual DbSet<Emails> Emails { get; set; }
+    public virtual DbSet<Email> Emails { get; set; }
     public virtual DbSet<Rate> Rates { get; set; }
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
     public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
@@ -319,12 +319,12 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.ReadAt).HasColumnName("read_at");
             entity.HasOne(x => x.User)
-                .WithMany()
+                .WithMany(u => u.Notifications)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_notification_user");
         });
-        modelBuilder.Entity<Emails>(entity =>
+        modelBuilder.Entity<Email>(entity =>
         {
             entity.HasKey(x => x.Id);
 
@@ -338,7 +338,7 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.SentAt).HasColumnName("sent_at");
 
             entity.HasOne(x => x.User)
-                .WithMany()
+                .WithMany(u => u.Emails)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_email_outbox_user");

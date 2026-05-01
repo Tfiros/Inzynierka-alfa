@@ -1,6 +1,8 @@
 ﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared.Notifications.DTOs;
 using ItemTradeApp.Features.Shared.Notifications.Services;
+using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Resources.NotificationsTemplates;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,9 +17,7 @@ public sealed class NotificationsController(INotificationsService service, INoti
     public async Task<ActionResult<string>> PerformNotify(CancellationToken ct = default)
     {
         await sender.SendManyAsync( userIds: [2,3],
-            title: "Wymiana zakończona",
-            message: "Wymiana została pomyślnie zakończona.",
-            ct);
+            NotificationsMessages.CounterOfferAcceptedWithTradeCreation("Sam offer"), ct);
         return Ok("Alles klar");
     }
     [HttpGet]

@@ -7,8 +7,20 @@
 }
 
 <tr>
-<td style="padding:20px 24px;font-size:14px;">
+<td style="padding:20px 24px;">
+<div style="font-size:13px;color:#475569;margin-bottom:8px;">Trade dotyczył oferty:</div>
+<div style="font-size:14px;font-weight:600;">@Model.OfferName</div>
+</td>
+</tr>
 
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px 24px;font-size:14px;">
 <table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
 <tr>
 <td style="color:#64748b;width:40%;">Kupujący</td>
@@ -27,7 +39,6 @@
 <td style="font-weight:500;">@Model.MiddlemanNickname</td>
 </tr>
 </table>
-
 </td>
 </tr>
 
@@ -39,7 +50,6 @@
 
 <tr>
 <td style="padding:20px 24px;">
-
 <div style="font-size:14px;font-weight:600;margin-bottom:10px;">
 Dziękujemy za skorzystanie z ItemTradeApp
 </div>
@@ -51,7 +61,6 @@ Trade został przeprowadzony przez naszego pracownika i oznaczony jako zakończo
 <p style="margin:0;font-size:13px;line-height:1.6;color:#475569;">
 Dziękujemy za zaufanie. Mamy nadzieję, że wymiana przebiegła sprawnie i bezpiecznie. W razie pytań możesz wrócić do szczegółów trade'a na platformie.
 </p>
-
 </td>
 </tr>
 
@@ -63,10 +72,7 @@ Dziękujemy za zaufanie. Mamy nadzieję, że wymiana przebiegła sprawnie i bezp
 
 <tr>
 <td style="padding:20px 24px;font-size:14px;">
-
-<div style="font-weight:600;margin-bottom:8px;">
-Podsumowanie
-</div>
+<div style="font-weight:600;margin-bottom:8px;">Podsumowanie</div>
 
 <table width="100%" cellpadding="6" cellspacing="0" style="font-size:14px;">
 <tr>
@@ -78,12 +84,5 @@ Podsumowanie
 <td style="font-weight:500;color:#16a34a;">Zakończony poprawnie</td>
 </tr>
 </table>
-
-<div style="margin-top:20px;text-align:center;">
-<a href="@Model.TradeUrl" style="display:inline-block;background-color:#0f172a;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">
-Zobacz trade
-</a>
-</div>
-
 </td>
 </tr>
