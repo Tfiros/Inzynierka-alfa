@@ -156,10 +156,13 @@ public class OffersService(
 
 
         }
-        catch
+        catch (Exception ex)
         {
             await tx.RollbackAsync(ct);
-            return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+
+            var message = ex.InnerException?.Message ?? ex.Message;
+
+            return Result<OfferDetailsDTO>.InternalServerError(message);
         }
     }
 

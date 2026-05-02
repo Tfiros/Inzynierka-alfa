@@ -373,26 +373,16 @@ public sealed class TradesService(
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            if (trade.Offer.TokensOffered > 0)
+            if (trade.TokenCost > 0)
             {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered,
-                        ct)
-                    )
+                if (!await userRepo.TryRefundTokensAsync(
+                        trade.Customer_ID,
+                        trade.Customer_ID,
+                        trade.TokenCost,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund seller's tokens.");
-                }
-            }
-
-            if (trade.Offer.TokensWanted > 0)
-            {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct)
-                )
-                {
-                    await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to refund counter offer tokens.");
                 }
             }
             
@@ -464,21 +454,16 @@ public sealed class TradesService(
             trade.Rates.Add(sellersRate);
 
             
-            if (trade.Offer.TokensOffered > 0)
+            if (trade.TokenCost > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct))
+                if (!await userRepo.TryRefundTokensAsync(
+                        trade.Customer_ID,
+                        trade.User_ID,
+                        trade.TokenCost,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release seller's tokens.");
-                }
-            }
-
-            if (trade.Offer.TokensWanted > 0)
-            {
-                if (!await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct))
-                {
-                    await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to release counter offer tokens.");
                 }
             }
 

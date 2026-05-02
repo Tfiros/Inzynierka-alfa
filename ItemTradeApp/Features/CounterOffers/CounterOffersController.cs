@@ -99,4 +99,19 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
 
         return result.ToActionResult();
     }
+    
+    [HttpGet("offer/{offerId:int}")]
+    [Authorize]
+    public async Task<ActionResult<Result<List<CounterOfferListItemDto>>>> GetForOffer(
+        [FromRoute] int offerId,
+        CancellationToken ct)
+    {
+        var res = await counterOffersService.GetCounterOffersForOfferAsync(
+            GetNormalizedAuth0UserId(),
+            offerId,
+            ct
+        );
+
+        return res.ToActionResult();
+    }
 }

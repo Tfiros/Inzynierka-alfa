@@ -45,6 +45,10 @@ public interface ICounterOffersService
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct = default);
+    Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
+        string auth0UserId,
+        int offerId,
+        CancellationToken ct = default);
 }
 
 public sealed class CounterOffersService(
@@ -253,7 +257,13 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     await transaction.RollbackAsync(ct);
                     return Result<CounterOfferDto>.BadRequest("Za mało tokenów");
                 }
+
                 user.Tokens -= totalToCharge;
+
+                if (request.TokensOffered > 0)
+                {
+                    user.EscrowedTokens += request.TokensOffered;
+                }
             }
 
             var counterOffer = new CounterOffer
@@ -324,6 +334,13 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                 var sender = await userRepository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
                 if (sender is not null)
                 {
+                    if (sender.EscrowedTokens < counterOffer.TokensOffered)
+                    {
+                        await transaction.RollbackAsync(ct);
+                        return Result<CounterOfferDto>.BadRequest("Brak tokenów w escrow.");
+                    }
+
+                    sender.EscrowedTokens -= counterOffer.TokensOffered;
                     sender.Tokens += counterOffer.TokensOffered;
                 }
             }
@@ -396,8 +413,15 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                 if (otherCounterOffer.TokensOffered > 0)
                 {
                     var sender = await userRepository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
-                    if (sender is not null )
+                    if (sender is not null)
                     {
+                        if (sender.EscrowedTokens < otherCounterOffer.TokensOffered)
+                        {
+                            await transaction.RollbackAsync(ct);
+                            return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
+                        }
+
+                        sender.EscrowedTokens -= otherCounterOffer.TokensOffered;
                         sender.Tokens += otherCounterOffer.TokensOffered;
                     }
                 }
@@ -518,4 +542,26 @@ private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
 
         return null;
     }
+
+public async Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
+    string auth0UserId,
+    int offerId,
+    CancellationToken ct = default)
+{
+    if (offerId <= 0)
+        return Result<List<CounterOfferListItemDto>>.BadRequest("invalid_offer_id");
+
+    var (user, userError) = await GetActiveUser<List<CounterOfferListItemDto>>(auth0UserId, ct);
+    if (userError is not null)
+        return userError;
+
+    var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(offerId, ct);
+
+    if (offerOwnerId != user!.ID)
+        return Result<List<CounterOfferListItemDto>>.Forbidden();
+
+    var items = await repository.GetPendingCounterOffersForOfferAsync(offerId, ct);
+
+    return Result<List<CounterOfferListItemDto>>.Success(items);
+}
 }
