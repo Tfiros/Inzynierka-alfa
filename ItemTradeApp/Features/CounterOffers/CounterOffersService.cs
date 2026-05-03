@@ -262,7 +262,15 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
                 if (request.TokensOffered > 0)
                 {
-                    user.EscrowedTokens += request.TokensOffered;
+                    var offerOwner = await userRepository.GetUserEntityByIdAsync(offer!.User_ID, ct);
+
+                    if (offerOwner is null)
+                    {
+                        await transaction.RollbackAsync(ct);
+                        return Result<CounterOfferDto>.BadRequest("Nie znaleziono właściciela oferty");
+                    }
+
+                    offerOwner.EscrowedTokens += request.TokensOffered;
                 }
             }
 
@@ -331,18 +339,29 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             if (counterOffer.TokensOffered > 0)
             {
-                var sender = await userRepository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
-                if (sender is not null)
+                if (offerOwnerId is null)
                 {
-                    if (sender.EscrowedTokens < counterOffer.TokensOffered)
-                    {
-                        await transaction.RollbackAsync(ct);
-                        return Result<CounterOfferDto>.BadRequest("Brak tokenów w escrow.");
-                    }
-
-                    sender.EscrowedTokens -= counterOffer.TokensOffered;
-                    sender.Tokens += counterOffer.TokensOffered;
+                    await transaction.RollbackAsync(ct);
+                    return Result<CounterOfferDto>.BadRequest("Nie znaleziono właściciela oferty");
                 }
+
+                var holder = await userRepository.GetUserEntityByIdAsync(offerOwnerId.Value, ct);
+                var sender = await userRepository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
+
+                if (holder is null || sender is null)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<CounterOfferDto>.BadRequest("Nie znaleziono użytkownika");
+                }
+
+                if (holder.EscrowedTokens < counterOffer.TokensOffered)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<CounterOfferDto>.BadRequest("Brak tokenów w escrow.");
+                }
+
+                holder.EscrowedTokens -= counterOffer.TokensOffered;
+                sender.Tokens += counterOffer.TokensOffered;
             }
 
             await unitOfWork.SaveChangesAsync(ct);
@@ -412,18 +431,23 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
                 if (otherCounterOffer.TokensOffered > 0)
                 {
+                    var holder = await userRepository.GetUserEntityByIdAsync(offer.User_ID, ct);
                     var sender = await userRepository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
-                    if (sender is not null)
-                    {
-                        if (sender.EscrowedTokens < otherCounterOffer.TokensOffered)
-                        {
-                            await transaction.RollbackAsync(ct);
-                            return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
-                        }
 
-                        sender.EscrowedTokens -= otherCounterOffer.TokensOffered;
-                        sender.Tokens += otherCounterOffer.TokensOffered;
+                    if (holder is null || sender is null)
+                    {
+                        await transaction.RollbackAsync(ct);
+                        return Result<AcceptCounterOfferResponse>.BadRequest("Nie znaleziono użytkownika");
                     }
+
+                    if (holder.EscrowedTokens < otherCounterOffer.TokensOffered)
+                    {
+                        await transaction.RollbackAsync(ct);
+                        return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
+                    }
+
+                    holder.EscrowedTokens -= otherCounterOffer.TokensOffered;
+                    sender.Tokens += otherCounterOffer.TokensOffered;
                 }
             }
 
@@ -456,6 +480,26 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             var createdTrade = await tradeCreation.ExecuteAsync(context, ct);
 
+            if (counterOffer.TokensOffered > 0)
+            {
+                var holder = await userRepository.GetUserEntityByIdAsync(offer.User_ID, ct);
+
+                if (holder is null)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<AcceptCounterOfferResponse>.BadRequest("Nie znaleziono właściciela oferty");
+                }
+
+                if (holder.EscrowedTokens < counterOffer.TokensOffered)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
+                }
+
+                holder.EscrowedTokens -= counterOffer.TokensOffered;
+                holder.Tokens += counterOffer.TokensOffered;
+            }
+            
             await unitOfWork.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
