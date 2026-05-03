@@ -159,7 +159,7 @@ builder.Services.AddCors(opts =>
         .AllowCredentials()
         .WithExposedHeaders("X-XSRF-TOKEN"));
 });
-
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterPoliciesDi();

@@ -3,6 +3,7 @@ using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace ItemTradeApp.Features.Chat.Helpers;
 
@@ -14,6 +15,8 @@ public interface IChatThreadsReader
         int pageSize,
         string? search,
         CancellationToken ct);
+
+    Task<IReadOnlyList<ChatThreadListItemDto>> GetChatsForTradeAsync(int userId, int tradeId, CancellationToken ct);
 }
 public sealed class ChatThreadsReader : IChatThreadsReader
 {
@@ -61,20 +64,56 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             )
             .SelectMany(
                 x => x.lmj.DefaultIfEmpty(),
-                (x, lm) => new
-                {
-                    x.mc.ChatConversationId,
-                    x.mc.LastReadMessageId,
-                    LastId = lm == null ? (long?)null : lm.LastId
-                }
+                (x,lm) => 
+                    new {x.mc.ChatConversationId, 
+                        x.mc.LastReadMessageId, 
+                        LastId = lm == null ? null : lm.LastId}
             );
 
-        var pageRows = await baseQ
+        var rows = await baseQ
             .OrderByDescending(x => x.LastId ?? 0L)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+        var pageRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
+            .ToList();
+        return await BuildThreadItemsAsync(userId, pageRows, search, ct);
+    }
 
+    public async Task<IReadOnlyList<ChatThreadListItemDto>> GetChatsForTradeAsync(int userId, int tradeId,
+        CancellationToken ct)
+    {
+        if (tradeId <= 0)
+        {
+            return Array.Empty<ChatThreadListItemDto>();
+        }
+
+        var myChatsQ = _db.ConversationMembers
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && m.ChatConversation.TradeId == tradeId && !m.ChatConversation.IsDeleted)
+            .Select(m => new {m.ChatConversationId, m.LastReadMessageId});
+
+        var lastMsqQ = _db.ChatMessages
+            .AsNoTracking().Where(msg => msg.DeletedAt == null)
+            .GroupBy(msg => msg.ChatConversationId)
+            .Select(g => new { ChatId = g.Key, LastId = (long?)g.Max(x => x.Id) });
+
+        var rows = await myChatsQ.GroupJoin(lastMsqQ, mc => mc.ChatConversationId, lm => lm.ChatId,
+                (mc, lmj) => new { mc, lmj })
+            .SelectMany(x => x.lmj.DefaultIfEmpty(),
+                (x,lm) => new {x.mc.ChatConversationId, x.mc.LastReadMessageId, LastId = lm == null ? null : lm.LastId})
+            .OrderBy(x => x.LastId ?? 0L).ToListAsync(ct);
+        var pagedRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
+            .ToList();
+        return await BuildThreadItemsAsync(userId, pagedRows, search: null, ct);
+    }
+
+    private sealed record ThreadPageRow(int ChatConversationId, long? LastReadMessageId, long? LastId);
+
+    private async Task<IReadOnlyList<ChatThreadListItemDto>> BuildThreadItemsAsync(int userId,
+        IReadOnlyList<ThreadPageRow> pageRows, string? search, CancellationToken ct)
+    {
+        
         var chatIds = pageRows
             .Select(x => x.ChatConversationId)
             .Distinct()
@@ -89,7 +128,11 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             .Select(c => new ConversationProjection
             {
                 Id = c.Id,
-                Name = c.Name,
+                TradeId = c.TradeId,
+                ClosedAt = c.ClosedAt,
+                BuyerUserId = c.Trade.Customer_ID,
+                SellerUserId = c.Trade.User_ID,
+                MiddlemanUserId = c.Trade.MiddlemanUser_ID,
                 Members = c.Members.Select(m => new ConversationMemberProjection
                 {
                     UserId = m.UserId,
@@ -106,8 +149,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
             conversations = conversations
                 .Where(c =>
-                    (!string.IsNullOrWhiteSpace(c.Name) &&
-                     c.Name.Contains(searchValue, StringComparison.OrdinalIgnoreCase)) ||
+                    (c.TradeId.ToString().Contains(searchValue, StringComparison.OrdinalIgnoreCase)) ||
                     c.Members.Any(m =>
                         (!string.IsNullOrWhiteSpace(m.DisplayName) &&
                          m.DisplayName.Contains(searchValue, StringComparison.OrdinalIgnoreCase)) ||
@@ -187,60 +229,63 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             lastMessages.TryGetValue(row.ChatConversationId, out var lastMessage);
 
             var members = conversation.Members;
-            var isGroup = members.Count > 2;
 
             int? otherUserId = null;
             string? otherUserAuth0 = null;
+            string? otherUserNickname = null;
+            string? otherUserTradeRole = null;
             string? avatarUrl = null;
             bool? isOnline = null;
-            string displayName;
-
-            if (isGroup)
+            var other = members.FirstOrDefault(x => x.UserId != userId);
+            otherUserId = other?.UserId;
+            otherUserAuth0 = other?.Auth0UserId;
+            otherUserNickname = other?.DisplayName;
+            otherUserTradeRole = otherUserId switch
             {
-                displayName = string.IsNullOrWhiteSpace(conversation.Name)
-                    ? "Grupa"
-                    : conversation.Name!;
-            }
-            else
+                var id when id == conversation.BuyerUserId => "Buyer",
+                var id when id == conversation.SellerUserId => "Seller",
+                var id when id == conversation.MiddlemanUserId => "Middleman",
+                _ => null
+            };
+            avatarUrl = other?.AvatarUrl;
+            if (!string.IsNullOrWhiteSpace(otherUserAuth0))
             {
-                var other = members.FirstOrDefault(x => x.UserId != userId);
-
-                otherUserId = other?.UserId;
-                otherUserAuth0 = other?.Auth0UserId;
-                avatarUrl = other?.AvatarUrl;
-                displayName = other?.DisplayName ?? "Użytkownik";
-
-                if (!string.IsNullOrWhiteSpace(otherUserAuth0))
-                    isOnline = _presence.IsOnline(otherUserAuth0);
+                isOnline = _presence.IsOnline(otherUserAuth0);
             }
-
             var unreadCount = unreadByChat.TryGetValue(row.ChatConversationId, out var unread)
                 ? unread
                 : 0;
 
             result.Add(new ChatThreadListItemDto(
                 ChatConversationId: row.ChatConversationId,
-                IsGroup: isGroup,
-                DisplayName: displayName,
                 OtherUserId: otherUserId,
                 OtherUserAuth0UserId: otherUserAuth0,
+                OtherUserNickname: otherUserNickname,
+                OtherUserTradeRole: otherUserTradeRole,
                 AvatarUrl: avatarUrl,
                 IsOnline: isOnline,
                 LastMessageId: lastMessage?.Id,
                 LastMessageText: lastMessage?.DeletedAt != null ? "[deleted]" : lastMessage?.Message,
                 LastMessageSenderId: lastMessage?.SenderId,
                 LastMessageCreatedAtUtc: lastMessage?.CreatedAt,
-                UnreadCount: unreadCount
+                UnreadCount: unreadCount,
+                TradeId: conversation.TradeId,
+                ClosedAtUtc: conversation.ClosedAt
             ));
         }
 
         return result;
     }
-
+    
+    
     private sealed class ConversationProjection
     {
         public int Id { get; init; }
-        public string? Name { get; init; }
+        public int TradeId { get; set; }
+        public DateTime? ClosedAt { get; set; }
+        public int BuyerUserId { get; set; }
+        public int SellerUserId { get; set; }
+        public int? MiddlemanUserId { get; set; }
         public List<ConversationMemberProjection> Members { get; init; } = new();
     }
 

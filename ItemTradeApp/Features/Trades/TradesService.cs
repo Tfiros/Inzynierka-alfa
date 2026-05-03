@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Shared.DTOs;
+﻿using ItemTradeApp.Features.Shared.Chat;
+using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
@@ -37,7 +38,8 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo
+    IUserRepository userRepo,
+    IChatOperations chatOperations
 ) : ITradesService
 {
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
@@ -298,12 +300,25 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is not null)
             return Result<string>.Conflict("Trade already has a middleman assigned.");
 
-        trade.MiddlemanUser_ID = middleman.ID;
-        trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            trade.MiddlemanUser_ID = middleman.ID;
+            trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
 
-        await tradeRepo.SaveChangesAsync(ct);
+            await chatOperations.CreateChatsForTradeAsync(
+                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.User_ID, middleman.ID), ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.InternalServerError("Assign middleman failed");
+        }
 
-        return Result<string>.Success("Middleman assigned.");
+        await chatOperations.PublishChatsCreatedAsync(trade.ID, ct);
+        return Result<string>.Success("Middleman assigned");
     }
 
     public async Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct)
@@ -399,16 +414,20 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.Failed;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
             trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
+            await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            return Result<string>.Success("Successfully set as failed.");
         }
         catch
         {
             await tx.RollbackAsync(ct);
             return Result<string>.BadRequest("There was an error when trying to refund tokens");
         }
+
+        await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        return Result<string>.Success("Successfully set as failed.");
+
     }
 
     public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId,
@@ -482,15 +501,18 @@ public sealed class TradesService(
                 }
             }
 
+            await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            return Result<string>.Success("Successfully set as realised");
         }
         catch
         {
             await tx.RollbackAsync(ct);
             return Result<string>.BadRequest("There was an error when trying to transfer tokens");
         }
+
+        await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        return Result<string>.Success("Successfully set as realised");
     }
 
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)

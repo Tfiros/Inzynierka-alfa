@@ -14,16 +14,6 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
     private string? GetAuth0UserId()
         => User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-    [HttpPost("dm/{otherUserId:int}")]
-    [Authorize]
-    public async Task<ActionResult<Result<CreateDmChatResponse>>> CreateDm(
-        [FromRoute] int otherUserId,
-        CancellationToken ct)
-    {
-        var res = await chatService.CreateDmAsync(otherUserId, GetAuth0UserId(), ct);
-        return res.ToActionResult();
-    }
-
     [HttpGet("threads")]
     [Authorize]
     public async Task<ActionResult<Result<IReadOnlyList<ChatThreadListItemDto>>>> GetThreads(
@@ -77,6 +67,16 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         CancellationToken ct = default)
     {
         var res = await chatService.MarkReadAsync(chatId, request, GetAuth0UserId(), ct);
+        return res.ToActionResult();
+    }
+
+    [HttpGet("by-trade/{tradeId:int}")]
+    [Authorize]
+    public async Task<ActionResult<Result<IReadOnlyList<ChatThreadListItemDto>>>> GetByTrade(
+        [FromRoute] int tradeId,
+        CancellationToken ct)
+    {
+        var res = await chatService.GetChatsForTradeAsync(tradeId, GetAuth0UserId(), ct);
         return res.ToActionResult();
     }
 }
