@@ -30,6 +30,9 @@ public interface ITradesService
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
 
     Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(int tradeId, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<TradeListItemDTO>> GetByIdAsync(int tradeId, string? auth0UserId, bool isMiddlemanView,
+        CancellationToken ct);
 }
 
 public sealed class TradesService(
@@ -513,6 +516,27 @@ public sealed class TradesService(
 
         await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
         return Result<string>.Success("Successfully set as realised");
+    }
+
+    public async Task<Result<TradeListItemDTO>> GetByIdAsync(int tradeId, string? auth0UserId, bool isMiddlemanView,
+        CancellationToken ct)
+    {
+        if (tradeId <= 0)
+            return Result<TradeListItemDTO>.BadRequest("trade id must be greater than 0");
+
+        var user = await TryGetUser(auth0UserId, ct);
+        if (user.Error is not null)
+        {
+            return Result<TradeListItemDTO>.Unauthorized(user.Error);
+            
+        }
+
+        var trade = await listQuery.GetTradeByIdAsync(tradeId, user.User!.ID, isMiddlemanView, ct);
+
+        return trade is null
+            ? Result<TradeListItemDTO>.NotFound("trade not found")
+            : Result<TradeListItemDTO>.Success(trade, "success");
+
     }
 
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)
