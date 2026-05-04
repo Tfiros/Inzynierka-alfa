@@ -38,8 +38,39 @@ public sealed class ChatThreadsReader : IChatThreadsReader
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
-        var myChatsQ = _db.ConversationMembers
-            .Where(m => m.UserId == userId)
+
+
+        var baseChats = _db.ConversationMembers
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && !m.ChatConversation.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            if (s.Length > 200)
+            {
+                s = s[..200];
+            }
+
+            foreach (var word in s.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var pattern = $"%{Escape(word)}%";
+                
+                var searchHashNumber = word.StartsWith("#") ? word[1..] : word;
+                int? searchNumber = int.TryParse(searchHashNumber, out var wordNumber) ? wordNumber : null;
+
+
+                baseChats = baseChats.Where(cm =>
+                    cm.ChatConversation.Members.Any(m =>
+                        m.UserId != userId && m.User.ProfileInfo.Nickname != null &&
+                        EF.Functions.ILike(m.User.ProfileInfo.Nickname, pattern, "!"))
+                    || (searchNumber != null && cm.ChatConversation.TradeId == searchNumber)
+                );
+            }
+        }
+        
+        
+        var myChatsQ = baseChats
             .Select(m => new
             {
                 m.ChatConversationId,
@@ -48,6 +79,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
         var lastMsgQ = _db.ChatMessages
             .Where(msg => msg.DeletedAt == null)
+            .AsNoTracking()
             .GroupBy(msg => msg.ChatConversationId)
             .Select(g => new
             {
@@ -77,7 +109,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             .ToListAsync(ct);
         var pageRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
             .ToList();
-        return await BuildThreadItemsAsync(userId, pageRows, search, ct);
+        return await BuildThreadItemsAsync(userId, pageRows, ct);
     }
 
     public async Task<IReadOnlyList<ChatThreadListItemDto>> GetChatsForTradeAsync(int userId, int tradeId,
@@ -105,13 +137,13 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             .OrderBy(x => x.LastId ?? 0L).ToListAsync(ct);
         var pagedRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
             .ToList();
-        return await BuildThreadItemsAsync(userId, pagedRows, search: null, ct);
+        return await BuildThreadItemsAsync(userId, pagedRows, ct);
     }
 
     private sealed record ThreadPageRow(int ChatConversationId, long? LastReadMessageId, long? LastId);
 
     private async Task<IReadOnlyList<ChatThreadListItemDto>> BuildThreadItemsAsync(int userId,
-        IReadOnlyList<ThreadPageRow> pageRows, string? search, CancellationToken ct)
+        IReadOnlyList<ThreadPageRow> pageRows, CancellationToken ct)
     {
         
         var chatIds = pageRows
@@ -142,21 +174,6 @@ public sealed class ChatThreadsReader : IChatThreadsReader
                 }).ToList()
             })
             .ToListAsync(ct);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var searchValue = search.Trim();
-
-            conversations = conversations
-                .Where(c =>
-                    (c.TradeId.ToString().Contains(searchValue, StringComparison.OrdinalIgnoreCase)) ||
-                    c.Members.Any(m =>
-                        (!string.IsNullOrWhiteSpace(m.DisplayName) &&
-                         m.DisplayName.Contains(searchValue, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(m.Auth0UserId) &&
-                         m.Auth0UserId.Contains(searchValue, StringComparison.OrdinalIgnoreCase))))
-                .ToList();
-        }
 
         var allowedChatIds = conversations.Select(c => c.Id).ToHashSet();
 
@@ -296,4 +313,10 @@ public sealed class ChatThreadsReader : IChatThreadsReader
         public string? DisplayName { get; init; }
         public string? AvatarUrl { get; init; }
     }
+    
+
+    private static string Escape(string input, char esc = '!')
+        => input.Replace(esc.ToString(), new string(esc, 2))
+            .Replace("%", $"{esc}%")
+            .Replace("_", $"{esc}_");
 }
