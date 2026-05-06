@@ -137,6 +137,16 @@ public class OffersController(IOffersService offerService) : ControllerBase
 
     }
     
-    
+    [HttpPost("{offerId:int}/accept")]
+    [Authorize]
+    public async Task<ActionResult<Result<AcceptOfferResponse>>> AcceptOffer([FromRoute] int offerId, CancellationToken ct = default)
+    {
+        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
+            ? auth0UserId.Substring("auth0|".Length)
+            : auth0UserId;
+        var result = await offerService.AcceptOfferAsync(trimmedAuth0UserId, offerId, ct);
+        return result.ToActionResult();
+    }
 
 }

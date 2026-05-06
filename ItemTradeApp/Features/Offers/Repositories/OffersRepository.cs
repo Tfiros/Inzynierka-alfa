@@ -20,6 +20,7 @@ public interface IOffersRepository
     void AddListingItemsRange(IEnumerable<ListingItems> items);
 
     Task<Offer?> GetTrackedOfferAsync(int offerId, int userId, CancellationToken ct = default);
+    Task<Offer?> GetTrackedOfferByIdAsync(int offerId, CancellationToken ct = default);
 
 
 }
@@ -82,6 +83,11 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
         return await dbContext.Items.AsNoTracking().Where(i => itemsIds.Contains(i.ID) && !i.IsDeleted)
             .ToDictionaryAsync(i => i.ID, ct);
+    }
+
+    public async Task<Offer?> GetTrackedOfferByIdAsync(int offerId, CancellationToken ct = default)
+    {
+        return await dbContext.Offers.SingleOrDefaultAsync(o => o.ID == offerId, ct);
     }
 
     #region offerRepoHelpers

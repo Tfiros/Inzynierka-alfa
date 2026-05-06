@@ -1,10 +1,11 @@
-using ItemTradeApp.Features.Offers.DTOs;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Offers.Repositories;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.TradeCreation;
+using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
@@ -36,6 +37,8 @@ public interface IOffersService
     Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default);
     Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
         OfferUpdateDraftRequest request, CancellationToken ct = default);
+
+    Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
 }
 
 public class OffersService(
@@ -45,6 +48,9 @@ public class OffersService(
     IGamesRepository gamesRepository,
     IGenresRepository genresRepository,
     IRaritiesRepository raritiesRepository,
+    ITradeRepository tradeRepository,
+    ICounterOfferRepository counterOfferRepository,
+    ITradeCreation tradeCreation,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -361,6 +367,68 @@ public class OffersService(
         var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
 
         return Result<OfferUpdateQuoteResponse>.Success(new OfferUpdateQuoteResponse(draft.TokenCost, updateFeeTokens));
+
+    }
+
+    public async Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<AcceptOfferResponse>.Unauthorized("missing_sub_claim");
+        if (offerId <= 0) return Result<AcceptOfferResponse>.BadRequest("invalid_offer_id");
+        
+        var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
+        if (!okUser) return Result<AcceptOfferResponse>.Unauthorized(errUser!);
+        if (userState is null) return Result<AcceptOfferResponse>.Unauthorized("user_fetch_error");
+
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            var offer = await offersRepository.GetTrackedOfferByIdAsync(offerId, ct);
+            if (offer is null)
+            {
+                return Result<AcceptOfferResponse>.NotFound("offer_not_found");
+            }
+
+            if (offer.User_ID == userState.Id)
+            {
+                return Result<AcceptOfferResponse>.BadRequest("cannot_accept_own_offer");
+            }
+
+            if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
+            {
+                return Result<AcceptOfferResponse>.BadRequest("offer_not_active");
+                
+            }
+            
+            if (offer.ExpDate < DateOnly.FromDateTime(DateTime.UtcNow))
+            {
+                return Result<AcceptOfferResponse>.BadRequest("offer_expired");
+                
+            }
+            
+            if (await tradeRepository.TradeExistsForOfferAsync(offerId, ct))
+            {
+                return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
+            }
+
+            offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
+
+            await counterOfferRepository.DenyAllPendingForOfferAsync(offer.ID, ct);
+
+            var trade = await tradeCreation.ExecuteAsync(
+                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID, 0), ct);
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return Result<AcceptOfferResponse>.Success(new AcceptOfferResponse(trade.ID, offer.ID));
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return Result<AcceptOfferResponse>.InternalServerError("accept_offer_failed");
+        }
 
     }
 
