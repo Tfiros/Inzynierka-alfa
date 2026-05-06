@@ -92,7 +92,7 @@ public class OffersService(
         CancellationToken ct = default)
     {
         if (id <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
-        var response = await offersRepository.GetOfferByIdAsync(id, ct);
+        var response = await offersRepository.GetOfferWithDetailsByIdAsync(id, ct);
         if (response is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
 
         return Result<OfferDetailsDTO>.Success(response);
@@ -156,7 +156,7 @@ public class OffersService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            var response = await offersRepository.GetOfferByIdAsync(offer.ID, ct);
+            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
             if (response is null) return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
             return Result<OfferDetailsDTO>.Created(response);
 
@@ -218,7 +218,7 @@ public class OffersService(
             offer.TokensWanted = draft.TokensWanted;
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            var response = await offersRepository.GetOfferByIdAsync(offer.ID, ct);
+            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
             if (response is null) return Result<OfferDetailsDTO>.InternalServerError("update_offer_failed");
             return Result<OfferDetailsDTO>.Success(response);
 
@@ -384,7 +384,7 @@ public class OffersService(
 
         try
         {
-            var offer = await offersRepository.GetTrackedOfferByIdAsync(offerId, ct);
+            var offer = await offersRepository.GetOfferByIdAsync(offerId, ct);
             if (offer is null)
             {
                 return Result<AcceptOfferResponse>.NotFound("offer_not_found");
@@ -412,7 +412,12 @@ public class OffersService(
                 return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
             }
 
-            offer.OfferStatus_ID = (int)OfferStatuses.InRealization;
+
+            var setInRealization = await offersRepository.SetOfferInRealizationAsync(offer.ID, ct);
+            if (!setInRealization)
+            {
+                return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
+            }
 
             await counterOfferRepository.DenyAllPendingForOfferAsync(offer.ID, ct);
 
