@@ -4,6 +4,7 @@ using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.CounterOffers.Repositories;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
@@ -57,6 +58,7 @@ public sealed class CounterOffersService(
     ITradeRepository tradeRepository,
     IItemsRepository itemsRepository,
     IUserRepository userRepository,
+    ITokenEscrow tokenEscrow,
     IUnitOfWork unitOfWork,
     ITradeCreation tradeCreation) : ICounterOffersService
 {
@@ -258,19 +260,26 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     return Result<CounterOfferDto>.BadRequest("Za mało tokenów");
                 }
 
-                user.Tokens -= totalToCharge;
+                if (Consts.CounterOfferCreationFee > 0)
+                {
+                    var charged =
+                        await userRepository.TrySubtractTokenCostAsync(user.ID, Consts.CounterOfferCreationFee, ct);
+                    if (!charged)
+                    {
+                        await transaction.RollbackAsync(ct);
+                        return Result<CounterOfferDto>.BadRequest("Za mało tokenów");
+
+                    }
+                }
 
                 if (request.TokensOffered > 0)
                 {
-                    var offerOwner = await userRepository.GetUserEntityByIdAsync(offer!.User_ID, ct);
-
-                    if (offerOwner is null)
+                    var locked = await tokenEscrow.TryLockOwnTokensAsync(user.ID, request.TokensOffered, ct);
+                    if (!locked)
                     {
                         await transaction.RollbackAsync(ct);
-                        return Result<CounterOfferDto>.BadRequest("Nie znaleziono właściciela oferty");
+                        return Result<CounterOfferDto>.BadRequest("token_escrow_failed");
                     }
-
-                    offerOwner.EscrowedTokens += request.TokensOffered;
                 }
             }
 
@@ -339,29 +348,12 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             if (counterOffer.TokensOffered > 0)
             {
-                if (offerOwnerId is null)
+                var transferred = await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.User_ID, counterOffer.TokensOffered, ct);
+                if (!transferred)
                 {
                     await transaction.RollbackAsync(ct);
-                    return Result<CounterOfferDto>.BadRequest("Nie znaleziono właściciela oferty");
+                    return Result<CounterOfferDto>.BadRequest("token_escrow_release_failed");
                 }
-
-                var holder = await userRepository.GetUserEntityByIdAsync(offerOwnerId.Value, ct);
-                var sender = await userRepository.GetUserEntityByIdAsync(counterOffer.User_ID, ct);
-
-                if (holder is null || sender is null)
-                {
-                    await transaction.RollbackAsync(ct);
-                    return Result<CounterOfferDto>.BadRequest("Nie znaleziono użytkownika");
-                }
-
-                if (holder.EscrowedTokens < counterOffer.TokensOffered)
-                {
-                    await transaction.RollbackAsync(ct);
-                    return Result<CounterOfferDto>.BadRequest("Brak tokenów w escrow.");
-                }
-
-                holder.EscrowedTokens -= counterOffer.TokensOffered;
-                sender.Tokens += counterOffer.TokensOffered;
             }
 
             await unitOfWork.SaveChangesAsync(ct);
@@ -431,23 +423,13 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
                 if (otherCounterOffer.TokensOffered > 0)
                 {
-                    var holder = await userRepository.GetUserEntityByIdAsync(offer.User_ID, ct);
-                    var sender = await userRepository.GetUserEntityByIdAsync(otherCounterOffer.User_ID, ct);
-
-                    if (holder is null || sender is null)
+                    var transferred =
+                        await tokenEscrow.TryReleaseOwnEscrowAsync(otherCounterOffer.User_ID, otherCounterOffer.TokensOffered, ct);
+                    if (!transferred)
                     {
                         await transaction.RollbackAsync(ct);
-                        return Result<AcceptCounterOfferResponse>.BadRequest("Nie znaleziono użytkownika");
+                        return Result<AcceptCounterOfferResponse>.BadRequest("token_release_failed");
                     }
-
-                    if (holder.EscrowedTokens < otherCounterOffer.TokensOffered)
-                    {
-                        await transaction.RollbackAsync(ct);
-                        return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
-                    }
-
-                    holder.EscrowedTokens -= otherCounterOffer.TokensOffered;
-                    sender.Tokens += otherCounterOffer.TokensOffered;
                 }
             }
 
@@ -470,6 +452,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     IsWanted = true
                 });
             }
+            offer.TokensWanted = counterOffer.TokensOffered;
 
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
@@ -480,26 +463,29 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             var createdTrade = await tradeCreation.ExecuteAsync(context, ct);
 
+            if (offer.TokensOffered > 0)
+            {
+                var transferred =
+                    await tokenEscrow.TryTransferEscrowAsync(offer.User_ID, counterOffer.User_ID, offer.TokensOffered,
+                        ct);
+                if (!transferred)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<AcceptCounterOfferResponse>.Conflict("escrow_transfer_failed");
+                }
+            }
+
             if (counterOffer.TokensOffered > 0)
             {
-                var holder = await userRepository.GetUserEntityByIdAsync(offer.User_ID, ct);
-
-                if (holder is null)
+                var transferred =
+                    await tokenEscrow.TryTransferEscrowAsync(counterOffer.User_ID, offer.User_ID, counterOffer.TokensOffered,
+                        ct);
+                if (!transferred)
                 {
                     await transaction.RollbackAsync(ct);
-                    return Result<AcceptCounterOfferResponse>.BadRequest("Nie znaleziono właściciela oferty");
+                    return Result<AcceptCounterOfferResponse>.Conflict("escrow_transfer_failed");
                 }
-
-                if (holder.EscrowedTokens < counterOffer.TokensOffered)
-                {
-                    await transaction.RollbackAsync(ct);
-                    return Result<AcceptCounterOfferResponse>.BadRequest("Brak tokenów w escrow.");
-                }
-
-                holder.EscrowedTokens -= counterOffer.TokensOffered;
-                holder.Tokens += counterOffer.TokensOffered;
             }
-            
             await unitOfWork.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
