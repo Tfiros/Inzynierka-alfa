@@ -1,17 +1,18 @@
 using ItemTradeApp.Persistence;
+using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.Offers.Repositories;
 
 public interface ICounterOfferRepository
 {
-    Task DenyAllPendingForOfferAsync(int offerId, CancellationToken ct);
+    Task<List<CounterOffer>> GetAllPendingForOfferAsync(int offerId, CancellationToken ct);
 }
 
 public class CounterOfferRepository(AppDbContext db) : ICounterOfferRepository
 {
-    public Task DenyAllPendingForOfferAsync(int offerId, CancellationToken ct)
+    public Task<List<CounterOffer>> GetAllPendingForOfferAsync(int offerId, CancellationToken ct)
         => db.CounterOffers.Where(co =>
                 co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
-            .ExecuteUpdateAsync(u => u.SetProperty(x => x.CounterOfferStatus_Id, (int)CounterOfferStatuses.Denied), ct);
+            .ToListAsync(ct);
 }

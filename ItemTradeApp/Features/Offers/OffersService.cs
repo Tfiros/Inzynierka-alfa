@@ -4,6 +4,7 @@ using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Offers.Repositories;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
@@ -51,6 +52,7 @@ public class OffersService(
     ITradeRepository tradeRepository,
     ICounterOfferRepository counterOfferRepository,
     ITradeCreation tradeCreation,
+    ITokenEscrow tokenEscrow,
     IUnitOfWork unitOfWork) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
@@ -128,6 +130,16 @@ public class OffersService(
                 return Result<OfferDetailsDTO>.Conflict("concurrency_conflict");
             }
 
+            if (draft.TokensOffered > 0)
+            {
+                var locked = await tokenEscrow.TryLockOwnTokensAsync(userState.Id, draft.TokensOffered, ct);
+                if (!locked)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<OfferDetailsDTO>.Conflict("concurrency_conflict");
+                }
+            }
+
             var offer = new Offer
             {
                 Title = draft.Title,
@@ -195,7 +207,7 @@ public class OffersService(
         
         
         var updateFeeTokens = Math.Max(OffersConsts.MinBaseTokenCost, draft.TokenCost - offer.TokenCost);
-        var requiredBalance = updateFeeTokens + draft.TokensOffered;
+        var requiredBalance = updateFeeTokens + Math.Max(0, draft.TokensOffered - offer.TokensOffered);
         if (userState.Tokens < requiredBalance) return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
         
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
@@ -207,7 +219,27 @@ public class OffersService(
                 await tx.RollbackAsync(ct);
                 return Result<OfferDetailsDTO>.Conflict("concurrency_conflict");
             }
-            
+
+            var oldOffered = offer.TokensOffered;
+            var newOffered = draft.TokensOffered;
+            if (newOffered > oldOffered)
+            {
+                var ok = await tokenEscrow.TryLockOwnTokensAsync(userState.Id, newOffered - oldOffered, ct);
+                if (!ok)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<OfferDetailsDTO>.BadRequest("not_enough_tokens");
+                }
+            }else if (newOffered < oldOffered)
+            {
+                var ok = await tokenEscrow.TryReleaseOwnEscrowAsync(userState.Id, oldOffered - newOffered, ct);
+                if (!ok)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<OfferDetailsDTO>.BadRequest("escrow_token_failed");
+                }
+            }
+
             ApplyListingItemsUpdate(offer, draft.Offered, draft.Wanted);
             offer.Title = draft.Title;
             offer.Description = draft.Description;
@@ -248,13 +280,50 @@ public class OffersService(
         if (userState is null) return Result<string>.Unauthorized("user_not_found");
         if (userState.IsDeleted) return Result<string>.Unauthorized("user_deleted");
 
-        var updated = await offersRepository.CancelOfferAsync(userState.Id, offerId, ct);
-        if (!updated)
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            return Result<string>.BadRequest("cancel_offer_failed");
-        }
+            var offer = await offersRepository.GetTrackedOfferAsync(offerId, userState.Id, ct);
+            if (offer is null)
+            {
+                return Result<string>.NotFound("offer_not_found");
+            }
 
-        return Result<string>.Success("offer_cancelled");
+            if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
+            {
+                return Result<string>.BadRequest("offer_not_active");
+
+            }
+
+            var updated = await offersRepository.CancelOfferAsync(userState.Id, offerId, ct);
+            if (!updated)
+            {
+                await tx.RollbackAsync(ct);
+                return Result<string>.BadRequest("cancel_offer_failed");
+                
+            }
+
+            if (offer.TokensOffered > 0)
+            {
+                var released = await tokenEscrow.TryReleaseOwnEscrowAsync(userState.Id, offer.TokensOffered, ct);
+                if (!released)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.Conflict("escrow_token_failed");
+                }
+            }
+
+            await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Result<string>.Success("offer_cancelled");
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.InternalServerError("cancel_offer_failed");
+        }
     }
 
     public async Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default)
@@ -419,7 +488,29 @@ public class OffersService(
                 return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
             }
 
-            await counterOfferRepository.DenyAllPendingForOfferAsync(offer.ID, ct);
+            await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);
+
+            if (offer.TokensOffered > 0)
+            {
+                var transferred =
+                    await tokenEscrow.TryTransferEscrowAsync(offer.User_ID, userState.Id, offer.TokensOffered, ct);
+                if (!transferred)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<AcceptOfferResponse>.Conflict("escrow_failed");
+                }
+            }
+            
+            if (offer.TokensWanted > 0)
+            {
+                var transferred =
+                    await tokenEscrow.TryEscrowToOtherAsync(userState.Id, offer.User_ID, offer.TokensWanted, ct);
+                if (!transferred)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<AcceptOfferResponse>.Conflict("escrow_failed");
+                }
+            }
 
             var trade = await tradeCreation.ExecuteAsync(
                 new CreateTradeContext(offer.ID, userState.Id, offer.User_ID, 0), ct);
@@ -438,7 +529,21 @@ public class OffersService(
     }
 
     #region OfferServiceHelpers
-    
+
+    private async Task RefundAndDenyPendingCounterOffersAsync(int offerId, CancellationToken ct)
+    {
+        var pending = await counterOfferRepository.GetAllPendingForOfferAsync(offerId, ct);
+        foreach (var co in pending)
+        {
+            if (co.TokensOffered > 0)
+            {
+                await tokenEscrow.TryReleaseOwnEscrowAsync(co.User_ID, co.TokensOffered, ct);
+            }
+
+            co.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+        }
+    }
+
     private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
     {
         var target = new Dictionary<(int ItemId, bool IsWanted), int>(offered.Count + wanted.Count);
