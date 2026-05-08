@@ -21,6 +21,7 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Policies;
 using ItemTradeApp.Policies.Requirements;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -190,6 +191,7 @@ builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 builder.Services.RegisterCounterOffersDI();
+builder.Services.RegisterTokenEscrowFeaturesDi();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
