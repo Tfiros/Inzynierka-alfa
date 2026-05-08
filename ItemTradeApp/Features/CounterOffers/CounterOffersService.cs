@@ -458,7 +458,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
                 SellerId: offer.User_ID,
-                TokenCost: counterOffer.TokensOffered
+                TokenCost: 0
             );
 
             var createdTrade = await tradeCreation.ExecuteAsync(context, ct);
@@ -514,7 +514,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
         if (validation is not null)
             return validation;
 
-        var finalCost = request.TokensOffered + Consts.CounterOfferCreationFee;
+        var finalCost = Consts.CounterOfferCreationFee;
 
         return Result<CounterOfferCostDto>.Success(
             new CounterOfferCostDto(
