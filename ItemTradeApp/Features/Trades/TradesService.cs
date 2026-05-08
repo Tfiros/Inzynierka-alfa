@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
@@ -37,7 +38,8 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo
+    IUserRepository userRepo,
+    ITokenEscrow tokenEscrow
 ) : ITradesService
 {
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
@@ -375,7 +377,7 @@ public sealed class TradesService(
         {
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await userRepo.TryRefundTokensAsync(
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
                         trade.Customer_ID,
                         trade.User_ID,
                         trade.Offer.TokensOffered,
@@ -388,7 +390,7 @@ public sealed class TradesService(
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (!await userRepo.TryRefundTokensAsync(
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
                         trade.User_ID,
                         trade.Customer_ID,
                         trade.Offer.TokensWanted,
@@ -469,7 +471,7 @@ public sealed class TradesService(
             
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
                         trade.Customer_ID,
                         trade.Offer.TokensOffered,
                         ct))
@@ -481,7 +483,7 @@ public sealed class TradesService(
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
                         trade.User_ID,
                         trade.Offer.TokensWanted,
                         ct))
