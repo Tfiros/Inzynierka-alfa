@@ -1,8 +1,8 @@
 using FluentValidation;
 using ItemTradeApp.Features.Users.Shared;
-using ItemTradeApp.Users.Shared.DTOs;
+using ItemTradeApp.Features.Users.Shared.DTOs;
 
-namespace ItemTradeApp.Users.Auth.Validators;
+namespace ItemTradeApp.Features.Users.Auth.Validators;
 
 public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {

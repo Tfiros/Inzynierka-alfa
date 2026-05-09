@@ -1,19 +1,13 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.Features.Users.UserInfo;
-using ItemTradeApp.Policies.Requirements;
+using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
-namespace ItemTradeApp.Policies;
+namespace ItemTradeApp.Policies.OwnResourcePolicy;
 
-public class OwnResourceHanlder : AuthorizationHandler<OwnResourceRequirement>
+public class OwnResourceHanlder(IOwnResourcePolicyRepository ownResourcePolicyRepository) : AuthorizationHandler<OwnResourceRequirement>
 {
-    private readonly IUserInfoRepository _userInfoRepository;
-
-    public OwnResourceHanlder(IUserInfoRepository userInfoRepository)
-    {
-        _userInfoRepository = userInfoRepository;
-    }
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         OwnResourceRequirement requirement)
@@ -43,7 +37,7 @@ public class OwnResourceHanlder : AuthorizationHandler<OwnResourceRequirement>
             ? auth0UserId.Substring("auth0|".Length)
             : auth0UserId;
 
-        var user = await _userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, CancellationToken.None);
+        var user = await ownResourcePolicyRepository.GetUserByAuthZeroId(trimmedAuth0UserId);
         if (user is null)
             return;
 

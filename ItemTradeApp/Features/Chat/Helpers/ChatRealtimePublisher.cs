@@ -9,6 +9,11 @@ public interface IChatRealtimePublisher
     Task PublishMessageDeletedAsync(long messageId, int chatId, CancellationToken ct);
     Task PublishThreadReadAsync(string auth0UserId, int chatId, long lastReadMessageId, int unreadCount, CancellationToken ct);
     Task PublishThreadUpdatedToMembersAsync(int chatId, ChatMessage lastMessage, CancellationToken ct);
+
+    Task PublishChatClosedAsync(int chatConversationId, DateTime closedAtUtc,
+        IReadOnlyCollection<string> memberAuth0Ids, CancellationToken ct);
+    Task PublishChatCreatedAsync(int chatConversationId, int tradeId,
+        IReadOnlyCollection<string> memberAuth0Ids, CancellationToken ct);
 }
 public sealed class ChatRealtimePublisher : IChatRealtimePublisher
 {
@@ -78,5 +83,21 @@ public sealed class ChatRealtimePublisher : IChatRealtimePublisher
             await _hub.Clients.Group($"user:{auth0}")
                 .SendAsync("chat.thread.updated", dto, ct);
         }
+    }
+
+    public Task PublishChatClosedAsync(int chatConversationId, DateTime closedAtUtc,
+        IReadOnlyCollection<string> memberAuth0Ids, CancellationToken ct)
+    {
+        var groups = memberAuth0Ids.Select(m => $"user:{m}").ToArray();
+        var response = new { chatConversationId, closedAtUtc };
+        return _hub.Clients.Groups(groups).SendAsync("chat.closed", response, ct);
+    }
+
+    public Task PublishChatCreatedAsync(int chatConversationId, int tradeId,
+        IReadOnlyCollection<string> memberAuth0Ids, CancellationToken ct)
+    {
+        var groups = memberAuth0Ids.Select(m => $"user:{m}").ToArray();
+        var response = new { chatConversationId, tradeId };
+        return _hub.Clients.Groups(groups).SendAsync("chat.created", response, ct);
     }
 }

@@ -17,10 +17,7 @@ public interface IChatRepository
 
     Task<ConversationMember?> GetMemberAsync(int chatId, int userId, CancellationToken ct);
     Task<IReadOnlyList<(int UserId, string Auth0UserId)>> GetMemberAuth0Async(int chatId, CancellationToken ct);
-
-    Task<int?> FindExistingDmAsync(int userId1, int userId2, CancellationToken ct);
-    Task<int> CreateConversationAsync(string? name, CancellationToken ct);
-    Task AddConversationMembersAsync(int chatId, IEnumerable<ConversationMember> members, CancellationToken ct);
+    
 
     Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(int chatId, long? beforeMessageId, int pageSize, CancellationToken ct);
 
@@ -31,7 +28,13 @@ public interface IChatRepository
     Task<int> GetUnreadCountForUserAsync(int chatId, int userId, CancellationToken ct);
     Task UpdateLastReadAsync(ConversationMember member, int chatId, long lastReadMessageId, CancellationToken ct);
     Task<ChatMessage?> GetMessageByIdAsync(long messageId, CancellationToken ct);
-    
+
+    Task AddChatsAsync(IEnumerable<ChatConversation> chats, CancellationToken ct);
+    Task CloseChatsForTradeAsync(int tradeId, DateTime closedAtUtc, CancellationToken ct);
+    Task<IReadOnlyList<(int Id, DateTime ClosedAtUtc, string[] MemberAuth0Ids)>> GetClosedChatsForPublish(int tradeId, CancellationToken ct);
+    Task<IReadOnlyList<(int Id, int TradeId, string[] MemberAuth0Ids)>> GetCreatedChatsForPublish(int tradeId, CancellationToken ct);
+    Task<bool> IsChatClosedAsync(int chatConversationId, CancellationToken ct);
+
 }
 
 public sealed class ChatRepository : IChatRepository
@@ -67,7 +70,7 @@ public sealed class ChatRepository : IChatRepository
 
     public async Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId);
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId, ct);
         if (user == null) return false;
         return await _db.ConversationMembers
             .AsNoTracking()
@@ -92,49 +95,6 @@ public sealed class ChatRepository : IChatRepository
         return members
             .Select(x => (x.UserId, x.Auth0UserID))
             .ToList();
-    }
-
-    public async Task<int?> FindExistingDmAsync(int userId1, int userId2, CancellationToken ct)
-    {
-        var a = Math.Min(userId1, userId2);
-        var b = Math.Max(userId1, userId2);
-
-        return await _db.ChatConversations
-            .AsNoTracking()
-            .Where(c =>
-                !c.IsDeleted &&
-                c.Members.Count == 2 &&
-                c.Members.Any(m => m.UserId == a) &&
-                c.Members.Any(m => m.UserId == b))
-            .Select(c => (int?)c.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    public async Task<int> CreateConversationAsync(string? name, CancellationToken ct)
-    {
-        var conversation = new ChatConversation
-        {
-            CreatedAt = DateTime.UtcNow,
-            Name = name,
-            IsDeleted = false
-        };
-
-        _db.ChatConversations.Add(conversation);
-        await _db.SaveChangesAsync(ct);
-
-        return conversation.Id;
-    }
-
-    public async Task AddConversationMembersAsync(
-        int chatId,
-        IEnumerable<ConversationMember> members,
-        CancellationToken ct)
-    {
-        foreach (var member in members)
-            member.ChatConversationId = chatId;
-
-        _db.ConversationMembers.AddRange(members);
-        await _db.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(
@@ -235,4 +195,49 @@ public sealed class ChatRepository : IChatRepository
 
         await _db.SaveChangesAsync(ct);
     }
+
+    public Task AddChatsAsync(IEnumerable<ChatConversation> chats, CancellationToken ct)
+    {
+        _db.ChatConversations.AddRange(chats);
+        return Task.CompletedTask;
+    }
+
+    public Task CloseChatsForTradeAsync(int tradeId, DateTime closedAtUtc, CancellationToken ct)
+        => _db.ChatConversations
+            .Where(c => c.TradeId == tradeId && c.ClosedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ClosedAt, _ => closedAtUtc), ct);
+
+    public async Task<IReadOnlyList<(int Id, DateTime ClosedAtUtc, string[] MemberAuth0Ids)>> GetClosedChatsForPublish(
+        int tradeId, CancellationToken ct)
+    {
+        var rows = await _db.ChatConversations
+            .AsNoTracking()
+            .Where(c => c.TradeId == tradeId && c.ClosedAt != null)
+            .Select(c => new
+            {
+                c.Id,
+                ClosedAtUtc = c.ClosedAt!.Value,
+                MemberAuth0Ids = c.Members.Select(m => m.User.Auth0UserID).ToArray()
+            }).ToListAsync(ct);
+        return rows.Select(r => (r.Id, r.ClosedAtUtc, r.MemberAuth0Ids)).ToList();
+    }
+    
+    public Task<bool> IsChatClosedAsync(int chatConversationId, CancellationToken ct)
+    => _db.ChatConversations.AsNoTracking().AnyAsync(c => c.Id == chatConversationId && c.ClosedAt != null, ct);
+
+    public async Task<IReadOnlyList<(int Id, int TradeId, string[] MemberAuth0Ids)>> GetCreatedChatsForPublish(
+        int tradeId, CancellationToken ct)
+    {
+        var rows = await _db.ChatConversations
+            .AsNoTracking()
+            .Where(c => c.TradeId == tradeId && !c.IsDeleted)
+            .Select(c => new
+            {
+                c.Id,
+                c.TradeId,
+                MemberAuth0Ids = c.Members.Select(m => m.User.Auth0UserID).ToArray()
+            }).ToListAsync(ct);
+        return rows.Select(r => (r.Id, r.TradeId, r.MemberAuth0Ids)).ToList();
+    }
+
 }

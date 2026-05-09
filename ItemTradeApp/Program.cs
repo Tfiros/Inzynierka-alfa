@@ -7,10 +7,9 @@ using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
 using ItemTradeApp.Features.Trades;
 using ItemTradeApp.Features.Users;
+using ItemTradeApp.Middlewares;
 using ItemTradeApp.Persistence;
-using ItemTradeApp.Users.AuthZeroCommunication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -21,10 +20,12 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
-using ItemTradeApp.Features.Shared.TokenEscrow;
-using ItemTradeApp.Policies;
-using ItemTradeApp.Policies.Requirements;
 using Microsoft.AspNetCore.HttpOverrides;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
+using ItemTradeApp.Policies;
+using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
+using Microsoft.AspNetCore.SignalR;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -112,7 +113,10 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(opts =>
+{
+    opts.AddFilter<GlobalHubExceptionFilter>();
+});
 
 var domain = builder.Configuration["Auth0:Domain"];
 var audience = builder.Configuration["Auth0:Audience"];
@@ -169,8 +173,6 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-builder.Services.AddScoped<IAuthorizationHandler, OwnResourceHanlder>();
-builder.Services.Configure<AuthZeroOptions>(builder.Configuration.GetSection("Auth0"));
 builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
 builder.Services.AddCors(opts =>
 {
@@ -181,10 +183,11 @@ builder.Services.AddCors(opts =>
         .AllowCredentials()
         .WithExposedHeaders("X-XSRF-TOKEN"));
 });
-
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
-builder.Services.RegisterUserFeatureDi();
+builder.Services.RegisterPoliciesDi();
+builder.Services.RegisterUserFeatureDi(builder.Configuration);
 builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
@@ -200,6 +203,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseForwardedHeaders();
+app.UseGlobalExceptionHandling();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("AppCors");

@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Features.Chat.Services;
+using ItemTradeApp.Features.Shared.Chat;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Chat;
@@ -11,11 +12,10 @@ public static class DI
         services.AddHttpContextAccessor();
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IChatThreadsReader, ChatThreadsReader>();
-        services.AddScoped<IChatDmService, ChatDmService>();
         services.AddScoped<IChatReadStateService, ChatReadStateService>();
         services.AddScoped<IChatUserResolver, ChatUserResolver>();
         services.AddScoped<IChatRealtimePublisher, ChatRealtimePublisher>();
-
+        services.AddScoped<IChatOperations, ChatOperations>();
         services.AddScoped<IChatService, ChatService>();
         services.AddSingleton<PresenceTracker>();
 

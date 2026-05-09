@@ -17,10 +17,23 @@ public interface ITradeListQueryService
         bool isMiddlemanView,
         bool onlyWithItemsToReturn,
         CancellationToken ct);
+
+    Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddlemanView, CancellationToken ct);
 }
 
 public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeListQueryService
 {
+
+    public async Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddlemanView,
+        CancellationToken ct)
+    {
+        var query = tradeRepo.QueryNoTracking()
+            .Where(t => t.ID == tradeId)
+            .Where(t => t.Customer_ID == callerUserId || t.User_ID == callerUserId ||
+                        t.MiddlemanUser_ID == callerUserId);
+        return await ProjectToListItemDto(query, isMiddlemanView).SingleOrDefaultAsync(ct);
+    }
+
     public async Task<(List<TradeListItemDTO> Items, int Total)> GetTradesAsync(
         TradeStatuses status,
         int page,

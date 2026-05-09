@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.Features.Users.UserManagement.DTOs;
+﻿namespace ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 
 public class UpdateUserRequest
 {

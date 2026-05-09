@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace ItemTradeApp.Policies.Requirements;
+namespace ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 
 public class OwnResourceRequirement : IAuthorizationRequirement
 {
