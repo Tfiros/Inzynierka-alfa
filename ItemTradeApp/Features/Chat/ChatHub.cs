@@ -20,7 +20,7 @@ public sealed class ChatHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var auth0 = Context.UserIdentifier;
+        var auth0 = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
         if (!string.IsNullOrWhiteSpace(auth0))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{auth0}");
@@ -41,7 +41,7 @@ public sealed class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var auth0 = Context.UserIdentifier;
+        var auth0 = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
         if (!string.IsNullOrWhiteSpace(auth0))
         {
             var changed = _presence.UserDisconnected(auth0);
@@ -60,11 +60,12 @@ public sealed class ChatHub : Hub
 
     public async Task JoinChat(int chatConversationId)
     {
-        var auth0UserId = Context.UserIdentifier;
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-        if (!await _chatService.IsMemberAsync(chatConversationId, trimmedAuth0UserId, Context.ConnectionAborted))
+        var auth0UserId = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
+
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            throw new HubException("unauthorized");
+
+        if (!await _chatService.IsMemberAsync(chatConversationId, auth0UserId, Context.ConnectionAborted))
         {
             throw new HubException("not_a_chat_member");
         }
@@ -83,7 +84,7 @@ public sealed class ChatHub : Hub
         if (string.IsNullOrWhiteSpace(message))
             throw new HubException("message_empty");
 
-        var auth0UserId = Context.UserIdentifier;
+        var auth0UserId = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
         if (string.IsNullOrWhiteSpace(auth0UserId))
             throw new HubException("unauthorized");
 

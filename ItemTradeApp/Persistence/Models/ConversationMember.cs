@@ -9,8 +9,6 @@ public sealed class ConversationMember
     public int UserId { get; set; }
     [Column("chat_conversation_id")]
     public int ChatConversationId { get; set; }
-    [Column("role")]
-    public short Role { get; set; }
     [Column("last_read_message_id")]
     public long? LastReadMessageId { get; set; }
     [Column("last_read_message_chat_conversation_id")]

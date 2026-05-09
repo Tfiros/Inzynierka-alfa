@@ -1,15 +1,11 @@
 ﻿using ItemTradeApp.Features.Chat.DTOs;
 using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Features.Chat.Services;
-using ItemTradeApp.Features.Trades;
-using ItemTradeApp.Persistence.Models;
-using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.Chat;
 
 public interface IChatService
 {
-    Task<Result<CreateDmChatResponse>> CreateDmAsync(int otherUserId, string? auth0UserId, CancellationToken ct);
 
     Task<Result<IReadOnlyList<ChatThreadListItemDto>>> GetThreadsAsync(
         int page,
@@ -43,52 +39,39 @@ public interface IChatService
         CancellationToken ct);
     Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct);
     Task<ChatMessageDto> AddMessageAsync(int chatConversationId, string auth0UserId, string message, CancellationToken ct = default);
+
+    Task<Result<IReadOnlyList<ChatThreadListItemDto>>> GetChatsForTradeAsync(int tradeId,
+        string? auth0UserId, CancellationToken ct);
 }
 
 public sealed class ChatService : IChatService
 {
     private readonly IChatRepository _repo;
-    private readonly IChatDmService _chatDmService;
     private readonly IChatThreadsReader _chatThreadsReader;
     private readonly IChatReadStateService _chatReadStateService;
     private readonly IChatRealtimePublisher _chatRealtimePublisher;
     private readonly IChatUserResolver _chatUserResolver;
+    private readonly TimeProvider _time;
 
     public ChatService(
         IChatRepository repo,
-        IChatDmService chatDmService,
         IChatThreadsReader chatThreadsReader,
         IChatReadStateService chatReadStateService,
         IChatRealtimePublisher chatRealtimePublisher,
-        IChatUserResolver chatUserResolver)
+        IChatUserResolver chatUserResolver,
+        TimeProvider time
+        )
         
     {
         _repo = repo;
-        _chatDmService = chatDmService;
         _chatThreadsReader = chatThreadsReader;
         _chatReadStateService = chatReadStateService;
         _chatRealtimePublisher = chatRealtimePublisher;
         _chatUserResolver = chatUserResolver;
+        _time = time;
     }
     public async Task<bool> IsMemberAsync(int chatId, string auth0UserId, CancellationToken ct) => 
         await _repo.IsMemberAsync(chatId, auth0UserId, ct);
-    public async Task<Result<CreateDmChatResponse>> CreateDmAsync(int otherUserId, string? auth0UserId, CancellationToken ct)
-    {
-        if (otherUserId <= 0)
-            return Result<CreateDmChatResponse>.BadRequest("otherUserId must be > 0.");
-
-        var meTry = await _chatUserResolver.TryGetUserAsync(auth0UserId, ct);
-        if (meTry.Error is not null)
-            return Result<CreateDmChatResponse>.Unauthorized(meTry.Error);
-
-        var me = meTry.User!;
-        if (me.ID == otherUserId)
-            return Result<CreateDmChatResponse>.BadRequest("cannot_dm_self");
-
-        var chatId = await _chatDmService.GetOrCreateDmAsync(me.ID, otherUserId, ct);
-
-        return Result<CreateDmChatResponse>.Success(new CreateDmChatResponse(chatId), "Chat created.");
-    }
 
     public async Task<ChatMessageDto> AddMessageAsync(
         int chatConversationId,
@@ -103,18 +86,26 @@ public sealed class ChatService : IChatService
         if (message.Length == 0)
             throw new ArgumentException("message_empty");
 
-        var trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = ChatIdentity.NormalizeAuth0UserId(auth0UserId);
+        if (string.IsNullOrWhiteSpace(trimmedAuth0UserId))
+        {
+            throw new InvalidOperationException("sender_not_found");
+        }
 
         var senderId = await _repo.GetUserIdByAuth0Async(trimmedAuth0UserId, ct);
         if (!senderId.HasValue)
             throw new InvalidOperationException("sender_not_found");
 
+        if (!await _repo.IsMemberAsync(chatConversationId, senderId.Value, ct))
+            throw new InvalidOperationException("not_member");
+        
         var chatExists = await _repo.ChatExistsAsync(chatConversationId, ct);
         if (!chatExists)
             throw new KeyNotFoundException("chat_not_found");
 
+        if (await _repo.IsChatClosedAsync(chatConversationId, ct))
+            throw new InvalidOperationException("chat_closed");
+        
         var dto = await _repo.AddMessageAsync(chatConversationId, senderId.Value, message, ct);
 
         var msg = await _repo.GetMessageByIdAsync(dto.Id, ct);
@@ -193,8 +184,18 @@ public sealed class ChatService : IChatService
         if (msg is null)
             return Result<ChatMessageDto>.NotFound("message_not_found");
 
+        if (await _repo.IsChatClosedAsync(msg.ChatConversationId, ct))
+            return Result<ChatMessageDto>.Forbidden("chat_closed");
+
+        var now = _time.GetUtcNow().UtcDateTime;
+
+        if (now - msg.CreatedAt > TimeSpan.FromMinutes(5))
+        {
+            return Result<ChatMessageDto>.Forbidden("edit_window_expired");
+        }
+
         msg.Message = request.Message.Trim();
-        msg.EditedAt = DateTime.UtcNow;
+        msg.EditedAt = now;
 
         await _repo.SaveChangesAsync(ct);
 
@@ -227,6 +228,9 @@ public sealed class ChatService : IChatService
         var msg = await _repo.GetMessageForEditAsync(messageId, me.ID, ct);
         if (msg is null)
             return Result<string>.NotFound("message_not_found");
+        
+        if (await _repo.IsChatClosedAsync(msg.ChatConversationId, ct))
+            return Result<string>.Forbidden("chat_closed");
 
         await _repo.SoftDeleteMessageAsync(msg, ct);
 
@@ -269,10 +273,11 @@ public sealed class ChatService : IChatService
             MarkedAtUtc: DateTime.UtcNow,
             UnreadCount: unread);
 
-        if (!string.IsNullOrWhiteSpace(auth0UserId))
+        var trimmedAuth0UserId = ChatIdentity.NormalizeAuth0UserId(auth0UserId);
+        if (!string.IsNullOrWhiteSpace(trimmedAuth0UserId))
         {
             await _chatRealtimePublisher.PublishThreadReadAsync(
-                auth0UserId,
+                trimmedAuth0UserId,
                 chatId,
                 request.LastReadMessageId,
                 unread,
@@ -280,5 +285,16 @@ public sealed class ChatService : IChatService
         }
 
         return Result<ChatReadStateDto>.Success(dto, "Marked as read.");
+    }
+
+    public async Task<Result<IReadOnlyList<ChatThreadListItemDto>>> GetChatsForTradeAsync(int tradeId,
+        string? auth0UserId, CancellationToken ct)
+    {
+        var meTry = await _chatUserResolver.TryGetUserAsync(auth0UserId, ct);
+        if (meTry.Error is not null)
+            return Result<IReadOnlyList<ChatThreadListItemDto>>.Unauthorized(meTry.Error);
+
+        var rows = await _chatThreadsReader.GetChatsForTradeAsync(meTry.User!.ID, tradeId, ct);
+        return Result<IReadOnlyList<ChatThreadListItemDto>>.Success(rows,"Successfully retrieved");
     }
 }

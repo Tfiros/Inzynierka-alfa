@@ -127,4 +127,14 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.SetTradeAsRealisedAsync(tradeId, GetAuth0UserId(), request, ct);
         return res.ToActionResult();
     }
+
+
+    [HttpGet("{tradeId:int}")]
+    [Authorize]
+    public async Task<ActionResult<Result<TradeListItemDTO>>> GetById([FromRoute] int tradeId, CancellationToken ct)
+    {
+        var isMiddlemanView = User.IsInRole("Middleman");
+        var res = await tradesService.GetByIdAsync(tradeId, GetAuth0UserId(), isMiddlemanView, ct);
+        return res.ToActionResult();
+    }
 }

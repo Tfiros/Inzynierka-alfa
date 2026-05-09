@@ -354,10 +354,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("timestampz")
                 .HasDefaultValueSql("now()");
 
-            entity.Property(x => x.Name)
-                .HasMaxLength(30)
-                .IsRequired();
-
             entity.Property(x => x.IsDeleted)
                 .HasDefaultValue(false);
 
@@ -372,14 +368,16 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(x => x.IsDeleted);
+            entity.Property(x => x.ClosedAt).HasColumnType("timestamptz");
+            entity.HasOne(x => x.Trade)
+                .WithMany().HasForeignKey(x => x.TradeId)
+                .HasConstraintName("chat_conversation-trade");
         });
         modelBuilder.Entity<ConversationMember>(entity =>
         {
             entity.ToTable("conversation_member");
 
             entity.HasKey(x => new { x.UserId, x.ChatConversationId });
-
-            entity.Property(x => x.Role).IsRequired();
 
             entity.HasOne(x => x.User)
                 .WithMany(u => u.Chats)

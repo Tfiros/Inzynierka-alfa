@@ -2,11 +2,10 @@
 
 public sealed record ChatThreadListItemDto(
     int ChatConversationId,
-
-    bool IsGroup,
-    string DisplayName,
     int? OtherUserId,
     string? OtherUserAuth0UserId,
+    string? OtherUserNickname,
+    string? OtherUserTradeRole,
     string? AvatarUrl,
     bool? IsOnline, 
 
@@ -15,7 +14,9 @@ public sealed record ChatThreadListItemDto(
     int? LastMessageSenderId,
     DateTime? LastMessageCreatedAtUtc,
 
-    int UnreadCount
+    int UnreadCount,
+    int TradeId,
+    DateTime? ClosedAtUtc
 );
 
 public sealed record ChatMessageDto(
@@ -32,7 +33,6 @@ public sealed record ChatReadStateDto(
     DateTime MarkedAtUtc,
     int UnreadCount
 );
-public sealed record CreateDmChatResponse(int ChatConversationId);
 
 public sealed record ChatThreadUpdatedDto(
     int ChatConversationId,
