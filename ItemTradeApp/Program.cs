@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 using ItemTradeApp.Features.Offers;
 using ItemTradeApp;
@@ -19,10 +20,12 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;
 using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.SignalR;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +37,20 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<ValidationActionFilter>();
 });
 builder.Services.RegisterContactPageFeatureDI();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    var knownProxy = builder.Configuration["ForwardedHeaders:KnownProxy"];
+
+    if (!string.IsNullOrWhiteSpace(knownProxy) &&
+        IPAddress.TryParse(knownProxy, out var proxyIp))
+    {
+        options.KnownProxies.Add(proxyIp);
+    }
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -45,8 +62,15 @@ builder.Services.AddRateLimiter(options =>
         
         var type = isAuth ? "auth" : "api";
 
+        var userId =
+            ctx.User.FindFirstValue("sub") ??
+            ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var key = $"{type}:ip:{ip}";
+
+        var key = !string.IsNullOrWhiteSpace(userId)
+            ? $"{type}:user:{userId}"
+            : $"{type}:ip:{ip}";
 
         //It might need to be adjusted later
         var permitLimit = isAuth ? 20 : 30;
@@ -170,6 +194,7 @@ builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 builder.Services.RegisterCounterOffersDI();
+builder.Services.RegisterTokenEscrowFeaturesDi();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -177,6 +202,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseForwardedHeaders();
 app.UseGlobalExceptionHandling();
 app.UseHttpsRedirection();
 app.UseRouting();

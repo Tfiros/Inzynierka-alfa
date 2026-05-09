@@ -1,5 +1,7 @@
 using Microsoft.OpenApi.Models;
 
+namespace ItemTradeApp;
+
 public static class SwaggerExtensions
 {
   public static IServiceCollection AddSwaggerService(this IServiceCollection services)
@@ -34,9 +36,9 @@ public static class SwaggerExtensions
       options.AddSecurityDefinition("Bearer", securitySchema);
 
       options.AddSecurityRequirement(new OpenApiSecurityRequirement
-              {
-                  { securitySchema, new[] { "Bearer" } }
-              });
+      {
+        { securitySchema, new[] { "Bearer" } }
+      });
     });
 
     return services;

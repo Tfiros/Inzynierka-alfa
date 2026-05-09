@@ -1,3 +1,4 @@
+using ItemTradeApp.Features.Shared.TokenEscrow;
 ﻿using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.DTOs;
@@ -42,6 +43,7 @@ public sealed class TradesService(
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
     IUserRepository userRepo,
+    ITokenEscrow tokenEscrow,
     IChatOperations chatOperations
 ) : ITradesService
 {
@@ -393,24 +395,27 @@ public sealed class TradesService(
         {
             if (trade.Offer.TokensOffered > 0)
             {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered,
-                        ct)
-                    )
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
+                        trade.Customer_ID,
+                        trade.User_ID,
+                        trade.Offer.TokensOffered,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund seller's tokens.");
+                    return Result<string>.BadRequest("Failed to refund seller's offered tokens.");
                 }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct)
-                )
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
+                        trade.User_ID,
+                        trade.Customer_ID,
+                        trade.Offer.TokensWanted,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to refund buyer's wanted tokens.");
                 }
             }
             
@@ -466,18 +471,18 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
 
-            var buyersRate = new Rate()
+            var buyersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.BuyersID,
+                UserId = trade.Customer_ID,
                 Mark = request.BuyersGrade,
                 Description = request.BuyersDescription
             };
-        
-            var sellersRate = new Rate()
+
+            var sellersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.SellersID,
+                UserId = trade.User_ID,
                 Mark = request.SellersGrade,
                 Description = request.SellersDescription
             };
@@ -488,19 +493,25 @@ public sealed class TradesService(
             
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct))
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
+                        trade.Customer_ID,
+                        trade.Offer.TokensOffered,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release seller's tokens.");
+                    return Result<string>.BadRequest("Failed to release offered tokens.");
                 }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct))
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
+                        trade.User_ID,
+                        trade.Offer.TokensWanted,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to release wanted tokens.");
                 }
             }
 

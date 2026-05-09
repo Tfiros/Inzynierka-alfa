@@ -12,7 +12,7 @@ public interface IOffersRepository
 {
     Task<(List<OfferListingDTO> offers, int totalCount)> GetOffersPagedAsync(
         OfferListingsQuery query, CancellationToken ct = default);
-    Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default);
+    Task<OfferDetailsDTO?> GetOfferWithDetailsByIdAsync(int id, CancellationToken ct = default);
     Task<Dictionary<int, Item>> GetItemsByIdsAsync(IReadOnlyCollection<int> itemsIds, CancellationToken ct = default);
     Task<bool> CancelOfferAsync(int userId, int offerId, CancellationToken ct = default);
     void Add(Offer offer);
@@ -20,13 +20,14 @@ public interface IOffersRepository
     void AddListingItemsRange(IEnumerable<ListingItems> items);
 
     Task<Offer?> GetTrackedOfferAsync(int offerId, int userId, CancellationToken ct = default);
+    Task<Offer?> GetOfferByIdAsync(int offerId, CancellationToken ct = default);
 
-
+    Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default);
 }
 
 public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 {
-    public async Task<OfferDetailsDTO?> GetOfferByIdAsync(int id, CancellationToken ct = default)
+    public async Task<OfferDetailsDTO?> GetOfferWithDetailsByIdAsync(int id, CancellationToken ct = default)
     {
         
         return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).SelectOfferDetailsDto().SingleOrDefaultAsync(ct);
@@ -82,6 +83,18 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
         return await dbContext.Items.AsNoTracking().Where(i => itemsIds.Contains(i.ID) && !i.IsDeleted)
             .ToDictionaryAsync(i => i.ID, ct);
+    }
+
+    public async Task<Offer?> GetOfferByIdAsync(int offerId, CancellationToken ct = default)
+    {
+        return await dbContext.Offers.AsNoTracking().SingleOrDefaultAsync(o => o.ID == offerId, ct);
+    }
+
+    public async Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default)
+    {
+        var updated = await dbContext.Offers.Where(o => o.ID == offerId && o.OfferStatus_ID == (int)OfferStatuses.Active)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.InRealization), ct);
+        return updated == 1;
     }
 
     #region offerRepoHelpers

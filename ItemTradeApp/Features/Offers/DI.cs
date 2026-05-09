@@ -12,6 +12,8 @@ public static class DI
         serviceCollection.AddScoped<IGamesRepository, GamesRepository>();
         serviceCollection.AddScoped<IGenresRepository, GenresRepository>();
         serviceCollection.AddScoped<IRaritiesRepository, RaritiesRepository>();
+        serviceCollection.AddScoped<ITradeRepository, TradeRepository>();
+        serviceCollection.AddScoped<ICounterOfferRepository, CounterOfferRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
 
         return serviceCollection;
