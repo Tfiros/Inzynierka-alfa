@@ -20,6 +20,7 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.Images;
 using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;
@@ -195,6 +196,7 @@ builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
 builder.Services.RegisterCounterOffersDI();
 builder.Services.RegisterTokenEscrowFeaturesDi();
+builder.Services.RegisterImagesFeatureDi(builder.Configuration);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -235,6 +237,8 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
+        //To delete after tests
+        path.StartsWith("/api/Images", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
     if (!skip)
