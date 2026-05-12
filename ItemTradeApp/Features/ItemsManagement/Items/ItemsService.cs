@@ -182,11 +182,11 @@ public sealed class ItemsService(
         return Result<PagedResponse<ItemResponse>>.Success(response);
     }
 
-    private ItemResponse ToResponse(Item i)
+    private static ItemResponse ToResponse(Item i)
         => new(
             i.ID,
             i.Name,
-            imageService.GetPresignedUrl(i.Photo_URL),
+            i.Photo_URL,
             i.EstimatedTokenValue,
             i.Game.ID,
             i.Game.Name
