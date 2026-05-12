@@ -12,23 +12,23 @@ public interface IImageService
         CancellationToken ct = default);
 
     Task DeleteAsync(
-        string key,
+        string url,
         CancellationToken ct = default);
-
-    string GetImageUrl(string key);
+    
+    string GetPresignedUrl(string url);
 }
 
 public sealed class ImageService : IImageService
 {
     private readonly IAmazonS3 s3;
-    private readonly S3Config _config;
+    private readonly S3Config config;
 
     public ImageService(
         IAmazonS3 s3,
         IOptions<S3Config> options)
     {
         this.s3 = s3;
-        this._config = options.Value;
+        config = options.Value;
     }
 
     public async Task<string> UploadAsync(
@@ -45,14 +45,21 @@ public sealed class ImageService : IImageService
         if (string.IsNullOrWhiteSpace(folder))
             throw new ArgumentException("Folder nie może być pusty.", nameof(folder));
 
-        var extension = Path.GetExtension(file.FileName);
-        var key = $"{folder.Trim('/')}/{Guid.NewGuid():N}{extension}";
+        if (!ImageExtensionValidator.IsValidImage(file))
+            throw new ArgumentException("Nieprawidłowy plik obrazu.", nameof(file));
+
+        var extension = Path
+            .GetExtension(file.FileName)
+            .ToLowerInvariant();
+
+        var key =
+            $"{folder.Trim('/')}/{Guid.NewGuid():N}{extension}";
 
         await using var stream = file.OpenReadStream();
 
         var request = new PutObjectRequest
         {
-            BucketName = _config.BucketName,
+            BucketName = config.BucketName,
             Key = key,
             InputStream = stream,
             ContentType = file.ContentType
@@ -60,22 +67,52 @@ public sealed class ImageService : IImageService
 
         await s3.PutObjectAsync(request, ct);
 
-        return key;
+        return BuildUrl(key);
     }
 
-    public async Task DeleteAsync(string key, CancellationToken ct = default)
+    public async Task DeleteAsync(
+        string url,
+        CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        if (string.IsNullOrWhiteSpace(url))
             return;
 
-        await s3.DeleteObjectAsync(_config.BucketName, key, ct);
+        var key = ExtractKeyFromUrl(url);
+
+        await s3.DeleteObjectAsync(
+            config.BucketName,
+            key,
+            ct);
     }
 
-    public string GetImageUrl(string key)
+    private string BuildUrl(string key)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        return
+            $"https://{config.BucketName}.s3.{config.Region}.amazonaws.com/{key}";
+    }
+
+    private static string ExtractKeyFromUrl(string url)
+    {
+        var uri = new Uri(url);
+
+        return uri.AbsolutePath.TrimStart('/');
+    }
+    
+    
+    public string GetPresignedUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
             return string.Empty;
 
-        return $"https://{_config.BucketName}.s3.{_config.Region}.amazonaws.com/{key}";
+        var key = ExtractKeyFromUrl(url);
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.BucketName,
+            Key = key,
+            Expires = DateTime.UtcNow.AddMinutes(15)
+        };
+
+        return s3.GetPreSignedURL(request);
     }
 }

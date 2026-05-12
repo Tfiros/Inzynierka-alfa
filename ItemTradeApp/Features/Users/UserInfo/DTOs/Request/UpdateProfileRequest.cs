@@ -3,5 +3,6 @@
 public record UpdateProfileRequest
 (
     string? Nickname,
-    string? Description
+    string? Description,
+    IFormFile? Image
 );

@@ -8,11 +8,13 @@ namespace ItemTradeApp.Features.ItemsManagement.Items;
 
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = "Admin")]
+//[Authorize(Roles = "Admin")]
 public sealed class ItemsController(IItemsService service) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<Result<ItemResponse>>> Create([FromBody] CreateItemRequest req, CancellationToken ct = default)
+    public async Task<ActionResult<Result<ItemResponse>>> Create(
+        [FromForm] CreateItemRequest req,
+        CancellationToken ct = default)
     {
         var res = await service.CreateAsync(req, ct);
         return res.ToActionResult();
@@ -30,7 +32,10 @@ public sealed class ItemsController(IItemsService service) : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    public async Task<ActionResult<Result<ItemResponse>>> Update([FromRoute] int id, [FromBody] UpdateItemRequest req, CancellationToken ct= default)
+    public async Task<ActionResult<Result<ItemResponse>>> Update(
+        [FromRoute] int id,
+        [FromForm] UpdateItemRequest req,
+        CancellationToken ct = default)
     {
         var res = await service.UpdateAsync(id, req, ct);
         return res.ToActionResult();

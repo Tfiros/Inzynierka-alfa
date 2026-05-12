@@ -1,4 +1,5 @@
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Images;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
@@ -14,7 +15,10 @@ public interface IUserInfoService
 
 }
 
-public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IUserInfoService
+public sealed class UserInfoService(
+    IUserInfoRepository userInfoRepository,
+    IImageService imageService
+) : IUserInfoService
 {
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
@@ -63,6 +67,7 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
             user.ProfileInfo.Description,
+            imageService.GetPresignedUrl(user.ProfileInfo.ImageUrl),
             activeOffersCount,
             successTradeCount,
             rating,
@@ -82,11 +87,27 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
         if (user is null || user.ProfileInfo is null)
             return Result<UserProfileInfoResponse>.NotFound(
                 "user_or_profile_info_not_found: User or profile info not found");
-
         user.ProfileInfo.Nickname = request.Nickname ?? user.ProfileInfo.Nickname;
         user.ProfileInfo.Description = request.Description ?? user.ProfileInfo.Description;
-        
+
+        string? oldImageUrl = null;
+
+        if (request.Image is not null)
+        {
+            oldImageUrl = user.ProfileInfo.ImageUrl;
+
+            var newImageUrl = await imageService.UploadAsync(
+                request.Image,
+                ImageFolders.Avatars,
+                ct);
+
+            user.ProfileInfo.ImageUrl = newImageUrl;
+        }
+
         await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
+        if (!string.IsNullOrWhiteSpace(oldImageUrl))
+            await imageService.DeleteAsync(oldImageUrl, ct);
+        
         var level = UserLevelCalculator.CalculateLevel(user.Experience);
         var stats = await userInfoRepository.GetUserStatsByUserIdAsync(user.ID, ct);
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
@@ -101,6 +122,7 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
             user.ProfileInfo.Description,
+            imageService.GetPresignedUrl(user.ProfileInfo.ImageUrl),
             activeOffersCount,
             successTradeCount,
             rating,
