@@ -137,4 +137,20 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.GetByIdAsync(tradeId, GetAuth0UserId(), isMiddlemanView, ct);
         return res.ToActionResult();
     }
+    
+    [HttpPost("{tradeId:int}/photos")]
+    [Authorize(Roles = "Middleman")]
+    public async Task<ActionResult<Result<string>>> UploadTradePhoto(
+        [FromRoute] int tradeId,
+        [FromForm] UploadTradeImageRequest request,
+        CancellationToken ct = default)
+    {
+        var res = await tradesService.UploadTradeImageAsync(
+            tradeId,
+            request,
+            GetAuth0UserId(),
+            ct);
+
+        return res.ToActionResult();
+    }
 }

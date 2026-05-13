@@ -241,6 +241,7 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Images", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Items", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/UserInfo", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/Trades", StringComparison.OrdinalIgnoreCase) ||
         
         path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
