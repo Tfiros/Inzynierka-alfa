@@ -43,7 +43,6 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo,
     ITokenEscrow tokenEscrow,
     IChatOperations chatOperations
 ) : ITradesService

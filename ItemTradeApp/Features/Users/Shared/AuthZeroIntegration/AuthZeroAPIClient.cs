@@ -211,10 +211,8 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         try
         {
             var httpClient = _httpFactory.CreateClient("Auth0Public");
-            using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path))
-            {
-                Content = new FormUrlEncodedContent(form)
-            };
+            using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path));
+            req.Content = new FormUrlEncodedContent(form);
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             using var resp = await httpClient.SendAsync(req, ct);

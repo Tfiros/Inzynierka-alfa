@@ -1,7 +1,6 @@
 ﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.ItemsManagement.Games.DTOs;
 using ItemTradeApp.Features.ItemsManagement.Genres;
-using ItemTradeApp.Features.ItemsManagement.ItemRarities;
 using ItemTradeApp.Features.ItemsManagement.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Persistence.Models;
@@ -23,8 +22,7 @@ public interface IGamesService
 
 public sealed class GamesService(
     IGamesRepository gamesRepo,
-    IGenresRepository genresRepo,
-    IItemRarityRepository itemRarityRepo
+    IGenresRepository genresRepo
 ) : IGamesService
 {
     public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct)
