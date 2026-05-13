@@ -11,15 +11,8 @@ namespace ItemTradeApp.Features.Shared.Notifications;
 [ApiController]
 [Route("[controller]")]
 [Authorize]
-public sealed class NotificationsController(INotificationsService service, INotificationSender sender) : ControllerBase
+public sealed class NotificationsController(INotificationsService service) : ControllerBase
 {
-    [HttpPost]
-    public async Task<ActionResult<string>> PerformNotify(CancellationToken ct = default)
-    {
-        await sender.SendManyAsync( userIds: [2,3],
-            NotificationsMessages.CounterOfferAcceptedWithTradeCreation("Sam offer"), ct);
-        return Ok("Alles klar");
-    }
     [HttpGet]
     public async Task<ActionResult<Result<GetNotificationsResponse>>> GetNotifications(
         [FromQuery] int take = 20,

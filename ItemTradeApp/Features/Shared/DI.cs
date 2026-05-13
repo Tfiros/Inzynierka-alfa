@@ -11,7 +11,7 @@ namespace ItemTradeApp.Features.Shared;
 
 public static class DI
 {
-    public static IServiceCollection RegisterEmailsNotificationsFeatureDi(
+    public static IServiceCollection RegisterSharedFeaturesDi(
         this IServiceCollection services,
         IConfiguration configuration)
     {

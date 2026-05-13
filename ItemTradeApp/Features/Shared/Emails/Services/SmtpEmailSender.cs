@@ -29,6 +29,6 @@ public sealed class SmtpEmailSender(
 
         mail.To.Add(new MailAddress(msg.To));
 
-        await client.SendMailAsync(mail);
+        await client.SendMailAsync(mail, ct);
     }
 }

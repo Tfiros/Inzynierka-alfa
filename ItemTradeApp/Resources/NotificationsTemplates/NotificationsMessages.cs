@@ -5,11 +5,11 @@ namespace ItemTradeApp.Resources.NotificationsTemplates;
 public static class NotificationsMessages
 {
     public static NotificationTemplateDTO ReceivedCounterOfferMessage(string fromUser, string offerTitle) =>
-        new NotificationTemplateDTO("Otrzymano kontrofertę!", $"Nowa kontroferta od użytkownika {fromUser} do Twojej oferty ${offerTitle}");
+        new NotificationTemplateDTO("Otrzymano kontrofertę!", $"Nowa kontroferta od użytkownika {fromUser} do Twojej oferty {offerTitle}");
 
     public static NotificationTemplateDTO CounterOfferDenied(string offerTitle) =>
         new NotificationTemplateDTO("Odrzucenie kontroferty",
-            $"Twoja kontroferta do oferty ${offerTitle} została odrzucona przez wystawiającego.");
+            $"Twoja kontroferta do oferty {offerTitle} została odrzucona przez wystawiającego.");
 
     public static NotificationTemplateDTO OfferSuccessfullyAdded(string offerTitle) =>
         new NotificationTemplateDTO("Utworzono ofertę!", $"Twoja oferta {offerTitle} została poprawnie utworzona!");
