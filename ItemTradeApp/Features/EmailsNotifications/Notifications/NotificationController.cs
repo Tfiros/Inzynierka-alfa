@@ -1,6 +1,5 @@
 ﻿using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Features.EmaillsNotifications.Notifications.Contracts;
-using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.EmailsNotifications.Notifications.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

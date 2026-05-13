@@ -1,9 +1,7 @@
 ﻿using ItemTradeApp.Features.Chat.DTOs;
-using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace ItemTradeApp.Features.Chat.Helpers;
 

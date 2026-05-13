@@ -1,7 +1,7 @@
 ﻿using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 
-namespace ItemTradeApp.Features.EmaillsNotifications.Emails;
+namespace ItemTradeApp.Features.EmailsNotifications.Emails;
 
 public interface IEmailOutboxRepository
 {

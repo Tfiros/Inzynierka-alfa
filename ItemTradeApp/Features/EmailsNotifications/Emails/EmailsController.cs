@@ -1,6 +1,6 @@
 ﻿using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Services;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ItemTradeApp.Features.EmailsNotifications.Emails;

@@ -1,4 +1,6 @@
-﻿namespace ItemTradeApp.Features.Chat.Services;
+﻿using ItemTradeApp.Features.Chat.Repositories;
+
+namespace ItemTradeApp.Features.Chat.Services;
 
 public interface IChatReadStateService
 {

@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.Features.EmaillsNotifications.Emails.Settings;
+﻿namespace ItemTradeApp.Features.EmailsNotifications.Emails.Settings;
 
 public sealed record SmtpEmailOptions
 {

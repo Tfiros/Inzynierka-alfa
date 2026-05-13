@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using ItemTradeApp.Features.EmailsNotifications.Notifications.Contracts;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ItemTradeApp.Features.EmailsNotifications.Notifications;
 

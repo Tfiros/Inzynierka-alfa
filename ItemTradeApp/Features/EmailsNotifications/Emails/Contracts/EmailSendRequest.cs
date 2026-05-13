@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
+﻿namespace ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
 
 public sealed record EmailSendRequest(
     int UserId,

@@ -1,6 +1,6 @@
-﻿using ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
+﻿using ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
 
-namespace ItemTradeApp.Features.EmaillsNotifications.Emails.Services;
+namespace ItemTradeApp.Features.EmailsNotifications.Emails.Services;
 
 public interface IEmailSender
 {

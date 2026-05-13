@@ -1,10 +1,10 @@
 ﻿using System.Net;
 using System.Net.Mail;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Settings;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Settings;
 using Microsoft.Extensions.Options;
 
-namespace ItemTradeApp.Features.EmaillsNotifications.Emails.Services;
+namespace ItemTradeApp.Features.EmailsNotifications.Emails.Services;
 
 public sealed class SmtpEmailSender(
     IOptions<SmtpEmailOptions> smtpOpt) : IEmailSender

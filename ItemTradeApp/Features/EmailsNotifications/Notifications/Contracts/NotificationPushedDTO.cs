@@ -1,4 +1,4 @@
-﻿namespace ItemTradeApp.Features.EmailsNotifications.Notifications;
+﻿namespace ItemTradeApp.Features.EmailsNotifications.Notifications.Contracts;
 
 public sealed record NotificationPushedDTO(
     int Id,

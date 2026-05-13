@@ -1,12 +1,11 @@
 ﻿using System.Threading.Channels;
-using ItemTradeApp.Features.EmaillsNotifications.Emails;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Services;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Settings;
-using ItemTradeApp.Features.EmailsNotifications;
+using ItemTradeApp.Features.EmailsNotifications.Emails;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Services;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Settings;
 using ItemTradeApp.Features.EmailsNotifications.Notifications;
 
-namespace ItemTradeApp.Features.EmaillsNotifications;
+namespace ItemTradeApp.Features.EmailsNotifications;
 
 public static class DI
 {

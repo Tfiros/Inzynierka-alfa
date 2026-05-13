@@ -1,9 +1,8 @@
 ﻿using System.Threading.Channels;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Contracts;
-using ItemTradeApp.Features.EmailsNotifications;
+using ItemTradeApp.Features.EmailsNotifications.Emails.Contracts;
 using ItemTradeApp.Persistence.Models;
 
-namespace ItemTradeApp.Features.EmaillsNotifications.Emails.Services;
+namespace ItemTradeApp.Features.EmailsNotifications.Emails.Services;
 
 public sealed class EmailBackgroundService(
     Channel<EmailJob> channel,

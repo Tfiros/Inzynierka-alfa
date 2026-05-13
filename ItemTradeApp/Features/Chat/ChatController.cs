@@ -1,7 +1,6 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Chat.DTOs;
-using ItemTradeApp.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

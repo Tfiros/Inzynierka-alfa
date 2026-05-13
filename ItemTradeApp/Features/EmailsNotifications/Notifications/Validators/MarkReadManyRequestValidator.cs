@@ -1,5 +1,5 @@
 using FluentValidation;
-using ItemTradeApp.Features.EmaillsNotifications.Notifications.Contracts;
+using ItemTradeApp.Features.EmailsNotifications.Notifications.Contracts;
 
 namespace ItemTradeApp.Features.EmailsNotifications.Notifications.Validators;
 
