@@ -62,7 +62,7 @@ public sealed class CounterOffersService(
     IUnitOfWork unitOfWork,
     ITradeCreation tradeCreation) : ICounterOffersService
 {
-    
+
     private async Task<User?> GetUserAsync(string auth0UserId, CancellationToken ct)
     {
         return await userRepository.GetUserInfo(auth0UserId, ct);
@@ -79,7 +79,7 @@ public sealed class CounterOffersService(
 
         if (user is null)
             return (null, Result<T>.Unauthorized("Nie znaleziono użytkownika"));
-        
+
 
         return (user, null);
     }
@@ -114,12 +114,12 @@ public sealed class CounterOffersService(
 
         if (request.Items is null)
             return Result<CounterOfferDto>.BadRequest("Brak listy przedmiotów");
-        
+
         if (request.Items.Count == 0 && request.TokensOffered <= 0)
             return Result<CounterOfferDto>.BadRequest(
                 "Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny."
             );
-        
+
         if (request.Items.Any(x => x.ItemId <= 0))
             return Result<CounterOfferDto>.BadRequest("Niepoprawne ID przedmiotu");
 
@@ -148,75 +148,75 @@ public sealed class CounterOffersService(
         };
     }
 
-public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
-    string auth0UserId,
-    CounterOfferListingsQuery query,
-    CancellationToken ct = default)
-{
-    if (query.Page <= 0)
-        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
-
-    if (query.PageSize <= 0)
-        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
-
-    query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
-
-    var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
-    if (userError is not null)
-        return userError;
-
-    var (items, totalCount) = await repository.GetSentCounterOffersAsync(user!.ID, query, ct);
-
-    var totalPages = totalCount == 0
-        ? 1
-        : (int)Math.Ceiling(totalCount / (double)query.PageSize);
-
-    var response = new PagedResponse<CounterOfferListItemDto>
+    public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
+        string auth0UserId,
+        CounterOfferListingsQuery query,
+        CancellationToken ct = default)
     {
-        Page = query.Page,
-        PageSize = query.PageSize,
-        TotalCount = totalCount,
-        TotalPages = totalPages,
-        Elements = items
-    };
+        if (query.Page <= 0)
+            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
 
-    return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
-}
+        if (query.PageSize <= 0)
+            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
 
-public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
-    string auth0UserId,
-    CounterOfferListingsQuery query,
-    CancellationToken ct = default)
-{
-    if (query.Page <= 0)
-        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
+        query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
 
-    if (query.PageSize <= 0)
-        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
+        var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
+        if (userError is not null)
+            return userError;
 
-    query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
+        var (items, totalCount) = await repository.GetSentCounterOffersAsync(user!.ID, query, ct);
 
-    var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
-    if (userError is not null)
-        return userError;
+        var totalPages = totalCount == 0
+            ? 1
+            : (int)Math.Ceiling(totalCount / (double)query.PageSize);
 
-    var (items, totalCount) = await repository.GetReceivedCounterOffersAsync(user!.ID, query, ct);
+        var response = new PagedResponse<CounterOfferListItemDto>
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            Elements = items
+        };
 
-    var totalPages = totalCount == 0
-        ? 1
-        : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+        return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
+    }
 
-    var response = new PagedResponse<CounterOfferListItemDto>
+    public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
+        string auth0UserId,
+        CounterOfferListingsQuery query,
+        CancellationToken ct = default)
     {
-        Page = query.Page,
-        PageSize = query.PageSize,
-        TotalCount = totalCount,
-        TotalPages = totalPages,
-        Elements = items
-    };
+        if (query.Page <= 0)
+            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
 
-    return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
-}
+        if (query.PageSize <= 0)
+            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
+
+        query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
+
+        var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
+        if (userError is not null)
+            return userError;
+
+        var (items, totalCount) = await repository.GetReceivedCounterOffersAsync(user!.ID, query, ct);
+
+        var totalPages = totalCount == 0
+            ? 1
+            : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+
+        var response = new PagedResponse<CounterOfferListItemDto>
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            Elements = items
+        };
+
+        return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
+    }
 
     public async Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
         string auth0UserId,
@@ -348,7 +348,8 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
 
             if (counterOffer.TokensOffered > 0)
             {
-                var transferred = await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.User_ID, counterOffer.TokensOffered, ct);
+                var transferred =
+                    await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.User_ID, counterOffer.TokensOffered, ct);
                 if (!transferred)
                 {
                     await transaction.RollbackAsync(ct);
@@ -424,7 +425,8 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                 if (otherCounterOffer.TokensOffered > 0)
                 {
                     var transferred =
-                        await tokenEscrow.TryReleaseOwnEscrowAsync(otherCounterOffer.User_ID, otherCounterOffer.TokensOffered, ct);
+                        await tokenEscrow.TryReleaseOwnEscrowAsync(otherCounterOffer.User_ID,
+                            otherCounterOffer.TokensOffered, ct);
                     if (!transferred)
                     {
                         await transaction.RollbackAsync(ct);
@@ -452,6 +454,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     IsWanted = true
                 });
             }
+
             offer.TokensWanted = counterOffer.TokensOffered;
 
             var context = new CreateTradeContext(
@@ -478,7 +481,8 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
             if (counterOffer.TokensOffered > 0)
             {
                 var transferred =
-                    await tokenEscrow.TryTransferEscrowAsync(counterOffer.User_ID, offer.User_ID, counterOffer.TokensOffered,
+                    await tokenEscrow.TryTransferEscrowAsync(counterOffer.User_ID, offer.User_ID,
+                        counterOffer.TokensOffered,
                         ct);
                 if (!transferred)
                 {
@@ -486,6 +490,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
                     return Result<AcceptCounterOfferResponse>.Conflict("escrow_transfer_failed");
                 }
             }
+
             await unitOfWork.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
@@ -503,7 +508,7 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
             return Result<AcceptCounterOfferResponse>.InternalServerError("Akceptacja nie powiodła się");
         }
     }
-    
+
     public async Task<Result<CounterOfferCostDto>> QuoteCounterOfferAsync(
         string auth0UserId,
         int offerId,
@@ -522,13 +527,13 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
             )
         );
     }
-    
-private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
-    string auth0UserId,
-    int offerId,
-    CounterOfferDraftRequest request,
-    CancellationToken ct)
-{
+
+    private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
+        string auth0UserId,
+        int offerId,
+        CounterOfferDraftRequest request,
+        CancellationToken ct)
+    {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<CounterOfferCostDto>.Unauthorized("missing_sub_claim");
 
@@ -537,12 +542,12 @@ private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
 
         if (request.Items is null)
             return Result<CounterOfferCostDto>.BadRequest("Brak listy przedmiotów");
-        
+
         if (request.Items.Count == 0 && request.TokensOffered <= 0)
             return Result<CounterOfferCostDto>.BadRequest(
                 "Kontroferta musi zawierać co najmniej jeden przedmiot lub tokeny."
             );
-        
+
         if (request.Items.Any(x => x.ItemId <= 0))
             return Result<CounterOfferCostDto>.BadRequest("Niepoprawne ID przedmiotu");
 
@@ -573,25 +578,25 @@ private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
         return null;
     }
 
-public async Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
-    string auth0UserId,
-    int offerId,
-    CancellationToken ct = default)
-{
-    if (offerId <= 0)
-        return Result<List<CounterOfferListItemDto>>.BadRequest("invalid_offer_id");
+    public async Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
+        string auth0UserId,
+        int offerId,
+        CancellationToken ct = default)
+    {
+        if (offerId <= 0)
+            return Result<List<CounterOfferListItemDto>>.BadRequest("invalid_offer_id");
 
-    var (user, userError) = await GetActiveUser<List<CounterOfferListItemDto>>(auth0UserId, ct);
-    if (userError is not null)
-        return userError;
+        var (user, userError) = await GetActiveUser<List<CounterOfferListItemDto>>(auth0UserId, ct);
+        if (userError is not null)
+            return userError;
 
-    var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(offerId, ct);
+        var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(offerId, ct);
 
-    if (offerOwnerId != user!.ID)
-        return Result<List<CounterOfferListItemDto>>.Forbidden();
+        if (offerOwnerId != user!.ID)
+            return Result<List<CounterOfferListItemDto>>.Forbidden();
 
-    var items = await repository.GetPendingCounterOffersForOfferAsync(offerId, ct);
+        var items = await repository.GetPendingCounterOffersForOfferAsync(offerId, ct);
 
-    return Result<List<CounterOfferListItemDto>>.Success(items);
-}
+        return Result<List<CounterOfferListItemDto>>.Success(items);
+    }
 }
