@@ -1,5 +1,4 @@
 ﻿using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Features.Users.UserManagement.DTOs;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;

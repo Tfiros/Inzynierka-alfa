@@ -1,4 +1,3 @@
-using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence.Models;
 

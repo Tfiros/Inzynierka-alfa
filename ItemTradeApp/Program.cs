@@ -21,7 +21,6 @@ using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
 using ItemTradeApp.Features.EmailsNotifications;
 using Microsoft.AspNetCore.HttpOverrides;
-using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;
 using Microsoft.AspNetCore.SignalR;
 using ItemTradeApp.Features.Shared.TokenEscrow;

@@ -1,3 +1,3 @@
 ﻿namespace ItemTradeApp.Features.ItemsManagement.Items.DTOs;
 
-public sealed record ItemsListResponse(List<ItemResponse> items);
+public sealed record ItemsListResponse(List<ItemResponse> Items);

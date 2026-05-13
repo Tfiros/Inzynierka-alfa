@@ -1,5 +1,4 @@
 using FluentValidation;
-using ItemTradeApp.Features.Users.UserManagement.DTOs;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 
 namespace ItemTradeApp.Features.Users.UserManagement.Validators;

@@ -263,15 +263,15 @@ public sealed class TradesService(
         var sellerPhotos = trade.Urls.Where(u => !u.IsBuyers).Select(u => u.PhotoUrl).ToList();
 
         var dto = new TradeDetailsResponse(
-            hasBuyersItems: trade.HasBuyersItems,
-            hasSellersItems: trade.HasSellersItems,
-            buyingUserPhotos: new InTradeUserPhotos(
+            HasBuyersItems: trade.HasBuyersItems,
+            HasSellersItems: trade.HasSellersItems,
+            BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
                 buyer.ProfileInfo?.Nickname ?? "",
                 buyer.Email,
                 buyerPhotos
             ),
-            sellingUserPhotos: new InTradeUserPhotos(
+            SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
                 seller.ProfileInfo?.Nickname ?? "",
                 seller.Email,

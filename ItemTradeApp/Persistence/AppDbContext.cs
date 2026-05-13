@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using ItemTradeApp.Persistence.Models;
+﻿using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Persistence;

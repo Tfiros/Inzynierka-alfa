@@ -1,8 +1,6 @@
 using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
-using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.Users.UserInfo;
 
