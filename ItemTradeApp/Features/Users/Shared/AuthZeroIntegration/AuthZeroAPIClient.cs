@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
-using ItemTradeApp.Users.AuthZeroCommunication.Mappers;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.Mappers;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
