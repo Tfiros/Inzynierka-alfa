@@ -19,7 +19,7 @@ public sealed class NotificationsService(
 {
     private async Task<int?> ResolveUserIdAsync(ClaimsPrincipal user, CancellationToken ct)
     {
-        var auth0UserId = user?.FindFirst("sub")?.Value ?? 
+        var auth0UserId = user.FindFirst("sub")?.Value ?? 
                           user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
             ? auth0UserId.Substring("auth0|".Length)
@@ -81,7 +81,7 @@ public sealed class NotificationsService(
         var userId = await ResolveUserIdAsync(user, ct);
         if (userId is null) return Result<object>.Unauthorized("No userId mapping.");
 
-        var ids = (req.Ids ?? new List<int>())
+        var ids = req.Ids
             .Where(x => x > 0)
             .Distinct()
             .ToList();
