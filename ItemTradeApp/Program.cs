@@ -23,9 +23,9 @@ using ItemTradeApp.Features.EmailsNotifications;
 using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;
-using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.SignalR;
 using ItemTradeApp.Features.Shared.TokenEscrow;
+using ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 
 var builder = WebApplication.CreateBuilder(args);
