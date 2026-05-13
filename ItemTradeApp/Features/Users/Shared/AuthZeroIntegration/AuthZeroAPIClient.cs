@@ -67,7 +67,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         _httpFactory = httpFactory;
         _logger = logger;
 
-        var domain = opts.Value.Domain?.Trim().TrimEnd('/')
+        var domain = opts.Value.Domain.Trim().TrimEnd('/')
                      ?? throw new InvalidOperationException("Auth0:Domain is missing");
 
         BaseUrl = domain.StartsWith("http", StringComparison.OrdinalIgnoreCase)
@@ -148,7 +148,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
             ["refresh_token"] = refreshToken
         };
         if (!string.IsNullOrWhiteSpace(scope))
-            form["scope"] = scope!;
+            form["scope"] = scope;
         return PostFormAsync("/oauth/token", form, "auth0_refresh_token", ct);
     }
 

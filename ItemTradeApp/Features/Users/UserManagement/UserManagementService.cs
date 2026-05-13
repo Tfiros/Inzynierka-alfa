@@ -364,11 +364,11 @@ public sealed class UserManagementService(
 
             var roles = res.Data
                 .Where(r => !string.IsNullOrWhiteSpace(r.Name))
-                .Select(r => r.Name!)
+                .Select(r => r.Name)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            return (ok: true, localId, roles, status: ResultStatus.Success, message: (string?)null);
+            return (ok: true, localId, roles, status: ResultStatus.Success, message: null);
         });
 
         var results = await Task.WhenAll(tasks);
