@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace ItemTradeApp.Persistence;
 

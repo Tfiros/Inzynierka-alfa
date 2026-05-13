@@ -1,4 +1,6 @@
-﻿using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.TokenEscrow;
+﻿using ItemTradeApp.Features.Shared.Chat;
+using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
@@ -29,6 +31,9 @@ public interface ITradesService
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
 
     Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(int tradeId, string? auth0UserId, CancellationToken ct);
+
+    Task<Result<TradeListItemDTO>> GetByIdAsync(int tradeId, string? auth0UserId, bool isMiddlemanView,
+        CancellationToken ct);
 }
 
 public sealed class TradesService(
@@ -37,7 +42,9 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo
+    IUserRepository userRepo,
+    ITokenEscrow tokenEscrow,
+    IChatOperations chatOperations
 ) : ITradesService
 {
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
@@ -298,12 +305,25 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is not null)
             return Result<string>.Conflict("Trade already has a middleman assigned.");
 
-        trade.MiddlemanUser_ID = middleman.ID;
-        trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
+        await using var tx = await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            trade.MiddlemanUser_ID = middleman.ID;
+            trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
 
-        await tradeRepo.SaveChangesAsync(ct);
+            await chatOperations.CreateChatsForTradeAsync(
+                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.User_ID, middleman.ID), ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.InternalServerError("Assign middleman failed");
+        }
 
-        return Result<string>.Success("Middleman assigned.");
+        await chatOperations.PublishChatsCreatedAsync(trade.ID, ct);
+        return Result<string>.Success("Middleman assigned");
     }
 
     public async Task<Result<string>> UpdateTradeByMiddlemanAsync(int tradeId, UpdateTradeRequest? request, string? auth0UserId, CancellationToken ct)
@@ -375,40 +395,47 @@ public sealed class TradesService(
         {
             if (trade.Offer.TokensOffered > 0)
             {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.Customer_ID, trade.User_ID, trade.Offer.TokensOffered,
-                        ct)
-                    )
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
+                        trade.Customer_ID,
+                        trade.User_ID,
+                        trade.Offer.TokensOffered,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund seller's tokens.");
+                    return Result<string>.BadRequest("Failed to refund seller's offered tokens.");
                 }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (
-                    !await userRepo.TryRefundTokensAsync(trade.User_ID, trade.Customer_ID, trade.Offer.TokensWanted, ct)
-                )
+                if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
+                        trade.User_ID,
+                        trade.Customer_ID,
+                        trade.Offer.TokensWanted,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to refund buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to refund buyer's wanted tokens.");
                 }
             }
             
             trade.TradeStatus_ID = (int)TradeStatuses.Failed;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
             trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
+            await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            return Result<string>.Success("Successfully set as failed.");
         }
         catch
         {
             await tx.RollbackAsync(ct);
             return Result<string>.BadRequest("There was an error when trying to refund tokens");
         }
+
+        await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        return Result<string>.Success("Successfully set as failed.");
+
     }
 
     public async Task<Result<string>> SetTradeAsRealisedAsync(int tradeId,
@@ -444,18 +471,18 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.SuccesfulRealization;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Completed;
 
-            var buyersRate = new Rate()
+            var buyersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.BuyersID,
+                UserId = trade.Customer_ID,
                 Mark = request.BuyersGrade,
                 Description = request.BuyersDescription
             };
-        
-            var sellersRate = new Rate()
+
+            var sellersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = request.SellersID,
+                UserId = trade.User_ID,
                 Mark = request.SellersGrade,
                 Description = request.SellersDescription
             };
@@ -466,31 +493,61 @@ public sealed class TradesService(
             
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(trade.Customer_ID, trade.Offer.TokensOffered, ct))
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
+                        trade.Customer_ID,
+                        trade.Offer.TokensOffered,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release seller's tokens.");
+                    return Result<string>.BadRequest("Failed to release offered tokens.");
                 }
             }
 
             if (trade.Offer.TokensWanted > 0)
             {
-                if (!await userRepo.TryReleaseTokensAsync(trade.User_ID, trade.Offer.TokensWanted, ct))
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
+                        trade.User_ID,
+                        trade.Offer.TokensWanted,
+                        ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release buyer's tokens.");
+                    return Result<string>.BadRequest("Failed to release wanted tokens.");
                 }
             }
 
+            await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-            return Result<string>.Success("Successfully set as realised");
         }
         catch
         {
             await tx.RollbackAsync(ct);
             return Result<string>.BadRequest("There was an error when trying to transfer tokens");
         }
+
+        await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        return Result<string>.Success("Successfully set as realised");
+    }
+
+    public async Task<Result<TradeListItemDTO>> GetByIdAsync(int tradeId, string? auth0UserId, bool isMiddlemanView,
+        CancellationToken ct)
+    {
+        if (tradeId <= 0)
+            return Result<TradeListItemDTO>.BadRequest("trade id must be greater than 0");
+
+        var user = await TryGetUser(auth0UserId, ct);
+        if (user.Error is not null)
+        {
+            return Result<TradeListItemDTO>.Unauthorized(user.Error);
+            
+        }
+
+        var trade = await listQuery.GetTradeByIdAsync(tradeId, user.User!.ID, isMiddlemanView, ct);
+
+        return trade is null
+            ? Result<TradeListItemDTO>.NotFound("trade not found")
+            : Result<TradeListItemDTO>.Success(trade, "success");
+
     }
 
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)

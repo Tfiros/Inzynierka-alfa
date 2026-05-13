@@ -1,10 +1,8 @@
-﻿using System.Net;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ItemTradeApp.Features.Users.UserInfo;
 using ItemTradeApp.Persistence.Models;
 using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace ItemTradeApp.Policies.OwnResourcePolicy;
 
