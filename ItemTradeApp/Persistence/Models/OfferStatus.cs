@@ -7,7 +7,7 @@ public partial class OfferStatus
     [Column("id")]
     public int ID { get; set; }
     [Column("status_name")]
-    public string StatusName { get; set; }
+    public string StatusName { get; set; } = null!;
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 }
