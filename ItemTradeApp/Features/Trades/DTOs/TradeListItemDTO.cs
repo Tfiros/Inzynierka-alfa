@@ -20,5 +20,7 @@ public sealed record TradeListItemDTO(
     DateTime CreationDate,
     InTradeUserDTO Customer,
     InTradeUserDTO PostingUser,
-    int? MiddlemanUserId
+    int? MiddlemanUserId,
+    int TokensOffered,
+    int TokensWanted
 );

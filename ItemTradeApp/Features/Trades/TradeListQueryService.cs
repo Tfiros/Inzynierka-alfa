@@ -105,7 +105,9 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                         .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
                         .ToList()
                 ),
-                t.MiddlemanUser_ID
+                t.MiddlemanUser_ID,
+                t.Offer.TokensOffered,
+                t.Offer.TokensWanted
             ));
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
