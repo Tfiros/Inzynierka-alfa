@@ -29,17 +29,17 @@ public sealed class NotificationSender(
         if (userId <= 0)
             throw new ArgumentException("Invalid userId.", nameof(userId));
 
-        if (string.IsNullOrWhiteSpace(notificationTemplate.title))
-            throw new ArgumentException("Title is required.", nameof(notificationTemplate.title));
+        if (string.IsNullOrWhiteSpace(notificationTemplate.Title))
+            throw new ArgumentException("Title is required.", nameof(notificationTemplate.Title));
 
-        if (string.IsNullOrWhiteSpace(notificationTemplate.message))
-            throw new ArgumentException("Message is required.", nameof(notificationTemplate.message));
+        if (string.IsNullOrWhiteSpace(notificationTemplate.Message))
+            throw new ArgumentException("Message is required.", nameof(notificationTemplate.Message));
 
         var notification = new Notification
         {
             UserId = userId,
-            Title = notificationTemplate.title.Trim(),
-            Message = notificationTemplate.message.Trim(),
+            Title = notificationTemplate.Title.Trim(),
+            Message = notificationTemplate.Message.Trim(),
             CreatedAt = DateTimeOffset.UtcNow,
             ReadAt = null,
             IsDeleted = false
@@ -71,11 +71,11 @@ public sealed class NotificationSender(
         if (distinctUserIds.Count == 0)
             throw new ArgumentException("At least one valid userId is required.", nameof(userIds));
 
-        if (string.IsNullOrWhiteSpace(notificationTemplate.title))
-            throw new ArgumentException("Title is required.", nameof(notificationTemplate.title));
+        if (string.IsNullOrWhiteSpace(notificationTemplate.Title))
+            throw new ArgumentException("Title is required.", nameof(notificationTemplate.Title));
 
-        if (string.IsNullOrWhiteSpace(notificationTemplate.message))
-            throw new ArgumentException("Message is required.", nameof(notificationTemplate.message));
+        if (string.IsNullOrWhiteSpace(notificationTemplate.Message))
+            throw new ArgumentException("Message is required.", nameof(notificationTemplate.Message));
 
         var now = DateTimeOffset.UtcNow;
 
@@ -83,8 +83,8 @@ public sealed class NotificationSender(
             .Select(userId => new Notification
             {
                 UserId = userId,
-                Title = notificationTemplate.title.Trim(),
-                Message = notificationTemplate.message.Trim(),
+                Title = notificationTemplate.Title.Trim(),
+                Message = notificationTemplate.Message.Trim(),
                 CreatedAt = now,
                 ReadAt = null,
                 IsDeleted = false

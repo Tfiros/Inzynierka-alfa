@@ -31,7 +31,7 @@ public sealed class EmailBackgroundService(
 
                 var now = DateTimeOffset.UtcNow;
 
-                await repo.SaveSentAsync(new Persistence.Models.Email
+                await repo.SaveSentAsync(new Email
                 {
                     UserId = job.UserId,
                     Subject = job.Subject,

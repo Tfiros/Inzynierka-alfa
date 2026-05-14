@@ -1,7 +1,6 @@
 ﻿using ItemTradeApp.Features.Shared.Emails.Contracts;
 using ItemTradeApp.Features.Shared.Emails.Mappers;
 using ItemTradeApp.Persistence.Models;
-using ItemTradeApp.Resources.EmailTemplates.Models;
 
 namespace ItemTradeApp.Features.Shared.Emails.Services;
 

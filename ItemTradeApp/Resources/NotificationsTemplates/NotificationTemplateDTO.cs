@@ -1,3 +1,3 @@
 ﻿namespace ItemTradeApp.Resources.NotificationsTemplates;
 
-public record NotificationTemplateDTO(string title, string message);
+public record NotificationTemplateDTO(string Title, string Message);
