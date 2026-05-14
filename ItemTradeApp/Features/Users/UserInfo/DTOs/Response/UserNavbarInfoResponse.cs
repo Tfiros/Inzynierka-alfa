@@ -9,6 +9,7 @@ public sealed record UserNavbarInfoResponse(
     int    Experience,
     int    Level,
     List<int> ChatIds,
-    int ChatUnreadTotal
+    int ChatUnreadTotal,
+    int NotificationsUnreadTotal
 );
 public sealed record ChatInfos(int ChatId, int UnreadCount);

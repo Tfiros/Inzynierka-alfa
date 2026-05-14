@@ -23,7 +23,8 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
         }
         var level    = UserLevelCalculator.CalculateLevel(user.Experience);
         var chatIds = user.Chats.Select(c => c.ChatConversationId).ToList();
-        var unreadTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadChatThreadsTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadNotificationTotal = await userInfoRepository.GetNumberOfUnreadNotifications(userId, ct);
         var dto = new UserNavbarInfoResponse(
             user.ID,
             user.ProfileInfo.Nickname,
@@ -33,7 +34,8 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
             user.Experience,
             level,
             chatIds,
-            unreadTotal
+            unreadChatThreadsTotal,
+            unreadNotificationTotal
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }

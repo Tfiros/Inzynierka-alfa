@@ -2,8 +2,8 @@
 
 namespace ItemTradeApp.Persistence.Models;
 
-[Table("notification")]
-public class Notification
+[Table("emails")]
+public class Email
 {
     [Column("id")]
     public int Id { get; set; }
@@ -11,19 +11,17 @@ public class Notification
     [Column("user_id")]
     public int UserId { get; set; }
 
-    [Column("title")]
-    public string Title { get; set; } = null!;
+    [Column("subject")]
+    public string Subject { get; set; } = null!;
 
-    [Column("message")]
-    public string Message { get; set; } = null!;
+    [Column("body")]
+    public string Body { get; set; } = null!;
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
-    [Column("is_deleted")] 
-    public bool IsDeleted { get; set; }
 
-    [Column("read_at")]
-    public DateTimeOffset? ReadAt { get; set; }
+    [Column("sent_at")]
+    public DateTimeOffset? SentAt { get; set; }
 
     public User User { get; set; } = null!;
 }

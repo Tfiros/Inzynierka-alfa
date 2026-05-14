@@ -15,11 +15,20 @@ public interface IUserInfoRepository
 
     Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?>
         GetUserStatsByUserIdAsync(int id, CancellationToken ct);
+
+    Task<int> GetNumberOfUnreadNotifications(int id, CancellationToken ct);
 }
 public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
 {
     public async Task<bool> ExistsByAuth0IdAsync(string auth0UserId, CancellationToken ct) =>
        await dbContext.Users.AnyAsync(u => u.Auth0UserID == auth0UserId, ct);
+
+    public async Task<int> GetNumberOfUnreadNotifications(int userId, CancellationToken ct) =>
+        await dbContext.Notifications
+            .Where(n => n.UserId == userId)
+            .Where(n => n.ReadAt == null)
+            .Where(n => !n.User.IsDeleted)
+            .CountAsync(ct);
     public async Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct)
     {
         var user = await dbContext.Users
