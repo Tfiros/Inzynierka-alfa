@@ -1,7 +1,7 @@
 using Amazon;
 using Amazon.S3;
 
-namespace ItemTradeApp.Features.Images;
+namespace ItemTradeApp.Features.Shared.Images;
 
 public static class DI
 {
@@ -11,6 +11,9 @@ public static class DI
     {
         services.Configure<S3Config>(
             configuration.GetSection("AWS"));
+        
+        services.Configure<S3Folders>(
+            configuration.GetSection("S3Folders"));
 
         services.AddSingleton<IAmazonS3>(_ =>
         {

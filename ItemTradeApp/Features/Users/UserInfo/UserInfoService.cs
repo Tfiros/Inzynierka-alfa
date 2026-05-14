@@ -1,9 +1,10 @@
 using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Features.Images;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.UserInfo;
 
@@ -17,9 +18,11 @@ public interface IUserInfoService
 
 public sealed class UserInfoService(
     IUserInfoRepository userInfoRepository,
-    IImageService imageService
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : IUserInfoService
 {
+    private readonly S3Folders folders = foldersOptions.Value;
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
         var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
@@ -98,7 +101,7 @@ public sealed class UserInfoService(
 
             var newImageUrl = await imageService.UploadAsync(
                 request.Image,
-                ImageFolders.Avatars,
+                folders.Avatars,
                 ct);
 
             user.ProfileInfo.ImageUrl = newImageUrl;

@@ -2,7 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
-namespace ItemTradeApp.Features.Images;
+namespace ItemTradeApp.Features.Shared.Images;
 
 public interface IImageService
 {

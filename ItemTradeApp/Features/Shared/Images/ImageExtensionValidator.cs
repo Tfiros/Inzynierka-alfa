@@ -1,4 +1,4 @@
-namespace ItemTradeApp.Features.Images;
+namespace ItemTradeApp.Features.Shared.Images;
 
 public static class ImageExtensionValidator
 {

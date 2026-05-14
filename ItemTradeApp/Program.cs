@@ -20,7 +20,7 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
-using ItemTradeApp.Features.Images;
+using ItemTradeApp.Features.Shared.Images;
 using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;

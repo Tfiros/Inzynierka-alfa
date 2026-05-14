@@ -1,13 +1,14 @@
-﻿using ItemTradeApp.Features.Images;
-using ItemTradeApp.Features.Shared.TokenEscrow;
+﻿using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Trades;
 
@@ -51,9 +52,12 @@ public sealed class TradesService(
     IUnitOfWork unitOfWork,
     ITokenEscrow tokenEscrow,
     IChatOperations chatOperations,
-    IImageService imageService
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : ITradesService
 {
+    private readonly S3Folders folders = foldersOptions.Value;
+    
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
     {
         if (isMiddleman)
@@ -628,7 +632,7 @@ public sealed class TradesService(
         {
             uploadedUrl = await imageService.UploadAsync(
                 request.Image,
-                ImageFolders.TradeConfirmations,
+                folders.TradeConfirmations,
                 ct);
 
             trade.Urls.Add(new TradeUrl

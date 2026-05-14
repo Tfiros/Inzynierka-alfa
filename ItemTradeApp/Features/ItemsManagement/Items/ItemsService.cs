@@ -1,10 +1,11 @@
 ﻿using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Features.Images;
 using ItemTradeApp.Features.ItemsManagement.Games;
 using ItemTradeApp.Features.ItemsManagement.ItemRarities;
 using ItemTradeApp.Features.ItemsManagement.Items.DTOs;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.ItemsManagement.Items;
 
@@ -21,9 +22,12 @@ public sealed class ItemsService(
     IItemsRepository itemsRepo,
     IGamesRepository gamesRepo,
     IItemRarityRepository itemRarityRepo,
-    IImageService imageService
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : IItemsService
 {
+    
+    private readonly S3Folders folders = foldersOptions.Value;
     public async Task<Result<ItemResponse>> CreateAsync(CreateItemRequest req, CancellationToken ct)
     {
         var name = (req.Name ?? string.Empty).Trim();
@@ -52,7 +56,7 @@ public sealed class ItemsService(
         try
         {
             uploadedPhotoUrl = req.Image is not null
-                ? await imageService.UploadAsync(req.Image, ImageFolders.Items, ct)
+                ? await imageService.UploadAsync(req.Image, folders.Items, ct)
                 : "";
 
             var entity = new Item
@@ -123,7 +127,7 @@ public sealed class ItemsService(
 
             var newPhotoUrl = await imageService.UploadAsync(
                 req.Image,
-                ImageFolders.Items,
+                folders.Items,
                 ct);
 
             entity.Photo_URL = newPhotoUrl;
