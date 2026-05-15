@@ -20,14 +20,19 @@ public sealed class GamesController(IGamesService service) : ControllerBase
         return res.ToActionResult();
     }
     [HttpPost]
-    public async Task<ActionResult<Result<GameResponse>>> Create([FromBody] CreateGameRequest req, CancellationToken ct = default)
+    public async Task<ActionResult<Result<GameResponse>>> Create(
+        [FromForm] CreateGameRequest req,
+        CancellationToken ct = default)
     {
         var res = await service.CreateAsync(req, ct);
         return res.ToActionResult();
     }
 
     [HttpPut("{id:int}")]
-    public async Task<ActionResult<Result<GameResponse>>> Update([FromRoute] int id, [FromBody] UpdateGameRequest req, CancellationToken ct = default)
+    public async Task<ActionResult<Result<GameResponse>>> Update(
+        [FromRoute] int id,
+        [FromForm] UpdateGameRequest req,
+        CancellationToken ct = default)
     {
         var res = await service.UpdateAsync(id, req, ct);
         return res.ToActionResult();

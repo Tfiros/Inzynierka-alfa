@@ -36,6 +36,9 @@ public sealed class ImageService : IImageService
         string folder,
         CancellationToken ct = default)
     {
+        
+        const long maxFileSize = 5 * 1024 * 1024;
+        
         if (file is null)
             throw new ArgumentNullException(nameof(file));
 
@@ -44,6 +47,9 @@ public sealed class ImageService : IImageService
 
         if (string.IsNullOrWhiteSpace(folder))
             throw new ArgumentException("Folder nie może być pusty.", nameof(folder));
+        
+        if (file.Length > maxFileSize)
+            throw new ArgumentException("File size exceeded.");
 
         if (!ImageExtensionValidator.IsValidImage(file))
             throw new ArgumentException("Nieprawidłowy plik obrazu.", nameof(file));
