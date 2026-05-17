@@ -3,6 +3,6 @@
 public sealed record UpdateItemRequest(
     string Name,
     int EstimatedTokenValue,
-    int RarityItemId,
+    int ItemRarityId,
     IFormFile? Image
 );

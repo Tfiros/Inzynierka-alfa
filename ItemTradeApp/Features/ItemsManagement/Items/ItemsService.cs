@@ -111,9 +111,9 @@ public sealed class ItemsService(
             changed = true;
         }
 
-        if (req.RarityItemId > 0 && entity.ItemRarityId != req.RarityItemId)
+        if (req.ItemRarityId > 0 && entity.ItemRarityId != req.ItemRarityId)
         {
-            var itemRarity = await itemRarityRepo.GetByIdAsync(req.RarityItemId, ct);
+            var itemRarity = await itemRarityRepo.GetByIdAsync(req.ItemRarityId, ct);
             if (itemRarity is null || itemRarity.IsDeleted)
                 return Result<ItemResponse>.NotFound("Provided rarity doesn't exist.");
 
