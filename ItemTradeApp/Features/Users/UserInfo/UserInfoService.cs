@@ -14,6 +14,9 @@ public interface IUserInfoService
     Task<Result<UserProfileInfoResponse>> GetProfileInfoAsync(int userId, CancellationToken ct = default);
     Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct);
 
+    Task<Result<UserProfileInfoResponse>> UpdateAvatarAsync(string auth0UserId, UpdateAvatarRequest request,
+        CancellationToken ct);
+
 }
 
 public sealed class UserInfoService(
@@ -42,7 +45,8 @@ public sealed class UserInfoService(
             user.Experience,
             level,
             chatIds,
-            unreadTotal
+            unreadTotal,
+            user.ProfileInfo.ImageUrl
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }
@@ -93,24 +97,70 @@ public sealed class UserInfoService(
         user.ProfileInfo.Nickname = request.Nickname ?? user.ProfileInfo.Nickname;
         user.ProfileInfo.Description = request.Description ?? user.ProfileInfo.Description;
 
-        string? oldImageUrl = null;
+        await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
+        
+        var level = UserLevelCalculator.CalculateLevel(user.Experience);
+        var stats = await userInfoRepository.GetUserStatsByUserIdAsync(user.ID, ct);
+        if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
+        var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
+            
+        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
 
-        if (request.Image is not null)
+        var dto = new UserProfileInfoResponse(
+            user.ID,
+            user.Experience,
+            level,
+            user.RegistrationDate,
+            user.ProfileInfo.Nickname,
+            user.ProfileInfo.Description,
+            user.ProfileInfo.ImageUrl,
+            activeOffersCount,
+            successTradeCount,
+            rating,
+            successRate
+        );
+
+        return Result<UserProfileInfoResponse>.Success(dto);
+    }
+
+    public async Task<Result<UserProfileInfoResponse>> UpdateAvatarAsync(string auth0UserId, UpdateAvatarRequest request,
+        CancellationToken ct)
+    {
+        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
+            ? auth0UserId.Substring("auth0|".Length)
+            : auth0UserId;
+        var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
+
+        if (user is null || user.ProfileInfo is null)
+            return Result<UserProfileInfoResponse>.NotFound(
+                "user_or_profile_info_not_found: User or profile info not found");
+        string? newImageUrl = null;
+        var oldImageUrl = user.ProfileInfo.ImageUrl;
+        try
         {
-            oldImageUrl = user.ProfileInfo.ImageUrl;
-
-            var newImageUrl = await imageService.UploadAsync(
+                newImageUrl = await imageService.UploadAsync(
                 request.Image,
                 folders.Avatars,
                 ct);
 
             user.ProfileInfo.ImageUrl = newImageUrl;
-        }
 
-        await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
-        if (!string.IsNullOrWhiteSpace(oldImageUrl))
-            await imageService.DeleteAsync(oldImageUrl, ct);
-        
+            await userInfoRepository.UpdateUserWithProfileInfoAsync(user.ProfileInfo, ct);
+
+            if (!string.IsNullOrWhiteSpace(oldImageUrl))
+            {
+                await imageService.DeleteAsync(oldImageUrl, ct);
+            }
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(newImageUrl))
+            {
+                await imageService.DeleteAsync(newImageUrl, ct);
+            }
+
+            return Result<UserProfileInfoResponse>.InternalServerError("avatar_upload_failed");
+        }
         var level = UserLevelCalculator.CalculateLevel(user.Experience);
         var stats = await userInfoRepository.GetUserStatsByUserIdAsync(user.ID, ct);
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");

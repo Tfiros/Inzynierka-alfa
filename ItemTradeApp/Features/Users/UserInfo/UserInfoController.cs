@@ -34,7 +34,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
     //[Authorize(Policy = "OwnResource")]
     [HttpPut("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateProfile(
-        [FromForm] UpdateProfileRequest request,
+        [FromBody] UpdateProfileRequest request,
         CancellationToken ct)
     {
         if (request is null)
@@ -72,6 +72,29 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         CancellationToken ct = default)
     {
         var result = await userInfoOfferService.GetPagedHistoryAsync(id, page,pageSize, ct);
+        return result.ToActionResult();
+    }
+    
+    //[Authorize(Policy = "OwnResource")]
+    [HttpPut("profileInfo/{id:int}/avatar")]
+    public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateAvatar(
+        [FromForm] UpdateAvatarRequest request,
+        CancellationToken ct = default)
+    {
+        if (request.Image is null)
+        {
+            var bad = Result<UserProfileInfoResponse>.BadRequest("Image is required");
+            return bad.ToActionResult();
+        }
+
+        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+        {
+            var unauthorized = Result<UserProfileInfoResponse>.Unauthorized("Missing sub claim in JWT.");
+            return unauthorized.ToActionResult();
+        }
+
+        var result = await userInfoService.UpdateAvatarAsync(auth0UserId, request, ct);
         return result.ToActionResult();
     }
 }
