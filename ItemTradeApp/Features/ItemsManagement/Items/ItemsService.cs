@@ -193,6 +193,7 @@ public sealed class ItemsService(
             i.Photo_URL,
             i.EstimatedTokenValue,
             i.Game.ID,
-            i.Game.Name
+            i.Game.Name,
+            i.ItemRarityId
         );
 }
