@@ -4,6 +4,7 @@ public sealed record InTradeUserDTO(
     int UserId,
     string Nickname,
     string Email,
+    string? ImageUrl,
     List<ItemInfoDTO>? OfferedItems
     );
 
