@@ -1,12 +1,15 @@
 using ItemTradeApp.Features.Shared.TokenEscrow;
 ﻿using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Emails.Services;
+using ItemTradeApp.Features.Shared.Notifications;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Resources.NotificationsTemplates;
 
 namespace ItemTradeApp.Features.Trades;
 
@@ -44,7 +47,9 @@ public sealed class TradesService(
     IUnitOfWork unitOfWork,
     IUserRepository userRepo,
     ITokenEscrow tokenEscrow,
-    IChatOperations chatOperations
+    IChatOperations chatOperations,
+    INotificationSender notificationsSender,
+    IEmailGenerationService emailGenerationService
 ) : ITradesService
 {
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
@@ -295,7 +300,7 @@ public sealed class TradesService(
 
         var middleman = tryGetMiddleman.User!;
 
-        var trade = await tradeRepo.GetByIdAsync(request.TradeId, ct);
+        var trade = await tradeRepo.GetTradeWithOfferByIdAsync(request.TradeId, ct);
         if (trade is null)
             return Result<string>.NotFound("Trade not found.");
 
@@ -323,6 +328,24 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsCreatedAsync(trade.ID, ct);
+
+        try
+        {
+            await notificationsSender.SendManyAsync(
+                [
+                    trade.User_ID,
+                    trade.Customer_ID
+                ],
+                NotificationsMessages.TradeStatusChanged(
+                    trade.Offer.Title,
+                    TradeStatuses.InRealization.ToString()),
+                ct);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
         return Result<string>.Success("Middleman assigned");
     }
 
@@ -434,6 +457,41 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        
+        try
+        {
+            await notificationsSender.SendManyAsync(
+                [
+                    trade.User_ID,
+                    trade.Customer_ID
+                ],
+                NotificationsMessages.TradeCancelled(
+                    trade.Offer.Title),
+                ct);
+
+            await emailGenerationService.SendTradeCancelledAsync(
+                trade.User_ID,
+                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
+                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                middleman.ProfileInfo?.Nickname ?? middleman.Email,
+                trade,
+                trade.Offer,
+                ct);
+
+            await emailGenerationService.SendTradeCancelledAsync(
+                trade.Customer_ID,
+                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
+                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                middleman.ProfileInfo?.Nickname ?? middleman.Email,
+                trade,
+                trade.Offer,
+                ct);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
         return Result<string>.Success("Successfully set as failed.");
 
     }
@@ -526,6 +584,40 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
+        
+        try
+        {
+            await notificationsSender.SendManyAsync(
+                [
+                    trade.User_ID,
+                    trade.Customer_ID
+                ],
+                NotificationsMessages.TradeStatusChanged(
+                    trade.Offer.Title,
+                    TradeStatuses.SuccesfulRealization.ToString()),
+                ct);
+
+            await emailGenerationService.SendTradeCompletedAsync(
+                trade.User_ID,
+                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
+                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                trade,
+                trade.Offer,
+                ct);
+
+            await emailGenerationService.SendTradeCompletedAsync(
+                trade.Customer_ID,
+                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
+                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                trade,
+                trade.Offer,
+                ct);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
         return Result<string>.Success("Successfully set as realised");
     }
 

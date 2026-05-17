@@ -30,6 +30,10 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         => await db.Trades
             .Where(t => t.ID == tradeId)
             .Include(t => t.Offer)
+            .Include(t => t.Customer)
+            .ThenInclude(u => u.ProfileInfo)
+            .Include(t => t.PostingUser)
+            .ThenInclude(u => u.ProfileInfo)
             .FirstOrDefaultAsync(ct);
 
     public async Task AddAsync(Trade trade, CancellationToken ct)

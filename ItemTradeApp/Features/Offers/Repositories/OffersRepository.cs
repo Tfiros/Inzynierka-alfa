@@ -23,6 +23,8 @@ public interface IOffersRepository
     Task<Offer?> GetOfferByIdAsync(int offerId, CancellationToken ct = default);
 
     Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default);
+    
+    Task<Offer?> GetOfferWithItemsAsync(int offerId, CancellationToken ct);
 }
 
 public class OffersRepository(AppDbContext dbContext) : IOffersRepository
@@ -95,6 +97,18 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         var updated = await dbContext.Offers.Where(o => o.ID == offerId && o.OfferStatus_ID == (int)OfferStatuses.Active)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.InRealization), ct);
         return updated == 1;
+    }
+    
+    public async Task<Offer?> GetOfferWithItemsAsync(int offerId, CancellationToken ct)
+    {
+        return await dbContext.Offers
+            .Include(o => o.ListingItems)
+            .ThenInclude(li => li.Item)
+            .ThenInclude(i => i.Game)
+            .Include(o => o.ListingItems)
+            .ThenInclude(li => li.Item)
+            .ThenInclude(i => i.ItemRarity)
+            .FirstOrDefaultAsync(o => o.ID == offerId, ct);
     }
 
     #region offerRepoHelpers
