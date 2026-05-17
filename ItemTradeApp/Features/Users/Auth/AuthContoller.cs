@@ -121,6 +121,11 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             User.FindFirst("preferred_username")?.Value ??
             User.FindFirst(ClaimTypes.Email)?.Value;
         var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+        {
+            var unauthorized = Result<AuthMeDTO>.Unauthorized("Missing sub claim in JWT.");
+            return unauthorized.ToActionResult();
+        }
         var roles = User.FindAll("https://inzynierka.com/roles")
             .Select(x => x.Value)
             .Distinct()

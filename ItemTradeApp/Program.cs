@@ -22,9 +22,9 @@ using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.Notifications;
 using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Policies;
-using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.SignalR;
 using ItemTradeApp.Features.Shared.TokenEscrow;
+using ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 
 var builder = WebApplication.CreateBuilder(args);

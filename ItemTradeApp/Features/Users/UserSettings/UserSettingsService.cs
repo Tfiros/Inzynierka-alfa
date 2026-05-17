@@ -1,6 +1,6 @@
-﻿using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
+﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.UserSettings.DTOs;
-using ItemTradeApp.Users.AuthZeroCommunication;
 
 namespace ItemTradeApp.Features.Users.UserSettings;
 
@@ -70,8 +70,8 @@ public sealed class UserSettingsService(IUserSettingsRepository userSettingsRepo
             if (!auth0Result.IsSuccess)
             {
                 var msg =
-                    auth0Result.Data?.Details?.ErrorDescription
-                    ?? auth0Result.Data?.Details?.Text
+                    auth0Result.Data?.Details.ErrorDescription
+                    ?? auth0Result.Data?.Details.Text
                     ?? auth0Result.Message
                     ?? "auth0_update_user_failed";
 

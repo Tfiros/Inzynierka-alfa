@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.Chat.DTOs;
+using ItemTradeApp.Features.Chat.Repositories;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.AspNetCore.SignalR;
 

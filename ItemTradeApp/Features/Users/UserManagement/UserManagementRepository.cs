@@ -1,5 +1,4 @@
-﻿using ItemTradeApp.Features.Users.UserManagement.DTOs;
-using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
+﻿using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
 using ItemTradeApp.Features.Users.UserManagement.Enums;
 using ItemTradeApp.Persistence;

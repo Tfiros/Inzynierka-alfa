@@ -13,19 +13,17 @@ public sealed class SmtpEmailSender(
     {
         var smtp = smtpOpt.Value;
 
-        using var client = new SmtpClient(smtp.Host, smtp.Port)
-        {
-            EnableSsl = smtp.EnableSsl,
-            Credentials = new NetworkCredential(smtp.Username, smtp.Password),
-        };
+        using var client = new SmtpClient(smtp.Host, smtp.Port);
 
-        using var mail = new MailMessage
-        {
-            From = new MailAddress(smtp.SenderEmail, smtp.SenderName),
-            Subject = msg.Subject,
-            Body = msg.HtmlBody,
-            IsBodyHtml = true
-        };
+        client.EnableSsl = smtp.EnableSsl;
+        client.Credentials = new NetworkCredential(smtp.Username, smtp.Password);
+
+        using var mail = new MailMessage();
+
+        mail.From = new MailAddress(smtp.SenderEmail, smtp.SenderName);
+        mail.Subject = msg.Subject;
+        mail.Body = msg.HtmlBody;
+        mail.IsBodyHtml = true;
 
         mail.To.Add(new MailAddress(msg.To));
 

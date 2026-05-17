@@ -1,8 +1,9 @@
-﻿using ItemTradeApp.Features.Chat.DTOs;
+﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Chat.DTOs;
 using ItemTradeApp.Features.Chat.Helpers;
-using ItemTradeApp.Features.Chat.Services;
+using ItemTradeApp.Features.Chat.Repositories;
 
-namespace ItemTradeApp.Features.Chat;
+namespace ItemTradeApp.Features.Chat.Services;
 
 public interface IChatService
 {

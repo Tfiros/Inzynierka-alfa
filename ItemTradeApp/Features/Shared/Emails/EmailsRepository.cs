@@ -5,7 +5,7 @@ namespace ItemTradeApp.Features.Shared.Emails;
 
 public interface IEmailsRepository
 {
-    Task SaveSentAsync(Persistence.Models.Email row, CancellationToken ct);
+    Task SaveSentAsync(Email row, CancellationToken ct);
 }
 
 public sealed class EmailsRepository(AppDbContext db) : IEmailsRepository

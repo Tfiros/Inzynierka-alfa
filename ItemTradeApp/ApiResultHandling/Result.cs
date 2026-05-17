@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.ApiResultHandling;
+﻿namespace ItemTradeApp.ApiResultHandling;
 
 public class Result<T>(bool isSuccess, ResultStatus status, T? data, string? message = null)
 {

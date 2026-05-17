@@ -1,6 +1,4 @@
-﻿using ItemTradeApp.Persistence.Models;
-
-namespace ItemTradeApp.Resources.NotificationsTemplates;
+﻿namespace ItemTradeApp.Resources.NotificationsTemplates;
 
 public static class NotificationsMessages
 {

@@ -1,6 +1,6 @@
 ﻿namespace ItemTradeApp.Features.Users.Auth.DTOs.ResponseDtos;
 public sealed record AuthMeDTO(
-    int userId,
+    int UserId,
     bool IsAuthenticated,
     string? Login,
     List<string> Roles

@@ -1,3 +1,4 @@
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 ﻿using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -42,7 +43,6 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo,
     ITokenEscrow tokenEscrow,
     IChatOperations chatOperations
 ) : ITradesService
@@ -262,15 +262,15 @@ public sealed class TradesService(
         var sellerPhotos = trade.Urls.Where(u => !u.IsBuyers).Select(u => u.PhotoUrl).ToList();
 
         var dto = new TradeDetailsResponse(
-            hasBuyersItems: trade.HasBuyersItems,
-            hasSellersItems: trade.HasSellersItems,
-            buyingUserPhotos: new InTradeUserPhotos(
+            HasBuyersItems: trade.HasBuyersItems,
+            HasSellersItems: trade.HasSellersItems,
+            BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
                 buyer.ProfileInfo?.Nickname ?? "",
                 buyer.Email,
                 buyerPhotos
             ),
-            sellingUserPhotos: new InTradeUserPhotos(
+            SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
                 seller.ProfileInfo?.Nickname ?? "",
                 seller.Email,

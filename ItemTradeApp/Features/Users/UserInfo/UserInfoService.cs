@@ -1,8 +1,6 @@
 using ItemTradeApp.ApiResultHandling;
-using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
-using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.Users.UserInfo;
 
@@ -19,9 +17,9 @@ public sealed class UserInfoService(IUserInfoRepository userInfoRepository) : IU
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
         var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
-        if (user is null)
+        if (user is null || user.ProfileInfo is null)
         {
-            return Result<UserNavbarInfoResponse>.NotFound("user_not_found: User not found");
+            return Result<UserNavbarInfoResponse>.NotFound("user_or_profile_info_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(user.Experience);
         var chatIds = user.Chats.Select(c => c.ChatConversationId).ToList();
