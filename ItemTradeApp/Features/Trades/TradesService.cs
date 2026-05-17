@@ -24,7 +24,7 @@ public interface ITradesService
 
     Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
 
@@ -125,6 +125,7 @@ public sealed class TradesService(
         int pageSize,
         TradesQuery? query,
         string? auth0UserId,
+        bool isMiddleman,
         CancellationToken ct)
     {
         var (p, ps) = validator.Normalize(page, pageSize);
@@ -137,7 +138,6 @@ public sealed class TradesService(
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.New);
         if (invalid is not null) return invalid;
-        const bool isMiddlemanView = true;
 
         var (items, total) = await listQuery.GetTradesAsync(
             status: TradeStatuses.New,
@@ -145,7 +145,7 @@ public sealed class TradesService(
             pageSize: ps,
             callerUserId: user.ID,
             q: query ?? new TradesQuery(),
-            isMiddlemanView: isMiddlemanView,
+            isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: false,
             ct: ct);
 
