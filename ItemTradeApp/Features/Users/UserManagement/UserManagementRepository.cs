@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
+﻿using ItemTradeApp.Features.Users.UserManagement.DTOs.Internal;
+using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
 using ItemTradeApp.Features.Users.UserManagement.Enums;
 using ItemTradeApp.Persistence;
@@ -36,6 +37,14 @@ public interface IUserManagementRepository
             IReadOnlyCollection<string>? auth0IdFilter = null,
             IReadOnlyCollection<string>? middlemanAuth0Ids = null,
             CancellationToken ct = default);
+
+    Task<List<DeleteUserOfferRefund>> GetActiveUserOffersForRefundAsync(int userId, CancellationToken ct = default);
+    Task<List<DeleteUserCounterOfferRefund>> GetOwnUserCounterOffersForRefundAsync(int userId, CancellationToken ct = default);
+    Task<List<DeleteUserCounterOfferRefund>> GetReceivedUserCounterOffersForRefundAsync(int userId, CancellationToken ct = default);
+    Task<List<DeleteUserTradeRefund>> GetTradesInProgressForRefundAsync(int userId, CancellationToken ct = default);
+
+    Task<int> DenyReceivedUserCounterOffersForRefundAsync(int userId, CancellationToken ct = default);
+
 }
 
 public class UserManagementRepository(AppDbContext dbContext) : IUserManagementRepository
@@ -88,7 +97,7 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         CancellationToken ct = default)
     {
         return dbContext.CounterOffers
-            .Where(co => co.User_ID == userId)
+            .Where(co => co.User_ID == userId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(co => co.CounterOfferStatus_Id, newStatus),
                 ct);
@@ -161,6 +170,50 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
             stats?.MiddlemenCount ?? 0,
             stats?.TotalUsers ?? 0);
     }
+
+    public Task<List<DeleteUserOfferRefund>> GetActiveUserOffersForRefundAsync(int userId,
+        CancellationToken ct = default)
+        => dbContext.Offers
+            .AsNoTracking()
+            .Where(o => o.User_ID == userId && o.OfferStatus_ID == (int)OfferStatuses.Active && o.TokensOffered > 0)
+            .Select(o => new DeleteUserOfferRefund(o.TokensOffered)).ToListAsync(ct);
+
+
+    public Task<List<DeleteUserCounterOfferRefund>> GetOwnUserCounterOffersForRefundAsync(int userId,
+        CancellationToken ct = default)
+        => dbContext.CounterOffers
+            .AsNoTracking()
+            .Where(co => co.User_ID == userId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending &&
+                         co.TokensOffered > 0)
+            .Select(co => new DeleteUserCounterOfferRefund(co.User_ID, co.TokensOffered)).ToListAsync(ct);
+
+    public Task<List<DeleteUserCounterOfferRefund>> GetReceivedUserCounterOffersForRefundAsync(int userId,
+        CancellationToken ct = default)
+        => dbContext.CounterOffers
+            .AsNoTracking()
+            .Where(co => co.Offer.User_ID == userId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending &&
+                         co.TokensOffered > 0)
+            .Select(co => new DeleteUserCounterOfferRefund( co.User_ID, co.TokensOffered)).ToListAsync(ct);
+
+    public Task<List<DeleteUserTradeRefund>> GetTradesInProgressForRefundAsync(int userId,
+        CancellationToken ct = default)
+        => dbContext.Trades
+            .AsNoTracking()
+            .Where(t => (t.User_ID == userId || t.Customer_ID == userId) &&
+                        (t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
+                         t.TradeStatus_ID == (int)TradeStatuses.New))
+            .Select(t => new DeleteUserTradeRefund(
+                t.Customer_ID,
+                t.User_ID,
+                t.Offer.TokensOffered,
+                t.Offer.TokensWanted))
+            .ToListAsync(ct);
+
+    public Task<int> DenyReceivedUserCounterOffersForRefundAsync(int userId, CancellationToken ct = default)
+        => dbContext.CounterOffers
+            .Where(co => co.Offer.User_ID == userId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
+            .ExecuteUpdateAsync(s => s.SetProperty(co => co.CounterOfferStatus_Id, (int)CounterOfferStatuses.Denied),
+                ct);
 
     private IQueryable<User> BuildBaseQuery(
         UserListQuery query,
