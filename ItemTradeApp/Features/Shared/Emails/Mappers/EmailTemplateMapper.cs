@@ -57,7 +57,6 @@ public static class EmailTemplateMapper
             SellerNickname = sellerNick,
             OfferName = offer.Title,
             CreatedAt = trade.CreationDate,
-            TokensCost = trade.TokenCost,
             BuyerItems = offer.ListingItems.Where(i => i.IsWanted)
                 .Select(li => new EmailItemModel
                 {
@@ -84,7 +83,6 @@ public static class EmailTemplateMapper
             SellerNickname = sellerNick,
             OfferName = offer.Title,
             CreatedAt = trade.CreationDate,
-            TokensCost = trade.TokenCost,
         };
     public static TradeFinishedEmailModel MapToTradeFinishedEmailModel(string buyerNick, 
         string sellerNick,
@@ -97,6 +95,5 @@ public static class EmailTemplateMapper
         MiddlemanNickname = middlemanNick ?? string.Empty,
         OfferName = offer.Title,
         CreatedAt = trade.CreationDate,
-        TokensCost = trade.TokenCost,
     };
 }

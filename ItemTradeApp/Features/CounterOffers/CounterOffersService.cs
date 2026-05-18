@@ -464,8 +464,7 @@ public sealed class CounterOffersService(
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
-                SellerId: offer.User_ID,
-                TokenCost: 0
+                SellerId: offer.User_ID
             );
 
             var createdTrade = await tradeCreation.ExecuteAsync(context, ct);

@@ -15,7 +15,6 @@ public sealed record ItemInfoDTO(
 public sealed record TradeListItemDTO(
     int TradeId,
     int OfferId,
-    int TokenCost,
     int TradeStatusId,
     DateTime CreationDate,
     InTradeUserDTO Customer,
