@@ -35,6 +35,8 @@ public partial class Offer
     public virtual OfferStatus OfferStatus { get; set; } = null!;
 
     public virtual ICollection<Trade> Trades { get; set; } = new List<Trade>();
+    
+    public virtual ICollection<UserFavouriteOffer> FavoruitedBy { get; set; } = new List<UserFavouriteOffer>();
 
     public virtual User User { get; set; } = null!;
 }
