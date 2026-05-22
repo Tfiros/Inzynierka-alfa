@@ -3,7 +3,9 @@ using ItemTradeApp.Features.ItemsManagement.Games;
 using ItemTradeApp.Features.ItemsManagement.ItemRarities;
 using ItemTradeApp.Features.ItemsManagement.Items.DTOs;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.ItemsManagement.Items;
 
@@ -19,9 +21,13 @@ public interface IItemsService
 public sealed class ItemsService(
     IItemsRepository itemsRepo,
     IGamesRepository gamesRepo,
-    IItemRarityRepository itemRarityRepo
+    IItemRarityRepository itemRarityRepo,
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : IItemsService
 {
+    
+    private readonly S3Folders folders = foldersOptions.Value;
     public async Task<Result<ItemResponse>> CreateAsync(CreateItemRequest req, CancellationToken ct)
     {
         var name = (req.Name ?? string.Empty).Trim();
@@ -45,20 +51,36 @@ public sealed class ItemsService(
         if (await itemsRepo.ExistsByNameAsync(name, ct))
             return Result<ItemResponse>.BadRequest("Item with the same name already exists.");
 
-        var entity = new Item
+        string? uploadedPhotoUrl = null;
+
+        try
         {
-            Name = name,
-            Game_ID = game.ID,
-            ItemRarityId = itemRarity.ID,
-            EstimatedTokenValue = req.EstimatedTokenValue,
-            Photo_URL = "",
-            IsDeleted = false
-        };
+            uploadedPhotoUrl = req.Image is not null
+                ? await imageService.UploadAsync(req.Image, folders.Items, ct)
+                : "";
 
-        await itemsRepo.AddAsync(entity, ct);
-        await itemsRepo.SaveChangesAsync(ct);
+            var entity = new Item
+            {
+                Name = name,
+                Game_ID = game.ID,
+                ItemRarityId = itemRarity.ID,
+                EstimatedTokenValue = req.EstimatedTokenValue,
+                Photo_URL = uploadedPhotoUrl,
+                IsDeleted = false
+            };
 
-        return Result<ItemResponse>.Created(ToResponse(entity));
+            await itemsRepo.AddAsync(entity, ct);
+            await itemsRepo.SaveChangesAsync(ct);
+
+            return Result<ItemResponse>.Created(ToResponse(entity));
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(uploadedPhotoUrl))
+                await imageService.DeleteAsync(uploadedPhotoUrl, ct);
+
+            return Result<ItemResponse>.InternalServerError("item_create_failed");
+        }
     }
 
     public async Task<Result<ItemResponse>> UpdateAsync(int id, UpdateItemRequest req, CancellationToken ct)
@@ -89,13 +111,30 @@ public sealed class ItemsService(
             changed = true;
         }
 
-        if (req.RarityItemId > 0 && entity.ItemRarityId != req.RarityItemId)
+        if (req.ItemRarityId > 0 && entity.ItemRarityId != req.ItemRarityId)
         {
-            var itemRarity = await itemRarityRepo.GetByIdAsync(req.RarityItemId, ct);
+            var itemRarity = await itemRarityRepo.GetByIdAsync(req.ItemRarityId, ct);
             if (itemRarity is null || itemRarity.IsDeleted)
                 return Result<ItemResponse>.NotFound("Provided rarity doesn't exist.");
 
             entity.ItemRarityId = itemRarity.ID;
+            changed = true;
+        }
+        
+        if (req.Image is not null)
+        {
+            var oldPhotoUrl = entity.Photo_URL;
+
+            var newPhotoUrl = await imageService.UploadAsync(
+                req.Image,
+                folders.Items,
+                ct);
+
+            entity.Photo_URL = newPhotoUrl;
+
+            if (!string.IsNullOrWhiteSpace(oldPhotoUrl))
+                await imageService.DeleteAsync(oldPhotoUrl, ct);
+
             changed = true;
         }
 
@@ -112,6 +151,10 @@ public sealed class ItemsService(
             return Result<string>.NoContent();
 
         entity.IsDeleted = true;
+
+        if (!string.IsNullOrWhiteSpace(entity.Photo_URL))
+            await imageService.DeleteAsync(entity.Photo_URL, ct);
+
         await itemsRepo.SaveChangesAsync(ct);
 
         return Result<string>.NoContent("Deleted.");
@@ -144,5 +187,13 @@ public sealed class ItemsService(
     }
 
     private static ItemResponse ToResponse(Item i)
-        => new(i.ID, i.Name, i.Photo_URL, i.EstimatedTokenValue, i.Game.ID, i.Game.Name);
+        => new(
+            i.ID,
+            i.Name,
+            i.Photo_URL,
+            i.EstimatedTokenValue,
+            i.Game.ID,
+            i.Game.Name,
+            i.ItemRarityId
+        );
 }

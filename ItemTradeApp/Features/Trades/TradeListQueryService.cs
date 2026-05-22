@@ -90,6 +90,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                     t.Customer.ID,
                     t.Customer.ProfileInfo.Nickname,
                     isMiddlemanView ? t.Customer.Email : null,
+                    t.Customer.ProfileInfo.ImageUrl,
                     t.Offer.ListingItems
                         .Where(x => x.IsWanted)
                         .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
@@ -99,6 +100,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                     t.PostingUser.ID,
                     t.PostingUser.ProfileInfo.Nickname,
                     isMiddlemanView ? t.PostingUser.Email : null,
+                    t.PostingUser.ProfileInfo.ImageUrl,
                     t.Offer.ListingItems
                         .Where(x => !x.IsWanted)
                         .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
