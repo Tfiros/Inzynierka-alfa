@@ -314,7 +314,7 @@ public partial class AppDbContext : DbContext
             entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
 
             entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(50).IsRequired();
-            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Message).HasColumnName("message").HasMaxLength(400).IsRequired();
 
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.ReadAt).HasColumnName("read_at");
