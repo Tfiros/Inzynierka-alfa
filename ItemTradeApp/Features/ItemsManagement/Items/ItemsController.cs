@@ -8,7 +8,7 @@ namespace ItemTradeApp.Features.ItemsManagement.Items;
 
 [ApiController]
 [Route("[controller]")]
-//[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin")]
 public sealed class ItemsController(IItemsService service) : ControllerBase
 {
     [HttpPost]

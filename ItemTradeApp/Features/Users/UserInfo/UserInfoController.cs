@@ -11,7 +11,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 
 [ApiController]
 [Route("[controller]")]
-//[Authorize]
+[Authorize]
 public class UserInfoController(IUserInfoService userInfoService, IUserInfoOfferService userInfoOfferService) : ControllerBase
 {
     [HttpGet("profileInfo/{id:int}")]
@@ -31,7 +31,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         var result = await userInfoService.GetNavbarInfoAsync(id, ct);
         return result.ToActionResult();
     }
-    //[Authorize(Policy = "OwnResource")]
+    [Authorize(Policy = "OwnResource")]
     [HttpPut("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,
@@ -75,7 +75,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         return result.ToActionResult();
     }
     
-    //[Authorize(Policy = "OwnResource")]
+    [Authorize(Policy = "OwnResource")]
     [HttpPut("profileInfo/{id:int}/avatar")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> UpdateAvatar(
         [FromForm] UpdateAvatarRequest request,
