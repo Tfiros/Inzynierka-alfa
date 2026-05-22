@@ -18,6 +18,7 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.Favourites;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.Notifications;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -193,6 +194,7 @@ builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterSharedFeaturesDi(builder.Configuration);
 builder.Services.RegisterCounterOffersDI();
+builder.Services.RegisterFavouriteFeatureDi();
 builder.Services.RegisterTokenEscrowFeaturesDi();
 var app = builder.Build();
 

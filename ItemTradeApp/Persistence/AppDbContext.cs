@@ -15,6 +15,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<CounterOffer> CounterOffers { get; set; } = null!;
 
     public virtual DbSet<CounterOfferStatus> CounterOfferStatuses { get; set; } = null!;
+    
+    public virtual DbSet<UserFavouriteOffer> UserFavouriteOffers { get; set; } = null!;
 
     public virtual DbSet<Game> Games { get; set; } = null!;
 
@@ -66,6 +68,20 @@ public partial class AppDbContext : DbContext
             
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Auth0UserID).IsUnique();
+        });
+
+        modelBuilder.Entity<UserFavouriteOffer>(entity =>
+        {
+            entity.HasKey(e => new { e.User_ID, e.Offer_ID });
+
+            entity.ToTable("user_favourite_offer");
+
+            entity.Property(e => e.AddedAt).HasColumnType("timestamptz");
+
+            entity.HasOne(u => u.User).WithMany(f => f.FavouriteOffers)
+                .HasForeignKey(u => u.User_ID);
+            entity.HasOne(o => o.Offer).WithMany(f => f.FavoruitedBy)
+                .HasForeignKey(o => o.Offer_ID);
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
