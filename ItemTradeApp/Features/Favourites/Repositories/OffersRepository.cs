@@ -10,6 +10,6 @@ public interface IOffersRepository
 
 public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 {
-    public Task<bool> OfferExistsAsync(int offerId, CancellationToken ct = default)
-        =>  dbContext.Offers.AsNoTracking().AnyAsync(o => o.ID == offerId, ct);
+    public async Task<bool> OfferExistsAsync(int offerId, CancellationToken ct = default)
+        => await dbContext.Offers.AsNoTracking().AnyAsync(o => o.ID == offerId, ct);
 }

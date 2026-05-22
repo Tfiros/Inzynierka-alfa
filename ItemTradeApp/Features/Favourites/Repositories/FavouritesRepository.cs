@@ -20,24 +20,23 @@ public interface IFavouritesRepository
 
 public class FavouritesRepository(AppDbContext dbContext) : IFavouritesRepository
 {
-    public async Task<List<int>> GetFavouriteIdsAsync(int userId, CancellationToken ct = default)
-    {
-        var favouriteIds = await dbContext.UserFavouriteOffers.AsNoTracking()
+    public async Task<List<int>> GetFavouriteIdsAsync(int userId, CancellationToken ct = default) 
+        => await dbContext.UserFavouriteOffers.AsNoTracking()
             .Where(f => f.User_ID == userId)
             .Select(f => f.Offer_ID)
             .ToListAsync(ct);
-        return favouriteIds;
-    }
+        
+    
 
-    public Task<bool> FavouriteExistsAsync(int userId, int offerId, CancellationToken ct = default)
-        => dbContext.UserFavouriteOffers.AsNoTracking()
+    public async Task<bool> FavouriteExistsAsync(int userId, int offerId, CancellationToken ct = default)
+        => await dbContext.UserFavouriteOffers.AsNoTracking()
             .AnyAsync(f => f.User_ID == userId && f.Offer_ID == offerId, ct);
 
     public void Add(UserFavouriteOffer userFavouriteOffer)
         => dbContext.UserFavouriteOffers.Add(userFavouriteOffer);
 
-    public Task<int> RemoveAsync(int userId, int offerId, CancellationToken ct = default)
-        => dbContext.UserFavouriteOffers.Where(f => f.User_ID == userId && f.Offer_ID == offerId)
+    public async Task<int> RemoveAsync(int userId, int offerId, CancellationToken ct = default)
+        => await dbContext.UserFavouriteOffers.Where(f => f.User_ID == userId && f.Offer_ID == offerId)
             .ExecuteDeleteAsync(ct);
 
     public async Task<(List<OfferListingDTO> favourites, int totalCount)> GetFavouriteOffersPagedAsync(int userId,
