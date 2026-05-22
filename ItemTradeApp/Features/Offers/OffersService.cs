@@ -514,7 +514,7 @@ public class OffersService(
             }
 
             var trade = await tradeCreation.ExecuteAsync(
-                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID, 0), ct);
+                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID), ct);
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);

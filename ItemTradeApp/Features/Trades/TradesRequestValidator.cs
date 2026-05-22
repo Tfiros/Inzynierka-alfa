@@ -49,19 +49,6 @@ public sealed class TradesRequestValidator : ITradesRequestValidator
                 "searchText must be a number when searchBy is TradeId or OfferId.");
         }
 
-        if (q.MinTokenCost is not null && q.MinTokenCost < 0)
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("minTokenCost must be >= 0.");
-
-        if (q.MaxTokenCost is not null && q.MaxTokenCost < 0)
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("maxTokenCost must be >= 0.");
-
-        if (q.MinTokenCost is not null && q.MaxTokenCost is not null &&
-            q.MinTokenCost.Value > q.MaxTokenCost.Value)
-        {
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-                "minTokenCost cannot be greater than maxTokenCost.");
-        }
-
         if (q.CreatedFrom is not null && q.CreatedTo is not null &&
             q.CreatedFrom.Value > q.CreatedTo.Value)
         {

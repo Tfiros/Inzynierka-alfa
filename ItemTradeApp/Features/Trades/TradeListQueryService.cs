@@ -84,7 +84,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             .Select(t => new TradeListItemDTO(
                 t.ID,
                 t.Offer_ID,
-                t.TokenCost,
                 t.TradeStatus_ID,
                 t.CreationDate,
                 new InTradeUserDTO(
@@ -112,11 +111,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {
-        if (q.MinTokenCost is not null)
-            query = query.Where(t => t.TokenCost >= q.MinTokenCost.Value);
-
-        if (q.MaxTokenCost is not null)
-            query = query.Where(t => t.TokenCost <= q.MaxTokenCost.Value);
 
         if (q.CreatedFrom is not null)
             query = query.Where(t => t.CreationDate >= q.CreatedFrom.Value);
@@ -182,12 +176,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
 
             TradeSortBy.CreationDateDesc
                 => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID),
-
-            TradeSortBy.TokenCostAsc
-                => query.OrderBy(t => t.TokenCost).ThenByDescending(t => t.CreationDate),
-
-            TradeSortBy.TokenCostDesc
-                => query.OrderByDescending(t => t.TokenCost).ThenByDescending(t => t.CreationDate),
 
             TradeSortBy.TradeIdAsc
                 => query.OrderBy(t => t.ID),

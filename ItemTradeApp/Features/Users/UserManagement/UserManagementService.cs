@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
@@ -17,6 +18,7 @@ public interface IUserManagementService
 public sealed class UserManagementService(
     IAuthZeroManagementClient authZeroManagementClient,
     IUserManagementRepository userManagementRepository,
+    ITokenEscrow tokenEscrow,
     IUnitOfWork unitOfWork,
     IOptions<AuthZeroOptions> auth0Options) : IUserManagementService
 {
@@ -175,6 +177,8 @@ public sealed class UserManagementService(
         if (user is null)
             return Result<string>.NotFound("user_not_found_local_db");
 
+        
+
         var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuth0UserId, ct);
         if (!auth0Result.IsSuccess)
             return new Result<string>(false, auth0Result.Status, default, auth0Result.Message ?? "auth0_admin_delete_user_failed");
@@ -183,6 +187,64 @@ public sealed class UserManagementService(
 
         try
         {
+            
+            var offersToBeRefunded = await userManagementRepository.GetActiveUserOffersForRefundAsync(user.ID, ct);
+            var ownCoToBeRefunded = await userManagementRepository.GetOwnUserCounterOffersForRefundAsync(user.ID, ct);
+            var othersCoToBeRefunded =
+                await userManagementRepository.GetReceivedUserCounterOffersForRefundAsync(user.ID, ct);
+            var tradesToBeRefunded = await userManagementRepository.GetTradesInProgressForRefundAsync(user.ID, ct);
+
+            foreach (var offer in offersToBeRefunded)
+            {
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(user.ID, offer.TokensOffered, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("release_own_offer_escrow_failed");
+                }
+            }
+            
+            foreach (var counterOffer in ownCoToBeRefunded)
+            {
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.OwnerUserId, counterOffer.TokensOffered, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("release_own_counteroffer_escrow_failed");
+                }
+            }
+            
+            foreach (var counterOffer in othersCoToBeRefunded)
+            {
+                if (!await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.OwnerUserId, counterOffer.TokensOffered, ct))
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result<string>.BadRequest("release_received_counteroffer_escrow_failed");
+                }
+            }
+            
+            foreach (var trade in tradesToBeRefunded)
+            {
+
+                if (trade.TokensOffered > 0)
+                {
+                    if (!await tokenEscrow.TryRefundEscrowToOtherAsync(trade.CustomerId, trade.SellerId,
+                            trade.TokensOffered, ct))
+                    {
+                        await tx.RollbackAsync(ct);
+                        return Result<string>.BadRequest("refund_trade_offered_escrow_failed");
+                    }
+                }
+                
+                if (trade.TokensWanted > 0)
+                {
+                    if (!await tokenEscrow.TryRefundEscrowToOtherAsync(trade.SellerId, trade.CustomerId,
+                            trade.TokensWanted, ct))
+                    {
+                        await tx.RollbackAsync(ct);
+                        return Result<string>.BadRequest("refund_trade_wanted_escrow_failed");
+                    }
+                }
+            }
+            
             await userManagementRepository.UpdateOfferStatusesForUserAsync(
                 user.ID,
                 OfferStatusesToCancel,
@@ -199,6 +261,7 @@ public sealed class UserManagementService(
                 user.ID,
                 (int)CounterOfferStatuses.Denied,
                 ct);
+            await userManagementRepository.DenyReceivedUserCounterOffersForRefundAsync(user.ID, ct);
 
             userManagementRepository.SoftDeleteUser(user);
 
