@@ -46,9 +46,9 @@ public sealed class UserInfoService(
             user.Experience,
             level,
             chatIds,
-            user.ProfileInfo.ImageUrl,
             unreadChatThreadsTotal,
-            unreadNotificationTotal
+            unreadNotificationTotal,
+            user.ProfileInfo.ImageUrl
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }

@@ -1,6 +1,7 @@
 ﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.ItemsManagement.Games.DTOs;
 using ItemTradeApp.Features.ItemsManagement.Genres;
+using ItemTradeApp.Features.ItemsManagement.ItemRarities;
 using ItemTradeApp.Features.ItemsManagement.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.Images;
