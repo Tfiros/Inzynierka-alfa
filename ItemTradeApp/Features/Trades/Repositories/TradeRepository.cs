@@ -7,7 +7,7 @@ namespace ItemTradeApp.Features.Trades.Repositories;
 public interface ITradeRepository
 {
     IQueryable<Trade> QueryNoTracking();
-    Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct);
+    Task<Trade?> GetTradeWithOfferAndUsersDetailsByIdAsync(int tradeId, CancellationToken ct);
     Task AddAsync(Trade trade, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<Trade?> GetByIdAsync(int tradeId, CancellationToken ct);
@@ -20,13 +20,15 @@ public interface ITradeRepository
 
     Task<(int All, int Completed, int MyActive, int Created)>
         GetUserStatsAsync(int postingUserId, CancellationToken ct);
+
+    Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct);
 }
 
 public sealed class TradeRepository(AppDbContext db) : ITradeRepository
 {
     public IQueryable<Trade> QueryNoTracking() => db.Trades.AsNoTracking();
 
-    public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct)
+    public async Task<Trade?> GetTradeWithOfferAndUsersDetailsByIdAsync(int tradeId, CancellationToken ct)
         => await db.Trades
             .Where(t => t.ID == tradeId)
             .Include(t => t.Offer)
@@ -36,6 +38,10 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
             .ThenInclude(u => u.ProfileInfo)
             .FirstOrDefaultAsync(ct);
 
+    public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct) =>
+        await db.Trades.Where(t => t.ID == tradeId)
+            .Include(t => t.Offer)
+            .FirstOrDefaultAsync(ct);
     public async Task AddAsync(Trade trade, CancellationToken ct)
         => await db.Trades.AddAsync(trade, ct).AsTask();
 

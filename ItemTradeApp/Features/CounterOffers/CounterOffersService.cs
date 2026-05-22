@@ -553,8 +553,8 @@ public sealed class CounterOffersService(
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
                     counterOffer.User_ID,
-                    counterOffer.User.ProfileInfo?.Nickname ?? counterOffer.User.Email,
-                    caller.ProfileInfo?.Nickname ?? caller.Email,
+                    counterOffer.User.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {counterOffer.User.Email}",
+                    caller.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {caller.ID}",
                     createdTrade,
                     offer,
                     ct);

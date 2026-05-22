@@ -39,6 +39,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         CancellationToken ct)
     {
         return await db.CounterOffers
+            .AsSplitQuery()
             .Include(co => co.User)
             .ThenInclude(u => u.ProfileInfo)
             .Include(co => co.Offer)

@@ -102,6 +102,8 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     public async Task<Offer?> GetOfferWithItemsAsync(int offerId, CancellationToken ct)
     {
         return await dbContext.Offers
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(o => o.ListingItems)
             .ThenInclude(li => li.Item)
             .ThenInclude(i => i.Game)
