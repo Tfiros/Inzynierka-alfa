@@ -34,9 +34,17 @@ public interface ICounterOffersRepository
 
 public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
 {
-    public async Task<CounterOffer?> GetCounterOfferWithOfferAndItemsAsync(int counterOfferId, CancellationToken ct)
+    public async Task<CounterOffer?> GetCounterOfferWithOfferAndItemsAsync(
+        int counterOfferId,
+        CancellationToken ct)
     {
         return await db.CounterOffers
+            .AsSplitQuery()
+            .Include(co => co.User)
+            .ThenInclude(u => u.ProfileInfo)
+            .Include(co => co.Offer)
+            .ThenInclude(o => o.User)
+            .ThenInclude(u => u.ProfileInfo)
             .Include(co => co.Offer)
             .ThenInclude(o => o.ListingItems)
             .Include(co => co.ListingCounterOfferItems)

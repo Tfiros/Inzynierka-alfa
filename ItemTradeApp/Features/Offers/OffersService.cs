@@ -5,11 +5,14 @@ using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Offers.Repositories;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared.Emails.Services;
+using ItemTradeApp.Features.Shared.Notifications;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Resources.NotificationsTemplates;
 
 namespace ItemTradeApp.Features.Offers;
 
@@ -54,7 +57,10 @@ public class OffersService(
     ICounterOfferRepository counterOfferRepository,
     ITradeCreation tradeCreation,
     ITokenEscrow tokenEscrow,
-    IUnitOfWork unitOfWork) : IOffersService
+    IUnitOfWork unitOfWork,
+    INotificationSender notificationSender,
+    IEmailGenerationService emailGenerationService
+) : IOffersService
 {
     public async Task<Result<PagedResponse<OfferListingDTO>>> GetOffersAsync(OfferListingsQuery query,
         CancellationToken ct = default)
@@ -169,6 +175,27 @@ public class OffersService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
+            try
+            {
+                await notificationSender.SendAsync(
+                    offer.User_ID,
+                    NotificationsMessages.OfferSuccessfullyAdded(offer.Title),
+                    ct);
+
+                var offerForEmail = await offersRepository.GetOfferWithItemsAsync(offer.ID, ct);
+
+                if (offerForEmail is not null)
+                {
+                    await emailGenerationService.SendOfferCreatedAsync(
+                        userState.Id,
+                        offerForEmail,
+                        ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
             var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
             if (response is null) return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
             return Result<OfferDetailsDTO>.Created(response);
@@ -449,6 +476,10 @@ public class OffersService(
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
         if (!okUser) return Result<AcceptOfferResponse>.Unauthorized(errUser!);
         if (userState is null) return Result<AcceptOfferResponse>.Unauthorized("user_fetch_error");
+        var buyer = await userRepository
+            .GetNotificationDataByAuth0IdAsync(auth0UserId, ct);
+        if (buyer is null)
+            return Result<AcceptOfferResponse>.Unauthorized("buyer_not_found");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
 
@@ -516,8 +547,56 @@ public class OffersService(
             var trade = await tradeCreation.ExecuteAsync(
                 new CreateTradeContext(offer.ID, userState.Id, offer.User_ID), ct);
 
+            var seller = await userRepository
+                .GetNotificationDataByIdAsync(offer.User_ID, ct);
+
+            if (seller is null)
+            {
+                await tx.RollbackAsync(ct);
+                return Result<AcceptOfferResponse>.NotFound("seller_not_found");
+            }
+            
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
+            
+            try
+            {
+                await notificationSender.SendAsync(
+                    offer.User_ID,
+                    NotificationsMessages.TradeCreatedFromOffer(
+                        offer.Title),
+                    ct);
+
+                await notificationSender.SendAsync(
+                    userState.Id,
+                    NotificationsMessages.TradeCreatedFromOffer(
+                        offer.Title),
+                    ct);
+                
+                
+                var buyerNick = buyer.Nickname ?? buyer.Email;
+                var sellerNick = seller.Nickname ?? seller.Email;
+
+                await emailGenerationService.SendTradeCreatedAsync(
+                    offer.User_ID,
+                    buyerNick,
+                    sellerNick,
+                    trade,
+                    offer,
+                    ct);
+
+                await emailGenerationService.SendTradeCreatedAsync(
+                    userState.Id,
+                    buyerNick,
+                    sellerNick,
+                    trade,
+                    offer,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
 
             return Result<AcceptOfferResponse>.Success(new AcceptOfferResponse(trade.ID, offer.ID));
         }
@@ -794,5 +873,4 @@ public class OffersService(
 
     #endregion
     
-
 }
