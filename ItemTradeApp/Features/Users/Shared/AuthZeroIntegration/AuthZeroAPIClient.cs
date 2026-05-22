@@ -4,8 +4,7 @@ using System.Text;
 using System.Text.Json;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
-using ItemTradeApp.Users.AuthZeroCommunication;
-using ItemTradeApp.Users.AuthZeroCommunication.Mappers;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.Mappers;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
@@ -68,7 +67,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         _httpFactory = httpFactory;
         _logger = logger;
 
-        var domain = opts.Value.Domain?.Trim().TrimEnd('/')
+        var domain = opts.Value.Domain.Trim().TrimEnd('/')
                      ?? throw new InvalidOperationException("Auth0:Domain is missing");
 
         BaseUrl = domain.StartsWith("http", StringComparison.OrdinalIgnoreCase)
@@ -149,7 +148,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
             ["refresh_token"] = refreshToken
         };
         if (!string.IsNullOrWhiteSpace(scope))
-            form["scope"] = scope!;
+            form["scope"] = scope;
         return PostFormAsync("/oauth/token", form, "auth0_refresh_token", ct);
     }
 
@@ -212,10 +211,8 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
         try
         {
             var httpClient = _httpFactory.CreateClient("Auth0Public");
-            using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path))
-            {
-                Content = new FormUrlEncodedContent(form)
-            };
+            using var req = new HttpRequestMessage(HttpMethod.Post, Combine(BaseUrl, path));
+            req.Content = new FormUrlEncodedContent(form);
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             using var resp = await httpClient.SendAsync(req, ct);

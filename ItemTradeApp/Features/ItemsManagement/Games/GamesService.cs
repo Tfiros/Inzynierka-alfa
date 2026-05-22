@@ -1,9 +1,12 @@
-﻿using ItemTradeApp.Features.ItemsManagement.Games.DTOs;
+﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.ItemsManagement.Games.DTOs;
 using ItemTradeApp.Features.ItemsManagement.Genres;
 using ItemTradeApp.Features.ItemsManagement.ItemRarities;
 using ItemTradeApp.Features.ItemsManagement.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Persistence.Models;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.ItemsManagement.Games;
 
@@ -23,9 +26,12 @@ public interface IGamesService
 public sealed class GamesService(
     IGamesRepository gamesRepo,
     IGenresRepository genresRepo,
-    IItemRarityRepository itemRarityRepo
+    IItemRarityRepository itemRarityRepo,
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : IGamesService
 {
+    private readonly S3Folders folders = foldersOptions.Value;
     public async Task<Result<DropdownResponse>> GetGamesForDropdownAsync(string? searchText, CancellationToken ct)
     {
         var games = await gamesRepo.GetGamesForDropdown(searchText, ct);
@@ -60,27 +66,43 @@ public sealed class GamesService(
 
         var gameOfName = await gamesRepo.GetByNameAsync(name, ct);
         if (gameOfName is not null && !gameOfName.IsDeleted)
-        {
             return Result<GameResponse>.Conflict("There is already a game with this name.");
+
+        string? uploadedPhotoUrl = null;
+
+        try
+        {
+            uploadedPhotoUrl = req.Image is not null
+                ? await imageService.UploadAsync(req.Image, folders.Games, ct)
+                : "";
+
+            var game = new Game
+            {
+                Name = name,
+                Genre_ID = genre.ID,
+                Photo_URL = uploadedPhotoUrl,
+                IsDeleted = false
+            };
+
+            var rarities = raritiesNames.Select(r => new ItemRarity
+            {
+                RarityName = r,
+                IsDeleted = false
+            }).ToList();
+
+            var createdGame = await gamesRepo.CreateWithRaritiesAsync(game, rarities, ct);
+
+            return Result<GameResponse>.Created(
+                ToResponse(createdGame),
+                "Game created successfully");
         }
-        
-        var game = new Game
+        catch
         {
-            Name = name,
-            Genre_ID = genre.ID,
-            Photo_URL = "",
-            IsDeleted = false
-        };
+            if (!string.IsNullOrWhiteSpace(uploadedPhotoUrl))
+                await imageService.DeleteAsync(uploadedPhotoUrl, ct);
 
-        var rarities = raritiesNames.Select(r => new ItemRarity
-        {
-            RarityName = r,
-            IsDeleted = false
-        }).ToList();
-
-        var createdGame = await gamesRepo.CreateWithRaritiesAsync(game, rarities, ct);
-
-        return Result<GameResponse>.Created(ToResponse(createdGame), "Game created successfully");
+            return Result<GameResponse>.InternalServerError("game_create_failed");
+        }
     }
 
     public async Task<Result<GameResponse>> UpdateAsync(int id, UpdateGameRequest req, CancellationToken ct)
@@ -118,6 +140,23 @@ public sealed class GamesService(
             changed = true;
         }
 
+        if (req.Image is not null)
+        {
+            var oldPhotoUrl = entity.Photo_URL;
+
+            var newPhotoUrl = await imageService.UploadAsync(
+                req.Image,
+                folders.Games,
+                ct);
+
+            entity.Photo_URL = newPhotoUrl;
+
+            if (!string.IsNullOrWhiteSpace(oldPhotoUrl))
+                await imageService.DeleteAsync(oldPhotoUrl, ct);
+
+            changed = true;
+        }
+        
         if (changed)
             await gamesRepo.SaveChangesAsync(ct);
 
@@ -131,6 +170,8 @@ public sealed class GamesService(
             return Result<string>.NoContent();
 
         entity.IsDeleted = true;
+        if (!string.IsNullOrWhiteSpace(entity.Photo_URL))
+            await imageService.DeleteAsync(entity.Photo_URL, ct);
         await gamesRepo.SaveChangesAsync(ct);
 
         return Result<string>.NoContent("Game deleted.");

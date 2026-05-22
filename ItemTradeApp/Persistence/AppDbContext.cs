@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using ItemTradeApp.Persistence.Models;
+﻿using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Persistence;
@@ -12,39 +10,41 @@ public partial class AppDbContext : DbContext
     {
     }
 
-    public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<User> Users { get; set; } = null!;
 
-    public virtual DbSet<CounterOffer> CounterOffers { get; set; }
+    public virtual DbSet<CounterOffer> CounterOffers { get; set; } = null!;
 
-    public virtual DbSet<CounterOfferStatus> CounterOfferStatuses { get; set; }
+    public virtual DbSet<CounterOfferStatus> CounterOfferStatuses { get; set; } = null!;
+    
+    public virtual DbSet<UserFavouriteOffer> UserFavouriteOffers { get; set; } = null!;
 
-    public virtual DbSet<Game> Games { get; set; }
+    public virtual DbSet<Game> Games { get; set; } = null!;
 
-    public virtual DbSet<Genre> Genres { get; set; }
+    public virtual DbSet<Genre> Genres { get; set; } = null!;
 
-    public virtual DbSet<Item> Items { get; set; }
-    public virtual DbSet<ItemRarity> ItemRarities { get; set; }
+    public virtual DbSet<Item> Items { get; set; } = null!;
+    public virtual DbSet<ItemRarity> ItemRarities { get; set; } = null!;
 
-    public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; }
+    public virtual DbSet<ListingCounterOfferItem> ListingCounterOfferItems { get; set; } = null!;
 
-    public virtual DbSet<ListingItems> ListingItems { get; set; }
+    public virtual DbSet<ListingItems> ListingItems { get; set; } = null!;
 
-    public virtual DbSet<Offer> Offers { get; set; }
+    public virtual DbSet<Offer> Offers { get; set; } = null!;
 
-    public virtual DbSet<OfferStatus> OfferStatuses { get; set; }
+    public virtual DbSet<OfferStatus> OfferStatuses { get; set; } = null!;
 
-    public virtual DbSet<ProfileInfo> ProfileInfos { get; set; }
-    public virtual DbSet<TradeUrl> TradeUrls { get; set; }
-    public virtual DbSet<Trade> Trades { get; set; }
+    public virtual DbSet<ProfileInfo> ProfileInfos { get; set; } = null!;
+    public virtual DbSet<TradeUrl> TradeUrls { get; set; } = null!;
+    public virtual DbSet<Trade> Trades { get; set; } = null!;
 
-    public virtual DbSet<TradeStatus> TradeStatuses { get; set; }
-    public virtual DbSet<Notification> Notifications { get; set; }
-    public virtual DbSet<Email> Emails { get; set; }
-    public virtual DbSet<Rate> Rates { get; set; }
-    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
-    public virtual DbSet<ConversationMember> ConversationMembers { get; set; }
+    public virtual DbSet<TradeStatus> TradeStatuses { get; set; } = null!;
+    public virtual DbSet<Notification> Notifications { get; set; } = null!;
+    public virtual DbSet<Email> Emails { get; set; } = null!;
+    public virtual DbSet<Rate> Rates { get; set; } = null!;
+    public virtual DbSet<ChatMessage> ChatMessages { get; set; } = null!;
+    public virtual DbSet<ConversationMember> ConversationMembers { get; set; } = null!;
 
-    public virtual DbSet<ChatConversation> ChatConversations { get; set; }
+    public virtual DbSet<ChatConversation> ChatConversations { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,6 +68,20 @@ public partial class AppDbContext : DbContext
             
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Auth0UserID).IsUnique();
+        });
+
+        modelBuilder.Entity<UserFavouriteOffer>(entity =>
+        {
+            entity.HasKey(e => new { e.User_ID, e.Offer_ID });
+
+            entity.ToTable("user_favourite_offer");
+
+            entity.Property(e => e.AddedAt).HasColumnType("timestamptz");
+
+            entity.HasOne(u => u.User).WithMany(f => f.FavouriteOffers)
+                .HasForeignKey(u => u.User_ID);
+            entity.HasOne(o => o.Offer).WithMany(f => f.FavoruitedBy)
+                .HasForeignKey(o => o.Offer_ID);
         });
 
         modelBuilder.Entity<CounterOffer>(entity =>
@@ -283,7 +297,12 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => new { e.UserId, e.TradeId })
                 .HasName("PK_Rate");
 
-            entity.ToTable("rate");
+            entity.ToTable("rate", t =>
+            {
+                t.HasCheckConstraint(
+                    "CK_Rate_Mark_1_10",
+                    "[Mark] >= 1.0 AND [Mark] <= 10.0");
+            });
 
             entity.Property(e => e.Mark)
                 .HasColumnType("decimal(3,1)");
@@ -300,10 +319,7 @@ public partial class AppDbContext : DbContext
                 .WithMany(p => p.Rates)
                 .HasForeignKey(d => d.TradeId)
                 .HasConstraintName("FK_Rate_Trade");
-
-            entity.HasCheckConstraint(
-                "CK_Rate_Mark_1_10",
-                "[Mark] >= 1.0 AND [Mark] <= 10.0");
+            
         });
         modelBuilder.Entity<Notification>(entity =>
         {

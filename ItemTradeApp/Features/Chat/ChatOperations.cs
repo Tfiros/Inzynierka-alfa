@@ -1,4 +1,5 @@
 using ItemTradeApp.Features.Chat.Helpers;
+using ItemTradeApp.Features.Chat.Repositories;
 using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Persistence.Models;
 

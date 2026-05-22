@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("trade")]
@@ -8,8 +6,6 @@ public partial class Trade
 {
     [Column("id")]
     public int ID { get; set; }
-    [Column("token_cost")]
-    public int TokenCost { get; set; }
     [Column("creation_date")]
     public DateTime CreationDate { get; set; }
     [Column("completition_date")]

@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 
-namespace ItemTradeApp.Users.AuthZeroCommunication.Mappers;
+namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.Mappers;
 
 public static class AuthZeroDetailsMapper
 {

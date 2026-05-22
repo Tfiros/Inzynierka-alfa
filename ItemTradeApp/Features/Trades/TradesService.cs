@@ -1,15 +1,15 @@
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 ﻿using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
-using ItemTradeApp.Features.Shared.Emails.Services;
-using ItemTradeApp.Features.Shared.Notifications;
+using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
-using ItemTradeApp.Resources.NotificationsTemplates;
+using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Trades;
 
@@ -25,7 +25,7 @@ public interface ITradesService
 
     Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
     Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
 
@@ -37,6 +37,12 @@ public interface ITradesService
 
     Task<Result<TradeListItemDTO>> GetByIdAsync(int tradeId, string? auth0UserId, bool isMiddlemanView,
         CancellationToken ct);
+
+    Task<Result<string>> UploadTradeImageAsync(
+        int tradeId,
+        UploadTradeImageRequest request,
+        string? auth0UserId,
+        CancellationToken ct);
 }
 
 public sealed class TradesService(
@@ -45,13 +51,14 @@ public sealed class TradesService(
     ITradesRequestValidator validator,
     ITradeListQueryService listQuery,
     IUnitOfWork unitOfWork,
-    IUserRepository userRepo,
     ITokenEscrow tokenEscrow,
     IChatOperations chatOperations,
-    INotificationSender notificationsSender,
-    IEmailGenerationService emailGenerationService
+    IImageService imageService,
+    IOptions<S3Folders> foldersOptions
 ) : ITradesService
 {
+    private readonly S3Folders folders = foldersOptions.Value;
+    
     public async Task<Result<UserTradeStatsResponse>> GetStatsAsync(string? auth0UserId, bool isMiddleman, CancellationToken ct)
     {
         if (isMiddleman)
@@ -119,6 +126,7 @@ public sealed class TradesService(
         int pageSize,
         TradesQuery? query,
         string? auth0UserId,
+        bool isMiddleman,
         CancellationToken ct)
     {
         var (p, ps) = validator.Normalize(page, pageSize);
@@ -131,7 +139,6 @@ public sealed class TradesService(
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.New);
         if (invalid is not null) return invalid;
-        const bool isMiddlemanView = true;
 
         var (items, total) = await listQuery.GetTradesAsync(
             status: TradeStatuses.New,
@@ -139,7 +146,7 @@ public sealed class TradesService(
             pageSize: ps,
             callerUserId: user.ID,
             q: query ?? new TradesQuery(),
-            isMiddlemanView: isMiddlemanView,
+            isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: false,
             ct: ct);
 
@@ -263,19 +270,26 @@ public sealed class TradesService(
         var buyer = trade.Customer;
         var seller = trade.PostingUser;
 
-        var buyerPhotos = trade.Urls.Where(u => u.IsBuyers).Select(u => u.PhotoUrl).ToList();
-        var sellerPhotos = trade.Urls.Where(u => !u.IsBuyers).Select(u => u.PhotoUrl).ToList();
+        var buyerPhotos = trade.Urls
+            .Where(u => u.IsBuyers && !string.IsNullOrWhiteSpace(u.PhotoUrl))
+            .Select(u => imageService.GetPresignedUrl(u.PhotoUrl))
+            .ToList();
+
+        var sellerPhotos = trade.Urls
+            .Where(u => !u.IsBuyers && !string.IsNullOrWhiteSpace(u.PhotoUrl))
+            .Select(u => imageService.GetPresignedUrl(u.PhotoUrl))
+            .ToList();
 
         var dto = new TradeDetailsResponse(
-            hasBuyersItems: trade.HasBuyersItems,
-            hasSellersItems: trade.HasSellersItems,
-            buyingUserPhotos: new InTradeUserPhotos(
+            HasBuyersItems: trade.HasBuyersItems,
+            HasSellersItems: trade.HasSellersItems,
+            BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
                 buyer.ProfileInfo?.Nickname ?? "",
                 buyer.Email,
                 buyerPhotos
             ),
-            sellingUserPhotos: new InTradeUserPhotos(
+            SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
                 seller.ProfileInfo?.Nickname ?? "",
                 seller.Email,
@@ -300,7 +314,7 @@ public sealed class TradesService(
 
         var middleman = tryGetMiddleman.User!;
 
-        var trade = await tradeRepo.GetTradeWithOfferByIdAsync(request.TradeId, ct);
+        var trade = await tradeRepo.GetByIdAsync(request.TradeId, ct);
         if (trade is null)
             return Result<string>.NotFound("Trade not found.");
 
@@ -328,24 +342,6 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsCreatedAsync(trade.ID, ct);
-
-        try
-        {
-            await notificationsSender.SendManyAsync(
-                [
-                    trade.User_ID,
-                    trade.Customer_ID
-                ],
-                NotificationsMessages.TradeStatusChanged(
-                    trade.Offer.Title,
-                    TradeStatuses.InRealization.ToString()),
-                ct);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-        
         return Result<string>.Success("Middleman assigned");
     }
 
@@ -373,20 +369,14 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
-        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
-            return Result<string>.BadRequest("Trade is not in InRealization status.");
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization && trade.TradeStatus_ID != (int)TradeStatuses.Failed)
+            return Result<string>.BadRequest("Trade is not in InRealization or Failed status.");
 
         if (request.HasBuyerItems is not null)
             trade.HasBuyersItems = request.HasBuyerItems.Value;
 
         if (request.HasSellerItems is not null)
             trade.HasSellersItems = request.HasSellerItems.Value;
-        
-        if (trade.Urls.Count == 0)
-        {
-            trade.Urls.Add(new TradeUrl { TradeId = trade.ID, PhotoUrl = "" });
-            trade.Urls.Add(new TradeUrl { TradeId = trade.ID, PhotoUrl = "" });
-        }
 
         await tradeRepo.SaveChangesAsync(ct);
         return Result<string>.Success("Trade updated.");
@@ -412,6 +402,9 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
+            return Result<string>.BadRequest("Trade is not in InRealization status.");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -457,41 +450,6 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
-        
-        try
-        {
-            await notificationsSender.SendManyAsync(
-                [
-                    trade.User_ID,
-                    trade.Customer_ID
-                ],
-                NotificationsMessages.TradeCancelled(
-                    trade.Offer.Title),
-                ct);
-
-            await emailGenerationService.SendTradeCancelledAsync(
-                trade.User_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                middleman.ProfileInfo?.Nickname ?? middleman.Email,
-                trade,
-                trade.Offer,
-                ct);
-
-            await emailGenerationService.SendTradeCancelledAsync(
-                trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                middleman.ProfileInfo?.Nickname ?? middleman.Email,
-                trade,
-                trade.Offer,
-                ct);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-        
         return Result<string>.Success("Successfully set as failed.");
 
     }
@@ -584,40 +542,6 @@ public sealed class TradesService(
         }
 
         await chatOperations.PublishChatsClosedAsync(trade.ID, ct);
-        
-        try
-        {
-            await notificationsSender.SendManyAsync(
-                [
-                    trade.User_ID,
-                    trade.Customer_ID
-                ],
-                NotificationsMessages.TradeStatusChanged(
-                    trade.Offer.Title,
-                    TradeStatuses.SuccesfulRealization.ToString()),
-                ct);
-
-            await emailGenerationService.SendTradeCompletedAsync(
-                trade.User_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                trade,
-                trade.Offer,
-                ct);
-
-            await emailGenerationService.SendTradeCompletedAsync(
-                trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                trade,
-                trade.Offer,
-                ct);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-        
         return Result<string>.Success("Successfully set as realised");
     }
 
@@ -675,6 +599,63 @@ public sealed class TradesService(
         catch (Exception ex)
         {
             return (null, ex.Message);
+        }
+    }
+    
+    public async Task<Result<string>> UploadTradeImageAsync(
+        int tradeId,
+        UploadTradeImageRequest request,
+        string? auth0UserId,
+        CancellationToken ct)
+    {
+        if (tradeId <= 0)
+            return Result<string>.BadRequest("TradeId must be > 0.");
+
+        if (request.Image is null)
+            return Result<string>.BadRequest("Image is required.");
+
+        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
+        if (tryGetMiddleman.Error is not null)
+            return Result<string>.Unauthorized(tryGetMiddleman.Error);
+
+        var middleman = tryGetMiddleman.User!;
+
+        var trade = await tradeRepo.GetByIdWithUrlsAsync(tradeId, ct);
+        if (trade is null)
+            return Result<string>.NotFound("Trade not found.");
+
+        if (trade.MiddlemanUser_ID != middleman.ID)
+            return Result<string>.Forbidden("You are not assigned to this trade.");
+
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
+            return Result<string>.BadRequest("Trade is not in realization status.");
+
+        string? uploadedUrl = null;
+
+        try
+        {
+            uploadedUrl = await imageService.UploadAsync(
+                request.Image,
+                folders.TradeConfirmations,
+                ct);
+
+            trade.Urls.Add(new TradeUrl
+            {
+                TradeId = trade.ID,
+                PhotoUrl = uploadedUrl,
+                IsBuyers = request.IsBuyers
+            });
+
+            await tradeRepo.SaveChangesAsync(ct);
+
+            return Result<string>.Created(imageService.GetPresignedUrl(uploadedUrl));
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(uploadedUrl))
+                await imageService.DeleteAsync(uploadedUrl, ct);
+
+            return Result<string>.InternalServerError("Upload Failed");
         }
     }
 }

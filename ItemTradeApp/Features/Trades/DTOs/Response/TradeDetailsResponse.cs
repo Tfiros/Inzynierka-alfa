@@ -7,4 +7,4 @@ public record InTradeUserPhotos(
     List<string> Photos);
 
 public record TradeDetailsResponse
-(bool hasBuyersItems, bool hasSellersItems, InTradeUserPhotos buyingUserPhotos, InTradeUserPhotos sellingUserPhotos);
+(bool HasBuyersItems, bool HasSellersItems, InTradeUserPhotos BuyingUserPhotos, InTradeUserPhotos SellingUserPhotos);

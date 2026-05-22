@@ -1,8 +1,6 @@
 ﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared.Notifications.DTOs;
 using ItemTradeApp.Features.Shared.Notifications.Services;
-using ItemTradeApp.Persistence.Models;
-using ItemTradeApp.Resources.NotificationsTemplates;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

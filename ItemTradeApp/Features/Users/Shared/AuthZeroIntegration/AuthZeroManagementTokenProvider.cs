@@ -1,5 +1,5 @@
-﻿using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
-using ItemTradeApp.Users.AuthZeroCommunication;
+﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;

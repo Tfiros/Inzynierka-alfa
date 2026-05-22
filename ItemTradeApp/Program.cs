@@ -18,14 +18,16 @@ using FluentValidation;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
+using ItemTradeApp.Features.Shared.Images;
+using ItemTradeApp.Features.Favourites;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.Emails.Services;
 using ItemTradeApp.Features.Shared.Notifications;
 using Microsoft.AspNetCore.HttpOverrides;
 using ItemTradeApp.Policies;
-using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.SignalR;
 using ItemTradeApp.Features.Shared.TokenEscrow;
+using ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -195,7 +197,9 @@ builder.Services.RegisterChatFeatureDi();
 builder.Services.RegisterSharedFeaturesDi(builder.Configuration);
 builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.RegisterCounterOffersDI();
+builder.Services.RegisterFavouriteFeatureDi();
 builder.Services.RegisterTokenEscrowFeaturesDi();
+builder.Services.RegisterImagesFeatureDi(builder.Configuration);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("User")]
@@ -32,6 +30,8 @@ public partial class User
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
+    
+    public virtual ICollection<UserFavouriteOffer> FavouriteOffers { get; set; } = new List<UserFavouriteOffer>();
 
     public virtual ProfileInfo? ProfileInfo { get; set; }
 

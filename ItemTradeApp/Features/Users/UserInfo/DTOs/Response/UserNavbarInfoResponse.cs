@@ -10,6 +10,7 @@ public sealed record UserNavbarInfoResponse(
     int    Level,
     List<int> ChatIds,
     int ChatUnreadTotal,
-    int NotificationsUnreadTotal
+    int NotificationsUnreadTotal,
+    string? ImageUrl
 );
 public sealed record ChatInfos(int ChatId, int UnreadCount);

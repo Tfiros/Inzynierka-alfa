@@ -1,3 +1,4 @@
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
@@ -52,6 +53,9 @@ public interface ICounterOffersService
     Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
         string auth0UserId,
         int offerId,
+        CancellationToken ct = default);
+
+    Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string auth0UserId, int counterOfferId,
         CancellationToken ct = default);
 }
 
@@ -491,8 +495,7 @@ public sealed class CounterOffersService(
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
-                SellerId: offer.User_ID,
-                TokenCost: 0
+                SellerId: offer.User_ID
             );
 
             var createdTrade = await tradeCreation.ExecuteAsync(context, ct);
@@ -673,5 +676,59 @@ public sealed class CounterOffersService(
         var items = await repository.GetPendingCounterOffersForOfferAsync(offerId, ct);
 
         return Result<List<CounterOfferListItemDto>>.Success(items);
+    }
+
+    public async Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string auth0UserId, int counterOfferId,
+        CancellationToken ct = default)
+    {
+        if (counterOfferId <= 0)
+        {
+            return Result<CounterOfferDto>.BadRequest("Niepoprawne ID");
+        }
+
+        var (user, userError) = await GetActiveUser<CounterOfferDto>(auth0UserId, ct);
+        if (userError is not null)
+            return userError;
+        
+        await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            var counterOffer = await repository.GetCounterOfferWithOfferAndItemsAsync(counterOfferId, ct);
+            if (counterOffer is null)
+            {
+                return Result<CounterOfferDto>.NotFound("Nie znaleziono kontroferty");
+            }
+
+            if (counterOffer.User_ID != user!.ID)
+            {
+                return Result<CounterOfferDto>.Forbidden();
+            }
+
+            if (counterOffer.CounterOfferStatus_Id != (int)CounterOfferStatuses.Pending)
+            {
+                return Result<CounterOfferDto>.BadRequest("Kontroferta nie jest oczekująca");
+            }
+
+            if (counterOffer.TokensOffered > 0)
+            {
+                var released = await tokenEscrow.TryReleaseOwnEscrowAsync(user.ID, counterOffer.TokensOffered, ct);
+                if (!released)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return Result<CounterOfferDto>.Conflict("token_escrow_release_failed");
+                }
+            }
+
+            counterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+            
+            await unitOfWork.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Result<CounterOfferDto>.Success(MapToCounterOfferDto(counterOffer));
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            return Result<CounterOfferDto>.InternalServerError("Anulowanie kontroferty nie powiodlow sie");
+        }
     }
 }
