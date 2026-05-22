@@ -2,8 +2,7 @@
 using System.Net.Http.Headers;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
-using ItemTradeApp.Users.AuthZeroCommunication;
-using ItemTradeApp.Users.AuthZeroCommunication.Mappers;
+using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.Mappers;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
@@ -60,10 +59,8 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 
         var httpClient = CreateAuthorizedClient(tokenRes.Data);
 
-        using var request = new HttpRequestMessage(HttpMethod.Patch, url)
-        {
-            Content = JsonContent.Create(payload)
-        };
+        using var request = new HttpRequestMessage(HttpMethod.Patch, url);
+        request.Content = JsonContent.Create(payload);
 
         using var response = await httpClient.SendAsync(request, ct);
         var responseContent = await response.Content.ReadAsStringAsync(ct);
@@ -277,10 +274,8 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         var encodedUserId = Uri.EscapeDataString(auth0UserId);
         var url = $"{ManagementBaseUrl}/users/{encodedUserId}/roles";
 
-        using var request = new HttpRequestMessage(HttpMethod.Delete, url)
-        {
-            Content = JsonContent.Create(new { roles = roleIds })
-        };
+        using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+        request.Content = JsonContent.Create(new { roles = roleIds });
 
         using var response = await httpClient.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);

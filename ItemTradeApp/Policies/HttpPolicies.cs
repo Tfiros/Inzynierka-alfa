@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Polly;
+﻿using Polly;
 using Polly.Extensions.Http;
 
 namespace ItemTradeApp.Policies;

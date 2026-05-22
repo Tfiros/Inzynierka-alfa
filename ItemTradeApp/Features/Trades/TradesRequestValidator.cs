@@ -1,3 +1,4 @@
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Persistence;
@@ -46,19 +47,6 @@ public sealed class TradesRequestValidator : ITradesRequestValidator
         {
             return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
                 "searchText must be a number when searchBy is TradeId or OfferId.");
-        }
-
-        if (q.MinTokenCost is not null && q.MinTokenCost < 0)
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("minTokenCost must be >= 0.");
-
-        if (q.MaxTokenCost is not null && q.MaxTokenCost < 0)
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest("maxTokenCost must be >= 0.");
-
-        if (q.MinTokenCost is not null && q.MaxTokenCost is not null &&
-            q.MinTokenCost.Value > q.MaxTokenCost.Value)
-        {
-            return Result<PagedResponse<TradeListItemDTO>>.BadRequest(
-                "minTokenCost cannot be greater than maxTokenCost.");
         }
 
         if (q.CreatedFrom is not null && q.CreatedTo is not null &&

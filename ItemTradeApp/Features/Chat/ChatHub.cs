@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.Chat.Helpers;
+using ItemTradeApp.Features.Chat.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 

@@ -29,13 +29,14 @@ public sealed class UserInfoService(
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
         var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
-        if (user is null)
+        if (user is null || user.ProfileInfo is null)
         {
-            return Result<UserNavbarInfoResponse>.NotFound("user_not_found: User not found");
+            return Result<UserNavbarInfoResponse>.NotFound("user_or_profile_info_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(user.Experience);
         var chatIds = user.Chats.Select(c => c.ChatConversationId).ToList();
-        var unreadTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadChatThreadsTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadNotificationTotal = await userInfoRepository.GetNumberOfUnreadNotifications(userId, ct);
         var dto = new UserNavbarInfoResponse(
             user.ID,
             user.ProfileInfo.Nickname,
@@ -45,8 +46,9 @@ public sealed class UserInfoService(
             user.Experience,
             level,
             chatIds,
-            unreadTotal,
-            user.ProfileInfo.ImageUrl
+            user.ProfileInfo.ImageUrl,
+            unreadChatThreadsTotal,
+            unreadNotificationTotal
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }

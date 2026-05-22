@@ -45,12 +45,11 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             return result.ToActionResult();
 
         var ok = result.Data;
-        
+
         if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
-            SetRefreshCookie(ok.RefreshToken!, DateTimeOffset.UtcNow.AddDays(7));
+            SetRefreshCookie(ok.RefreshToken!);
 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
-
         IssueAntiforgeryToken();
 
         var dto = new LoginResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
@@ -73,7 +72,8 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     public async Task<ActionResult<Result<RefreshResponse>>> Refresh()
     {
         var rt = Request.Cookies[RefreshCookieName];
-        if (string.IsNullOrEmpty(rt))
+
+        if (string.IsNullOrWhiteSpace(rt))
             return Result<RefreshResponse>.Unauthorized("Missing refresh token cookie.").ToActionResult();
 
         var result = await authService.RefreshAsync(rt);
@@ -83,10 +83,9 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         var ok = result.Data;
 
         if (!string.IsNullOrWhiteSpace(ok.RefreshToken))
-            SetRefreshCookie(ok.RefreshToken!, DateTimeOffset.UtcNow.AddDays(7));
+            SetRefreshCookie(ok.RefreshToken!);
 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
-
         IssueAntiforgeryToken();
 
         var dto = new RefreshResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
@@ -120,37 +119,40 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             User.FindFirst("name")?.Value ??
             User.FindFirst("preferred_username")?.Value ??
             User.FindFirst(ClaimTypes.Email)?.Value;
+
         var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<AuthMeDTO>.Unauthorized("Missing sub claim in JWT.").ToActionResult();
+
         var roles = User.FindAll("https://inzynierka.com/roles")
             .Select(x => x.Value)
             .Distinct()
             .ToList();
+
         var userId = await authService.GetUserIdAsync(auth0UserId);
+
+        if (!userId.IsSuccess)
+            return Result<AuthMeDTO>.Unauthorized("User not found.").ToActionResult();
+
         var dto = new AuthMeDTO(userId.Data, true, login, roles);
         return Result<AuthMeDTO>.Success(dto).ToActionResult();
     }
 
-    #region HELPERS
-
     private const string RefreshCookieName = "rt";
-    private const string AccessCookieName  = "at";
-
-    private bool IsDev => HttpContext.RequestServices
-        .GetRequiredService<IHostEnvironment>()
-        .IsDevelopment();
+    private const string AccessCookieName = "at";
 
     private CookieOptions BaseHttpOnlyCookie(string path) => new()
     {
         HttpOnly = true,
-        Secure   = true,
+        Secure = true,
         SameSite = SameSiteMode.None,
-        Path     = path
+        Path = path
     };
 
-    private void SetRefreshCookie(string refreshToken, DateTimeOffset expiresUtc)
+    private void SetRefreshCookie(string refreshToken)
     {
         var opts = BaseHttpOnlyCookie("/");
-        opts.Expires = expiresUtc;
         Response.Cookies.Append(RefreshCookieName, refreshToken, opts);
     }
 
@@ -164,6 +166,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
     {
         var opts = BaseHttpOnlyCookie("/");
         opts.Expires = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds);
+
         Response.Cookies.Append(AccessCookieName, accessToken, opts);
     }
 
@@ -178,10 +181,6 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);
 
         if (!string.IsNullOrWhiteSpace(tokens.RequestToken))
-        {
             Response.Headers["X-XSRF-TOKEN"] = tokens.RequestToken!;
-        }
     }
-
-    #endregion
 }

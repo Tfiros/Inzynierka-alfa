@@ -2,7 +2,7 @@
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Policies.OwnResourcePolicy;
+namespace ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 public interface IOwnResourcePolicyRepository
 {

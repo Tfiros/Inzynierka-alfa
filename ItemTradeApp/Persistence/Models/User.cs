@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 [Table("User")]
@@ -32,12 +30,16 @@ public partial class User
     public virtual ICollection<CounterOffer> CounterOffers { get; set; } = new List<CounterOffer>();
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
+    
+    public virtual ICollection<UserFavouriteOffer> FavouriteOffers { get; set; } = new List<UserFavouriteOffer>();
 
     public virtual ProfileInfo? ProfileInfo { get; set; }
 
     public virtual ICollection<Trade> CustomerTrades { get; set; } = new List<Trade>();
 
     public virtual ICollection<Trade> TrademiddlemanUsers { get; set; } = new List<Trade>();
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public virtual ICollection<Email> Emails { get; set; } = new List<Email>();
 
     public virtual ICollection<Trade> OwningTrades { get; set; } = new List<Trade>();
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();

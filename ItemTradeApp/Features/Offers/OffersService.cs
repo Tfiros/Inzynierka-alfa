@@ -1,3 +1,4 @@
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Offers.Internal;
@@ -513,7 +514,7 @@ public class OffersService(
             }
 
             var trade = await tradeCreation.ExecuteAsync(
-                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID, 0), ct);
+                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID), ct);
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);

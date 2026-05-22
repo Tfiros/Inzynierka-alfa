@@ -19,6 +19,8 @@ public class Notification
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
+    [Column("is_deleted")] 
+    public bool IsDeleted { get; set; }
 
     [Column("read_at")]
     public DateTimeOffset? ReadAt { get; set; }

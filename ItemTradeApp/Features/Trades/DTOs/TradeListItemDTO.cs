@@ -16,10 +16,11 @@ public sealed record ItemInfoDTO(
 public sealed record TradeListItemDTO(
     int TradeId,
     int OfferId,
-    int TokenCost,
     int TradeStatusId,
     DateTime CreationDate,
     InTradeUserDTO Customer,
     InTradeUserDTO PostingUser,
-    int? MiddlemanUserId
+    int? MiddlemanUserId,
+    int TokensOffered,
+    int TokensWanted
 );

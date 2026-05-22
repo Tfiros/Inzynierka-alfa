@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
+using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.ContactPage.DTOs;
-using ItemTradeApp.Features.EmaillsNotifications.Emails.Settings;
+using ItemTradeApp.Features.Shared.Emails.Settings;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;

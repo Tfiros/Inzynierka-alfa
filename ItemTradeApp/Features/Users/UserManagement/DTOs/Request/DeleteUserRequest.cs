@@ -2,5 +2,5 @@
 
 public class DeleteUserRequest
 {
-    public string AuthZeroUserId { get; set; }
+    public string AuthZeroUserId { get; set; } = string.Empty;
 }

@@ -1,4 +1,4 @@
-﻿using ItemTradeApp.Policies.OwnResourcePolicy;
+﻿using ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ItemTradeApp.Policies;

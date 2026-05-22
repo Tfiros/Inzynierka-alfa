@@ -1,5 +1,6 @@
-﻿using ItemTradeApp.Features.Shared.TokenEscrow;
-using ItemTradeApp.Features.Shared.Chat;
+using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared.TokenEscrow;
+﻿using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Features.Trades.DTOs;
@@ -280,15 +281,15 @@ public sealed class TradesService(
             .ToList();
 
         var dto = new TradeDetailsResponse(
-            hasBuyersItems: trade.HasBuyersItems,
-            hasSellersItems: trade.HasSellersItems,
-            buyingUserPhotos: new InTradeUserPhotos(
+            HasBuyersItems: trade.HasBuyersItems,
+            HasSellersItems: trade.HasSellersItems,
+            BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
                 buyer.ProfileInfo?.Nickname ?? "",
                 buyer.Email,
                 buyerPhotos
             ),
-            sellingUserPhotos: new InTradeUserPhotos(
+            SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
                 seller.ProfileInfo?.Nickname ?? "",
                 seller.Email,
@@ -368,8 +369,8 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
-        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
-            return Result<string>.BadRequest("Trade is not in InRealization status.");
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization && trade.TradeStatus_ID != (int)TradeStatuses.Failed)
+            return Result<string>.BadRequest("Trade is not in InRealization or Failed status.");
 
         if (request.HasBuyerItems is not null)
             trade.HasBuyersItems = request.HasBuyerItems.Value;
@@ -401,6 +402,9 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
+            return Result<string>.BadRequest("Trade is not in InRealization status.");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try

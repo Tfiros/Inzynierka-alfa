@@ -114,4 +114,13 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
 
         return res.ToActionResult();
     }
+
+    [HttpPost("{counterOfferId:int}/cancel")]
+    public async Task<ActionResult<Result<CounterOfferDto>>> CancelCounterOffer([FromRoute] int counterOfferId,
+        CancellationToken ct)
+    {
+        var auth0UserId = GetNormalizedAuth0UserId();
+        var result = await counterOffersService.CancelCounterOfferAsync(auth0UserId, counterOfferId, ct);
+        return result.ToActionResult();
+    }
 }

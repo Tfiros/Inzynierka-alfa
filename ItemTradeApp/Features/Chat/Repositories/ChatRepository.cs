@@ -3,7 +3,7 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ItemTradeApp.Features.Chat;
+namespace ItemTradeApp.Features.Chat.Repositories;
 
 public interface IChatRepository
 {

@@ -2,8 +2,6 @@ using System.Net;
 using System.Security.Claims;
 using ItemTradeApp.Features.Offers;
 using ItemTradeApp;
-using ItemTradeApp.Features.EmaillsNotifications;
-using ItemTradeApp.Features.EmailsNotifications.Notifications;
 using ItemTradeApp.Features.ItemsManagement;
 using ItemTradeApp.Features.Trades;
 using ItemTradeApp.Features.Users;
@@ -21,12 +19,14 @@ using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
 using ItemTradeApp.Features.Shared.Images;
+using ItemTradeApp.Features.Favourites;
+using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Shared.Notifications;
 using Microsoft.AspNetCore.HttpOverrides;
-using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Policies;
-using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.SignalR;
 using ItemTradeApp.Features.Shared.TokenEscrow;
+using ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -193,8 +193,9 @@ builder.Services.RegisterOfferFeatureDi();
 builder.Services.RegisterTradeFeaturesDi();
 builder.Services.RegisterItemsFeaturesDi();
 builder.Services.RegisterChatFeatureDi();
-builder.Services.RegisterEmailsNotificationsFeatureDi(builder.Configuration);
+builder.Services.RegisterSharedFeaturesDi(builder.Configuration);
 builder.Services.RegisterCounterOffersDI();
+builder.Services.RegisterFavouriteFeatureDi();
 builder.Services.RegisterTokenEscrowFeaturesDi();
 builder.Services.RegisterImagesFeatureDi(builder.Configuration);
 var app = builder.Build();
@@ -234,7 +235,6 @@ app.Use(async (ctx, next) =>
         path.StartsWith("/api/Auth/refresh", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Auth/csrf", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("/api/emails/enqueue", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
         //To delete after tests

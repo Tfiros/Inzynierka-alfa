@@ -1,10 +1,7 @@
 ﻿using System.Security.Claims;
-using ItemTradeApp.Features.Users.UserInfo;
-using ItemTradeApp.Persistence.Models;
-using ItemTradeApp.Policies.OwnResourcePolicy.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
-namespace ItemTradeApp.Policies.OwnResourcePolicy;
+namespace ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
 
 public class OwnResourceHanlder(IOwnResourcePolicyRepository ownResourcePolicyRepository) : AuthorizationHandler<OwnResourceRequirement>
 {

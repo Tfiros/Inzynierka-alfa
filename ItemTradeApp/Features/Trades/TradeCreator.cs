@@ -15,7 +15,6 @@ public sealed class TradeCreator(ITradeRepository tradeRepository) : ITradeCreat
             Offer_ID = context.OfferId,
             Customer_ID = context.BuyerId,
             User_ID = context.SellerId,
-            TokenCost = context.TokenCost,
             CreationDate = DateTime.UtcNow,
             CompletitionDate = null,
             TradeStatus_ID = (int)TradeStatuses.New,
