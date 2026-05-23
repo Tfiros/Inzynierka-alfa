@@ -31,6 +31,8 @@ public sealed class TradesQuery
 
     public bool? IsCounterOfferTrade { get; init; }
     public bool? ReadyForCompletion { get; init; }
+    
+    public bool OnlyMine { get; init; }
 
     public TradeSortBy SortBy { get; init; } = TradeSortBy.CreationDateDesc;
 }

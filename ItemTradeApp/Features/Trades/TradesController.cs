@@ -75,7 +75,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpGet("failed-with-return")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize]
     public async Task<ActionResult<Result<PagedResponse<TradeListItemDTO>>>> GetMyFailedWithItemsToReturn(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
