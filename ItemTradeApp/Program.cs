@@ -74,8 +74,8 @@ builder.Services.AddRateLimiter(options =>
             ? $"{type}:user:{userId}"
             : $"{type}:ip:{ip}";
 
-        //It might need to be adjusted later
-        var permitLimit = isAuth ? 20 : 30;
+
+        var permitLimit = isAuth ? 50 : 100;
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: key,
