@@ -18,20 +18,20 @@ public interface ITradeListQueryService
         bool onlyWithItemsToReturn,
         CancellationToken ct);
 
-    Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddlemanView, CancellationToken ct);
+    Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddleman, CancellationToken ct);
 }
 
 public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeListQueryService
 {
 
-    public async Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddlemanView,
+    public async Task<TradeListItemDTO?> GetTradeByIdAsync(int tradeId, int callerUserId, bool isMiddleman,
         CancellationToken ct)
     {
         var query = tradeRepo.QueryNoTracking()
             .Where(t => t.ID == tradeId)
             .Where(t => t.Customer_ID == callerUserId || t.User_ID == callerUserId ||
                         t.MiddlemanUser_ID == callerUserId);
-        return await ProjectToListItemDto(query, isMiddlemanView).SingleOrDefaultAsync(ct);
+        return await ProjectToListItemDto(query, isMiddleman).SingleOrDefaultAsync(ct);
     }
 
     public async Task<(List<TradeListItemDTO> Items, int Total)> GetTradesAsync(
@@ -50,13 +50,30 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             .Where(t => t.TradeStatus_ID == (int)status);
         if (isMiddlemanView)
         {
-            query = status == TradeStatuses.New
-                ? query.Where(t => t.MiddlemanUser_ID == null)
-                : query.Where(t => t.MiddlemanUser_ID == callerUserId);
+            if (q.OnlyMine)
+            {
+                query = query.Where(t =>
+                    t.User_ID == callerUserId ||
+                    t.Customer_ID == callerUserId);
+            }
+            else
+            {
+                query = status == TradeStatuses.New
+                    ? query.Where(t =>
+                        t.MiddlemanUser_ID == null ||
+                        t.User_ID == callerUserId ||
+                        t.Customer_ID == callerUserId)
+                    : query.Where(t =>
+                        t.MiddlemanUser_ID == callerUserId ||
+                        t.User_ID == callerUserId ||
+                        t.Customer_ID == callerUserId);
+            }
         }
         else
         {
-            query = query.Where(t => t.PostingUser.ID == callerUserId);
+            query = query.Where(t =>
+                t.User_ID == callerUserId ||
+                t.Customer_ID == callerUserId);
         }
 
         if (onlyWithItemsToReturn)
