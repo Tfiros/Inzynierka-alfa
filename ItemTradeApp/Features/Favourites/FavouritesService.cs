@@ -144,6 +144,11 @@ public class FavouritesService(IUserRepository userRepository, IFavouritesReposi
         {
             return Result<bool>.Unauthorized("user_not_found");
         }
+        
+        if (!await offersRepository.OfferExistsAsync(offerId, ct))
+        {
+            return Result<bool>.BadRequest("offer_not_found");
+        }
 
         await favouritesRepository.RemoveAsync(userId.Value, offerId, ct);
 
