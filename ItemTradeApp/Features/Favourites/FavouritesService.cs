@@ -95,9 +95,9 @@ public class FavouritesService(IUserRepository userRepository, IFavouritesReposi
             return Result<bool>.Unauthorized("user_not_found");
         }
 
-        if (!await offersRepository.OfferExistsAsync(offerId, ct))
+        if (!await offersRepository.OfferIsActiveAsync(offerId, ct))
         {
-            return Result<bool>.NotFound("offer_not_found");
+            return Result<bool>.BadRequest("offer_not_active");
         }
 
         if (await favouritesRepository.FavouriteExistsAsync(userId.Value, offerId, ct))
@@ -143,11 +143,6 @@ public class FavouritesService(IUserRepository userRepository, IFavouritesReposi
         if (userId is null)
         {
             return Result<bool>.Unauthorized("user_not_found");
-        }
-        
-        if (!await offersRepository.OfferExistsAsync(offerId, ct))
-        {
-            return Result<bool>.BadRequest("offer_not_found");
         }
 
         await favouritesRepository.RemoveAsync(userId.Value, offerId, ct);
