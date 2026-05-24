@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Threading.RateLimiting;
 using ItemTradeApp.Features.ContactPage;
 using ItemTradeApp.Features.CounterOffers;
 using FluentValidation;
@@ -53,43 +52,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
         options.KnownProxies.Add(proxyIp);
     }
 });
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddPolicy("limiterGlobal", ctx =>
-    {
-        var path = ctx.Request.Path.Value ?? "";
-        var isAuth = path.StartsWith("/api/Auth", StringComparison.OrdinalIgnoreCase);
-        
-        var type = isAuth ? "auth" : "api";
-
-        var userId =
-            ctx.User.FindFirstValue("sub") ??
-            ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-        var key = !string.IsNullOrWhiteSpace(userId)
-            ? $"{type}:user:{userId}"
-            : $"{type}:ip:{ip}";
-
-
-        var permitLimit = isAuth ? 50 : 100;
-
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: key,
-            factory: partition => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = permitLimit,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0
-            });
-    });
-});
-
-
+builder.Services.AddAppRateLimiter();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
