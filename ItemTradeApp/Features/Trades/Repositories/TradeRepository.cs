@@ -93,19 +93,24 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
             : (raw.All, raw.Completed, raw.MyActive, raw.Available);
     }
     public async Task<(int All, int Completed, int MyActive, int Created)> GetUserStatsAsync(
-        int postingUserId,
+        int userId,
         CancellationToken ct)
     {
         var raw = await db.Trades
             .AsNoTracking()
-            .Where(t => t.User_ID == postingUserId)
+            .Where(t => t.User_ID == userId || t.Customer_ID == userId)
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                All = g.Count(t => t.User_ID == postingUserId),
-                Completed = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization && t.User_ID == postingUserId),
-                MyActive = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.InRealization && t.User_ID == postingUserId),
-                Created = g.Count(t => t.TradeStatus_ID == (int)TradeStatuses.New && t.User_ID == postingUserId)
+                All = g.Count(),
+                Completed = g.Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
+
+                MyActive = g.Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.InRealization),
+
+                Created = g.Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.New)
             })
             .SingleOrDefaultAsync(ct);
 
