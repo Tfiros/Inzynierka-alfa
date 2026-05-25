@@ -55,7 +55,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     {
         var updated = await dbContext.Offers
             .Where(o => o.ID == offerId && o.User_ID == userId && o.OfferStatus_ID == (int)OfferStatuses.Active)
-            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.Canceled), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Canceled), ct);
         return updated == 1;
     }
     
@@ -99,7 +99,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     public async Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default)
     {
         var updated = await dbContext.Offers.Where(o => o.ID == offerId && o.OfferStatus_ID == (int)OfferStatuses.Active)
-            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.InRealization), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.InRealization), ct);
         return updated == 1;
     }
     
