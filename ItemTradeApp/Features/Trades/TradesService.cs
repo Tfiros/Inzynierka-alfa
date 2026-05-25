@@ -30,11 +30,29 @@ public interface ITradesService
 
     Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, bool isMiddleman, CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyInRealizationAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        bool isMiddleman,
+        CancellationToken ct);
 
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
-
-    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(int page, int pageSize, TradesQuery? query, string? auth0UserId, CancellationToken ct);
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyCompletedAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        bool isMiddleman,
+        CancellationToken ct);
+    
+    Task<Result<PagedResponse<TradeListItemDTO>>> GetMyFailedWithItemsToReturnAsync(
+        int page,
+        int pageSize,
+        TradesQuery? query,
+        string? auth0UserId,
+        bool isMiddleman,
+        CancellationToken ct);
 
     Task<Result<TradeDetailsResponse>> GetTradeDetailsAsync(int tradeId, string? auth0UserId, CancellationToken ct);
 
@@ -72,9 +90,9 @@ public sealed class TradesService(
             if (user.Error is not null)
                 return Result<UserTradeStatsResponse>.Unauthorized(user.Error);
 
-            var middleman = user.User!;
+            var caller = user.User!;
             var (all, completed, myActive, available) =
-                await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
+                await tradeRepo.GetMiddlemanStatsAsync(caller.ID, ct);
 
             var dto = new UserTradeStatsResponse(
                 All: all,
@@ -106,26 +124,6 @@ public sealed class TradesService(
         }
     }
 
-
-    public async Task<Result<UserTradeStatsResponse>> GetMiddlemanStatsAsync(string? auth0UserId, CancellationToken ct)
-    {
-        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
-        if (tryGetMiddleman.Error is not null)
-            return Result<UserTradeStatsResponse>.Unauthorized(tryGetMiddleman.Error);
-
-        var middleman = tryGetMiddleman.User!;
-
-        var (all, completed, myActive, available) =
-            await tradeRepo.GetMiddlemanStatsAsync(middleman.ID, ct);
-
-        return Result<UserTradeStatsResponse>.Success(new UserTradeStatsResponse(
-            All: all,
-            Completed: completed,
-            MyActive: myActive,
-            Created: available
-        ));
-    }
-
     public async Task<Result<PagedResponse<TradeListItemDTO>>> GetAvailableNewAsync(
         int page,
         int pageSize,
@@ -149,7 +147,7 @@ public sealed class TradesService(
             status: TradeStatuses.New,
             page: p,
             pageSize: ps,
-            callerUserId: user.ID,
+            userId: user.ID,
             q: query ?? new TradesQuery(),
             isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: false,
@@ -163,15 +161,16 @@ public sealed class TradesService(
         int pageSize,
         TradesQuery? query,
         string? auth0UserId,
+        bool isMiddleman,
         CancellationToken ct)
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
-        if (tryGetMiddleman.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
+        var tryGetUser = await TryGetUser(auth0UserId, ct);
+        if (tryGetUser.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetUser.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetUser.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.InRealization);
         if (invalid is not null) return invalid;
@@ -180,9 +179,9 @@ public sealed class TradesService(
             status: TradeStatuses.InRealization,
             page: p,
             pageSize: ps,
-            callerUserId: middleman.ID,
+            userId: user.ID,
             q: query ?? new TradesQuery(),
-            isMiddlemanView: true,
+            isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: false,
             ct: ct);
 
@@ -194,15 +193,16 @@ public sealed class TradesService(
         int pageSize,
         TradesQuery? query,
         string? auth0UserId,
+        bool isMiddleman,
         CancellationToken ct)
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
-        if (tryGetMiddleman.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
+        var tryGetUser = await TryGetUser(auth0UserId, ct);
+        if (tryGetUser.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetUser.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetUser.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.SuccesfulRealization);
         if (invalid is not null) return invalid;
@@ -211,9 +211,9 @@ public sealed class TradesService(
             status: TradeStatuses.SuccesfulRealization,
             page: p,
             pageSize: ps,
-            callerUserId: middleman.ID,
+            userId: user.ID,
             q: query ?? new TradesQuery(),
-            isMiddlemanView: true,
+            isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: false,
             ct: ct);
 
@@ -225,15 +225,16 @@ public sealed class TradesService(
         int pageSize,
         TradesQuery? query,
         string? auth0UserId,
+        bool isMiddleman,
         CancellationToken ct)
     {
         var (p, ps) = validator.Normalize(page, pageSize);
 
-        var tryGetMiddleman = await TryGetMiddleman(auth0UserId, ct);
-        if (tryGetMiddleman.Error is not null)
-            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetMiddleman.Error);
+        var tryGetUser = await TryGetUser(auth0UserId, ct);
+        if (tryGetUser.Error is not null)
+            return Result<PagedResponse<TradeListItemDTO>>.Unauthorized(tryGetUser.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetUser.User!;
 
         var invalid = validator.ValidateTradesQuery(query, TradeStatuses.Failed);
         if (invalid is not null) return invalid;
@@ -242,9 +243,9 @@ public sealed class TradesService(
             status: TradeStatuses.Failed,
             page: p,
             pageSize: ps,
-            callerUserId: middleman.ID,
+            userId: user.ID,
             q: query ?? new TradesQuery(),
-            isMiddlemanView: true,
+            isMiddlemanView: isMiddleman,
             onlyWithItemsToReturn: true,
             ct: ct);
 
@@ -263,13 +264,13 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<TradeDetailsResponse>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeDetailsAsync(tradeId, ct);
         if (trade is null)
             return Result<TradeDetailsResponse>.NotFound("Trade not found.");
 
-        if (trade.MiddlemanUser_ID != middleman.ID)
+        if (trade.MiddlemanUser_ID != user.ID)
             return Result<TradeDetailsResponse>.Forbidden("You are not assigned to this trade.");
 
         var buyer = trade.Customer;
@@ -317,7 +318,7 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferByIdAsync(request.TradeId, ct);
         if (trade is null)
@@ -332,11 +333,11 @@ public sealed class TradesService(
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            trade.MiddlemanUser_ID = middleman.ID;
+            trade.MiddlemanUser_ID = user.ID;
             trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
 
             await chatOperations.CreateChatsForTradeAsync(
-                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.User_ID, middleman.ID), ct);
+                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.User_ID, user.ID), ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         }
@@ -380,7 +381,7 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetByIdWithUrlsAsync(tradeId, ct);
         if (trade is null)
@@ -389,7 +390,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is null)
             return Result<string>.BadRequest("Trade has no middleman assigned.");
 
-        if (trade.MiddlemanUser_ID != middleman.ID)
+        if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization && trade.TradeStatus_ID != (int)TradeStatuses.Failed)
@@ -414,7 +415,7 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferAndUsersDetailsByIdAsync(tradeId, ct);
         if (trade is null)
@@ -423,7 +424,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is null)
             return Result<string>.BadRequest("Trade has no middleman assigned.");
 
-        if (trade.MiddlemanUser_ID != middleman.ID)
+        if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
         
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
@@ -486,7 +487,7 @@ public sealed class TradesService(
                 trade.User_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                middleman.ProfileInfo?.Nickname ?? middleman.Email,
+                user.ProfileInfo?.Nickname ?? user.Email,
                 trade,
                 trade.Offer,
                 ct);
@@ -495,7 +496,7 @@ public sealed class TradesService(
                 trade.Customer_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                middleman.ProfileInfo?.Nickname ?? middleman.Email,
+                user.ProfileInfo?.Nickname ?? user.Email,
                 trade,
                 trade.Offer,
                 ct);
@@ -521,7 +522,7 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetTradeWithOfferAndUsersDetailsByIdAsync(tradeId, ct);
         if (trade is null)
@@ -530,7 +531,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is null)
             return Result<string>.BadRequest("Trade has no middleman assigned.");
 
-        if (trade.MiddlemanUser_ID != middleman.ID)
+        if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
         if (!trade.HasBuyersItems || !trade.HasSellersItems)
@@ -705,13 +706,13 @@ public sealed class TradesService(
         if (tryGetMiddleman.Error is not null)
             return Result<string>.Unauthorized(tryGetMiddleman.Error);
 
-        var middleman = tryGetMiddleman.User!;
+        var user = tryGetMiddleman.User!;
 
         var trade = await tradeRepo.GetByIdWithUrlsAsync(tradeId, ct);
         if (trade is null)
             return Result<string>.NotFound("Trade not found.");
 
-        if (trade.MiddlemanUser_ID != middleman.ID)
+        if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
 
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)

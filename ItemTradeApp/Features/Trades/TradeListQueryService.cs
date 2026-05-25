@@ -12,7 +12,7 @@ public interface ITradeListQueryService
         TradeStatuses status,
         int page,
         int pageSize,
-        int callerUserId,
+        int userId,
         TradesQuery q,
         bool isMiddlemanView,
         bool onlyWithItemsToReturn,
@@ -38,7 +38,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
         TradeStatuses status,
         int page,
         int pageSize,
-        int callerUserId,
+        int userId,
         TradesQuery q,
         bool isMiddlemanView,
         bool onlyWithItemsToReturn,
@@ -53,27 +53,27 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             if (q.OnlyMine)
             {
                 query = query.Where(t =>
-                    t.User_ID == callerUserId ||
-                    t.Customer_ID == callerUserId);
+                    t.User_ID == userId ||
+                    t.Customer_ID == userId);
             }
             else
             {
                 query = status == TradeStatuses.New
                     ? query.Where(t =>
                         t.MiddlemanUser_ID == null ||
-                        t.User_ID == callerUserId ||
-                        t.Customer_ID == callerUserId)
+                        t.User_ID == userId ||
+                        t.Customer_ID == userId)
                     : query.Where(t =>
-                        t.MiddlemanUser_ID == callerUserId ||
-                        t.User_ID == callerUserId ||
-                        t.Customer_ID == callerUserId);
+                        t.MiddlemanUser_ID == userId ||
+                        t.User_ID == userId ||
+                        t.Customer_ID == userId);
             }
         }
         else
         {
             query = query.Where(t =>
-                t.User_ID == callerUserId ||
-                t.Customer_ID == callerUserId);
+                t.User_ID == userId ||
+                t.Customer_ID == userId);
         }
 
         if (onlyWithItemsToReturn)
