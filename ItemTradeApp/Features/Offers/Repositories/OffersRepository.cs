@@ -24,7 +24,11 @@ public interface IOffersRepository
 
     Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default);
     
-    Task<Offer?> GetOfferWithItemsAsync(int offerId, CancellationToken ct);
+    Task<Offer?> GetOfferWithItemsAsync(int offerId, CancellationToken ct = default);
+
+    Task<List<Offer>> GetActiveExpiredOffersAsync(CancellationToken ct = default);
+
+    Task<bool> SetOfferExpiredAsync(int offerId, CancellationToken ct = default);
 }
 
 public class OffersRepository(AppDbContext dbContext) : IOffersRepository
@@ -51,7 +55,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     {
         var updated = await dbContext.Offers
             .Where(o => o.ID == offerId && o.User_ID == userId && o.OfferStatus_ID == (int)OfferStatuses.Active)
-            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.Canceled), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Canceled), ct);
         return updated == 1;
     }
     
@@ -64,7 +68,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         var pageSize = query.PageSize;
 
         var localQuery = dbContext.Offers.AsNoTracking().AsQueryable();
-        localQuery = localQuery.Where(o => o.OfferStatus_ID == (int)OfferStatuses.Active);
+        localQuery = localQuery.Where(o => o.OfferStatus_ID == (int)OfferStatuses.Active && o.ExpDate >= DateOnly.FromDateTime(DateTime.UtcNow));
         localQuery = ApplyFiltering(localQuery, query);
         localQuery = ApplyOrdering(localQuery, ResolverOrderBy(query));
 
@@ -95,7 +99,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     public async Task<bool> SetOfferInRealizationAsync(int offerId, CancellationToken ct = default)
     {
         var updated = await dbContext.Offers.Where(o => o.ID == offerId && o.OfferStatus_ID == (int)OfferStatuses.Active)
-            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, _ => (int)OfferStatuses.InRealization), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.InRealization), ct);
         return updated == 1;
     }
     
@@ -111,6 +115,20 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
             .ThenInclude(li => li.Item)
             .ThenInclude(i => i.ItemRarity)
             .FirstOrDefaultAsync(o => o.ID == offerId, ct);
+    }
+
+    public async Task<List<Offer>> GetActiveExpiredOffersAsync(CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return await dbContext.Offers.AsNoTracking().Where(o => o.OfferStatus_ID == (int)OfferStatuses.Active && o.ExpDate < today).ToListAsync(ct);
+    }
+
+    public async Task<bool> SetOfferExpiredAsync(int offerId, CancellationToken ct = default)
+    {
+        var updated = await dbContext.Offers
+            .Where(o => o.ID == offerId && o.OfferStatus_ID == (int)OfferStatuses.Active)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OfferStatus_ID, (int)OfferStatuses.Expired), ct);
+        return updated == 1;
     }
 
     #region offerRepoHelpers

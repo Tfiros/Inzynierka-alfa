@@ -205,7 +205,7 @@ public sealed class ChatRepository : IChatRepository
     public Task CloseChatsForTradeAsync(int tradeId, DateTime closedAtUtc, CancellationToken ct)
         => _db.ChatConversations
             .Where(c => c.TradeId == tradeId && c.ClosedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ClosedAt, _ => closedAtUtc), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ClosedAt, closedAtUtc), ct);
 
     public async Task<IReadOnlyList<(int Id, DateTime ClosedAtUtc, string[] MemberAuth0Ids)>> GetClosedChatsForPublish(
         int tradeId, CancellationToken ct)
