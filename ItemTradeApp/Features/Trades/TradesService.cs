@@ -457,7 +457,20 @@ public sealed class TradesService(
                     return Result<string>.BadRequest("Failed to refund buyer's wanted tokens.");
                 }
             }
-            
+
+            if (trade.Offer.TokensOffered > 0)
+            {
+                if (!await tokenEscrow.TryLockOwnTokensAsync(trade.User_ID, trade.Offer.TokensOffered, ct))
+                {
+                    trade.TradeStatus_ID = (int)TradeStatuses.Failed;
+                    trade.Offer.OfferStatus_ID = (int)OfferStatuses.Canceled;
+                    await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
+                    await unitOfWork.SaveChangesAsync(ct);
+                    await tx.CommitAsync(ct);
+                    return Result<string>.Success("Trade failed. Offer cancelled (insufficient tokens to re-list)");
+                }
+            }
+
             trade.TradeStatus_ID = (int)TradeStatuses.Failed;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
             trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
