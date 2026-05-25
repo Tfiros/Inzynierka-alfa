@@ -16,6 +16,9 @@ public static class DI
         serviceCollection.AddScoped<ICounterOfferRepository, CounterOfferRepository>();
         serviceCollection.AddScoped<IOffersService, OffersService>();
 
+        serviceCollection.AddScoped<IOfferExpirationService, OfferExpirationService>();
+        serviceCollection.AddHostedService<OfferExpirationBackgroundService>();
+        
         return serviceCollection;
     }
 }

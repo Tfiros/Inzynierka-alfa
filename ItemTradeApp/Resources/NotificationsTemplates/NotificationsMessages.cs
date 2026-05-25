@@ -24,4 +24,8 @@ public static class NotificationsMessages
     public static NotificationTemplateDTO TradeCancelled(string offerTitle) =>
         new NotificationTemplateDTO("Trade anulowany!",
             "Middleman anulował Twój trade! By poznać więcej szczegółów sprawdź skrzynkę mailową!");
+    
+    public static NotificationTemplateDTO OfferExpired(string offerTitle) =>
+        new NotificationTemplateDTO("Oferta wygasła!",
+            $"Twoja oferta {offerTitle} wygasła.");
 }
