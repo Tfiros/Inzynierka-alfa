@@ -13,7 +13,7 @@ public static class NotificationsMessages
         new NotificationTemplateDTO("Utworzono ofertę!", $"Twoja oferta {offerTitle} została poprawnie utworzona!");
 
     public static NotificationTemplateDTO TradeCreatedFromOffer(string offerTitle) =>
-        new NotificationTemplateDTO("Utworzono Trade!", $"Utworzono trade'a z Twojej oferty {offerTitle}!");
+        new NotificationTemplateDTO("Utworzono Trade!", $"Utworzono trade'a z oferty {offerTitle}!");
 
     public static NotificationTemplateDTO CounterOfferAcceptedWithTradeCreation(string offerTitle) =>
         new NotificationTemplateDTO("Zaakceptowano kontrofertę!", $"Zaakceptowano Twoją kontrofertę do oferty {offerTitle}! Trade został utworzony!");

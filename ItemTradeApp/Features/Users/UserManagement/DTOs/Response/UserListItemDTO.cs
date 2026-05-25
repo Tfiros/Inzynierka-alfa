@@ -6,5 +6,4 @@ public class UserListItemDTO
     public string Email { get; set; } = default!;
     public string? Name { get; set; }
     public DateOnly? RegisteredAt { get; set; }
-    public List<string> Roles { get; set; } = new();
 }

@@ -13,6 +13,7 @@ public interface IUserManagementService
     Task<Result<string>> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default);
     Task<Result<string>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default);
     Task<Result<UserListPagedResponse>> GetUsersAsync(UserListQuery query, CancellationToken ct = default);
+    Task<Result<UserDetailsResponse>> GetUserDetailsAsync(string auth0UserId, CancellationToken ct = default);
 }
 
 public sealed class UserManagementService(
@@ -67,10 +68,24 @@ public sealed class UserManagementService(
 
         var hasPasswordChange = !string.IsNullOrWhiteSpace(request.NewPassword);
         var hasNicknameChange = !string.IsNullOrWhiteSpace(request.Nickname);
+
+        var hasDescriptionChange =
+            request.ProfileDescription is not null &&
+            !string.Equals(
+                request.ProfileDescription,
+                user.ProfileInfo?.Description,
+                StringComparison.Ordinal);
+
         var hasRolesChange = request.Roles is not null;
 
-        if (!hasEmailChange && !hasPasswordChange && !hasNicknameChange && !hasRolesChange)
+        if (!hasEmailChange &&
+            !hasPasswordChange &&
+            !hasNicknameChange &&
+            !hasDescriptionChange &&
+            !hasRolesChange)
+        {
             return Result<string>.NoContent("no_changes");
+        }
 
         var fullAuth0UserId = EnsureAuth0Prefix(request.AuthZeroUserId);
 
@@ -157,8 +172,14 @@ public sealed class UserManagementService(
         if (hasEmailChange)
             user.Email = request.Email!;
 
-        if (hasNicknameChange && user.ProfileInfo is not null)
-            user.ProfileInfo.Nickname = request.Nickname!;
+        if (user.ProfileInfo is not null)
+        {
+            if (hasNicknameChange)
+                user.ProfileInfo.Nickname = request.Nickname!;
+
+            if (hasDescriptionChange)
+                user.ProfileInfo.Description = request.ProfileDescription!;
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -300,13 +321,6 @@ public sealed class UserManagementService(
         if (!roleIdByNameRes.IsSuccess || roleIdByNameRes.Data is null)
             return FailPaged(roleIdByNameRes.Status, roleIdByNameRes.Message ?? "auth0_get_roles_failed");
 
-        var roleFilterRes = await BuildAuth0RoleFilterAsync(query.Role, roleIdByNameRes.Data, ct);
-        if (!roleFilterRes.IsSuccess)
-            return FailPaged(roleFilterRes.Status, roleFilterRes.Message ?? "auth0_get_users_in_role_failed");
-
-        if (roleFilterRes.Data?.IsEmpty == true)
-            return EmptyPaged(page, pageSize);
-
         var middlemenIdsRes = await GetMiddlemanAuth0IdsAsync(roleIdByNameRes.Data, ct);
         if (!middlemenIdsRes.IsSuccess || middlemenIdsRes.Data is null)
             return FailPaged(middlemenIdsRes.Status, middlemenIdsRes.Message ?? "auth0_get_users_in_role_failed");
@@ -314,13 +328,8 @@ public sealed class UserManagementService(
         var (items, totalCount, registeredLastMonthCount, middlemenCount, totalUsers) =
             await userManagementRepository.GetUsersPageWithStatsAsync(
                 repoQuery,
-                roleFilterRes.Data?.Auth0RoleFilter,
                 middlemenIdsRes.Data,
                 ct);
-
-        var enrichRes = await EnrichUsersWithRolesAsync(items, ct);
-        if (!enrichRes.IsSuccess)
-            return FailPaged(enrichRes.Status, enrichRes.Message ?? "auth0_get_user_roles_failed");
 
         var totalPages = totalCount == 0
             ? 1
@@ -339,6 +348,40 @@ public sealed class UserManagementService(
         }, "users_query");
     }
 
+    public async Task<Result<UserDetailsResponse>> GetUserDetailsAsync(
+        string auth0UserId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<UserDetailsResponse>.BadRequest("invalid_auth0_user_id");
+
+        var user = await userManagementRepository
+            .GetUserByAuth0IdAsync(auth0UserId, ct);
+
+        if (user is null)
+            return Result<UserDetailsResponse>.NotFound("user_not_found");
+
+        var rolesRes = await authZeroManagementClient
+            .GetUserRolesAsync(EnsureAuth0Prefix(auth0UserId), ct);
+
+        if (!rolesRes.IsSuccess || rolesRes.Data is null)
+        {
+            return new Result<UserDetailsResponse>(
+                false,
+                rolesRes.Status,
+                default,
+                rolesRes.Message ?? "auth0_get_user_roles_failed");
+        }
+
+        var roles = rolesRes.Data
+            .Where(r => !string.IsNullOrWhiteSpace(r.Name))
+            .Select(r => r.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Result<UserDetailsResponse>.Success(new UserDetailsResponse(user.ProfileInfo!.Description, roles));
+    }
+
     private async Task<Result<Dictionary<string, string>>> GetRoleIdByNameAsync(CancellationToken ct)
     {
         var rolesRes = await authZeroManagementClient.GetRolesAsync(ct);
@@ -352,36 +395,7 @@ public sealed class UserManagementService(
 
         return Result<Dictionary<string, string>>.Success(dict);
     }
-
-    private sealed record RoleFilterResult(IReadOnlyCollection<string>? Auth0RoleFilter, bool IsEmpty);
-
-    private async Task<Result<RoleFilterResult>> BuildAuth0RoleFilterAsync(
-        string? roleName,
-        IReadOnlyDictionary<string, string> roleIdByName,
-        CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(roleName))
-            return Result<RoleFilterResult>.Success(new RoleFilterResult(null, false));
-
-        var roleToLookup = roleName.Trim();
-
-        if (!roleIdByName.TryGetValue(roleToLookup, out var roleId))
-            return Result<RoleFilterResult>.Success(new RoleFilterResult(null, true));
-
-        var membersRes = await authZeroManagementClient.GetUsersInRoleAsync(roleId, ct);
-        if (!membersRes.IsSuccess || membersRes.Data is null)
-            return new Result<RoleFilterResult>(false, membersRes.Status, null, membersRes.Message ?? "auth0_get_users_in_role_failed");
-
-        var filter = membersRes.Data
-            .Select(u => TrimAuth0Prefix(u.UserId))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return filter.Count == 0
-            ? Result<RoleFilterResult>.Success(new RoleFilterResult(null, true))
-            : Result<RoleFilterResult>.Success(new RoleFilterResult(filter, false));
-    }
-
+    
     private async Task<Result<string[]>> GetMiddlemanAuth0IdsAsync(
         IReadOnlyDictionary<string, string> roleIdByName,
         CancellationToken ct)
@@ -399,60 +413,6 @@ public sealed class UserManagementService(
             .ToArray();
 
         return Result<string[]>.Success(ids);
-    }
-
-    private async Task<Result<string>> EnrichUsersWithRolesAsync(List<UserListItemDTO> items, CancellationToken ct)
-    {
-        var pageLocalIds = items
-            .Select(x => TrimAuth0Prefix(x.Auth0UserId))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (pageLocalIds.Count == 0)
-        {
-            foreach (var item in items)
-                item.Roles = new List<string>();
-
-            return Result<string>.NoContent("no_users_on_page");
-        }
-
-        var tasks = pageLocalIds.Select(async localId =>
-        {
-            var fullId = EnsureAuth0Prefix(localId);
-
-            var res = await authZeroManagementClient.GetUserRolesAsync(fullId, ct);
-            if (!res.IsSuccess || res.Data is null)
-                return (ok: false, localId, roles: new List<string>(), status: res.Status, message: res.Message ?? "auth0_get_user_roles_failed");
-
-            var roles = res.Data
-                .Where(r => !string.IsNullOrWhiteSpace(r.Name))
-                .Select(r => r.Name)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            return (ok: true, localId, roles, status: ResultStatus.Success, message: null);
-        });
-
-        var results = await Task.WhenAll(tasks);
-
-        var err = results.FirstOrDefault(x => !x.ok);
-        if (!err.ok && !string.IsNullOrWhiteSpace(err.localId))
-            return new Result<string>(false, err.status, null, err.message);
-
-        var rolesByLocalAuth0Id = results
-            .GroupBy(x => x.localId, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().roles, StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in items)
-        {
-            var localId = TrimAuth0Prefix(item.Auth0UserId);
-            item.Roles = rolesByLocalAuth0Id.TryGetValue(localId, out var roles)
-                ? roles
-                : new List<string>();
-        }
-
-        return Result<string>.NoContent("roles_enriched");
     }
 
     private static Result<UserListPagedResponse> EmptyPaged(int page, int pageSize)
