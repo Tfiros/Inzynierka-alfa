@@ -330,7 +330,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID is not null)
             return Result<string>.Conflict("Trade already has a middleman assigned.");
         
-        if (IsInTrade(trade, middleman.ID))
+        if (IsInTrade(trade, user.ID))
             return Result<string>.Forbidden(
                 "You cannot assign yourself as middleman to your own trade.");
 
@@ -397,7 +397,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
         
-        if (IsInTrade(trade, middleman.ID))
+        if (IsInTrade(trade, user.ID))
             return Result<string>.Forbidden(
                 "You cannot manage your own trade as middleman.");
 
@@ -435,7 +435,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
         
-        if (IsInTrade(trade, middleman.ID))
+        if (IsInTrade(trade, user.ID))
             return Result<string>.Forbidden(
                 "You cannot manage your own trade as middleman.");
         
@@ -559,7 +559,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
         
-        if (IsInTrade(trade, middleman.ID))
+        if (IsInTrade(trade, user.ID))
             return Result<string>.Forbidden(
                 "You cannot manage your own trade as middleman.");
         
@@ -750,7 +750,7 @@ public sealed class TradesService(
         if (trade.MiddlemanUser_ID != user.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
         
-        if (IsInTrade(trade, middleman.ID))
+        if (IsInTrade(trade, user.ID))
             return Result<string>.Forbidden(
                 "You cannot manage your own trade as middleman.");
 
