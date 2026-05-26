@@ -34,7 +34,6 @@ public interface IUserManagementRepository
     Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount, int TotalUsers)>
         GetUsersPageWithStatsAsync(
             UserListQuery query,
-            IReadOnlyCollection<string>? auth0IdFilter = null,
             IReadOnlyCollection<string>? middlemanAuth0Ids = null,
             CancellationToken ct = default);
 
@@ -114,14 +113,13 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
     public async Task<(List<UserListItemDTO> Items, int TotalCount, int RegisteredLastMonthCount, int MiddlemenCount, int TotalUsers)>
         GetUsersPageWithStatsAsync(
             UserListQuery query,
-            IReadOnlyCollection<string>? auth0IdFilter = null,
             IReadOnlyCollection<string>? middlemanAuth0Ids = null,
             CancellationToken ct = default)
     {
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
 
-        var filteredQuery = BuildBaseQuery(query, auth0IdFilter);
+        var filteredQuery = BuildBaseQuery(query);
 
         var totalCount = await filteredQuery.CountAsync(ct);
 
@@ -136,7 +134,6 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
                 Email = u.Email,
                 Name = u.ProfileInfo != null ? u.ProfileInfo.Nickname : null,
                 RegisteredAt = u.RegistrationDate,
-                Roles = new List<string>()
             })
             .ToListAsync(ct);
 
@@ -215,23 +212,12 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
             .ExecuteUpdateAsync(s => s.SetProperty(co => co.CounterOfferStatus_Id, (int)CounterOfferStatuses.Denied),
                 ct);
 
-    private IQueryable<User> BuildBaseQuery(
-        UserListQuery query,
-        IReadOnlyCollection<string>? auth0IdFilter)
+    #region HELPERS
+    private IQueryable<User> BuildBaseQuery(UserListQuery query)
     {
         IQueryable<User> q = dbContext.Users
             .Where(u => !u.IsDeleted)
             .AsNoTracking();
-
-        if (auth0IdFilter is { Count: > 0 })
-        {
-            var ids = NormalizeAuth0Ids(auth0IdFilter);
-
-            if (ids.Length == 0)
-                return q.Where(_ => false);
-
-            q = q.Where(u => ids.Contains(u.Auth0UserID));
-        }
 
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
@@ -296,4 +282,6 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         => auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
             ? auth0UserId["auth0|".Length..]
             : auth0UserId;
+    #endregion
+    
 }

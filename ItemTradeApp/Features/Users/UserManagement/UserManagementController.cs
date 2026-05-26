@@ -35,9 +35,18 @@ public class UserManagementController(IUserManagementService userManagementServi
     [HttpGet]
     public async Task<ActionResult<Result<UserListPagedResponse>>> GetUsers(
         [FromQuery] UserListQuery query,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         var result = await userManagementService.GetUsersAsync(query, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("{auth0UserId}/details")]
+    public async Task<ActionResult<Result<UserDetailsResponse>>> GetUserRoles(
+        [FromRoute] string auth0UserId,
+        CancellationToken ct = default)
+    {
+        var result = await userManagementService.GetUserDetailsAsync(auth0UserId, ct);
         return result.ToActionResult();
     }
 }
