@@ -58,7 +58,14 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var res = await tradesService.GetMyInRealizationAsync(page, pageSize, q, GetAuth0UserId(), ct);
+        var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
+        var res = await tradesService.GetMyInRealizationAsync(
+            page,
+            pageSize,
+            q,
+            GetAuth0UserId(),
+            isMiddleman,
+            ct);
         return res.ToActionResult();
     }
 
@@ -70,7 +77,14 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var res = await tradesService.GetMyCompletedAsync(page, pageSize, q, GetAuth0UserId(), ct);
+        var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
+        var res = await tradesService.GetMyCompletedAsync(
+            page,
+            pageSize,
+            q,
+            GetAuth0UserId(),
+            isMiddleman,
+            ct);
         return res.ToActionResult();
     }
 
@@ -82,7 +96,15 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromQuery] TradesQuery? q = null,
         CancellationToken ct = default)
     {
-        var res = await tradesService.GetMyFailedWithItemsToReturnAsync(page, pageSize, q, GetAuth0UserId(), ct);
+        var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
+
+        var res = await tradesService.GetMyFailedWithItemsToReturnAsync(
+            page,
+            pageSize,
+            q,
+            GetAuth0UserId(),
+            isMiddleman,
+            ct);
         return res.ToActionResult();
     }
 
