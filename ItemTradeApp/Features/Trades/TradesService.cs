@@ -328,6 +328,10 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID is not null)
             return Result<string>.Conflict("Trade already has a middleman assigned.");
+        
+        if (IsInTrade(trade, middleman.ID))
+            return Result<string>.Forbidden(
+                "You cannot assign yourself as middleman to your own trade.");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -391,6 +395,10 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (IsInTrade(trade, middleman.ID))
+            return Result<string>.Forbidden(
+                "You cannot manage your own trade as middleman.");
 
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization && trade.TradeStatus_ID != (int)TradeStatuses.Failed)
             return Result<string>.BadRequest("Trade is not in InRealization or Failed status.");
@@ -425,6 +433,10 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (IsInTrade(trade, middleman.ID))
+            return Result<string>.Forbidden(
+                "You cannot manage your own trade as middleman.");
         
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
             return Result<string>.BadRequest("Trade is not in InRealization status.");
@@ -545,6 +557,11 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (IsInTrade(trade, middleman.ID))
+            return Result<string>.Forbidden(
+                "You cannot manage your own trade as middleman.");
+        
 
         if (!trade.HasBuyersItems || !trade.HasSellersItems)
             return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
@@ -665,6 +682,11 @@ public sealed class TradesService(
             : Result<TradeListItemDTO>.Success(trade, "success");
 
     }
+    
+    private static bool IsInTrade(Trade trade, int userId)
+    {
+        return trade.User_ID == userId || trade.Customer_ID == userId;
+    }
 
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)
         => new()
@@ -726,6 +748,10 @@ public sealed class TradesService(
 
         if (trade.MiddlemanUser_ID != middleman.ID)
             return Result<string>.Forbidden("You are not assigned to this trade.");
+        
+        if (IsInTrade(trade, middleman.ID))
+            return Result<string>.Forbidden(
+                "You cannot manage your own trade as middleman.");
 
         if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
             return Result<string>.BadRequest("Trade is not in realization status.");
