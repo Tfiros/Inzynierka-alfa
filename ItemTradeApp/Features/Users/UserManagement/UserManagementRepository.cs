@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Features.Users.UserManagement.DTOs.Internal;
+﻿using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Users.UserManagement.DTOs.Internal;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
 using ItemTradeApp.Features.Users.UserManagement.Enums;
@@ -273,15 +274,10 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         => auth0Ids is null
             ? Array.Empty<string>()
             : auth0Ids
-                .Select(TrimAuth0Prefix)
+                .Select(Auth0IdHandler.Trim)
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-
-    private static string TrimAuth0Prefix(string auth0UserId)
-        => auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
     #endregion
     
 }

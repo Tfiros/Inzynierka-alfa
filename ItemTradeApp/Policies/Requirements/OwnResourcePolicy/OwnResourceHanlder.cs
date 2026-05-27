@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using ItemTradeApp.Features.Shared;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
@@ -30,10 +31,7 @@ public class OwnResourceHanlder(IOwnResourcePolicyRepository ownResourcePolicyRe
 
         if (!int.TryParse(rawId?.ToString(), out var routeUserId))
             return;
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         var user = await ownResourcePolicyRepository.GetUserByAuthZeroId(trimmedAuth0UserId);
         if (user is null)
             return;

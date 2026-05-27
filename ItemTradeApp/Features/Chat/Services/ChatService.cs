@@ -2,6 +2,7 @@
 using ItemTradeApp.Features.Chat.DTOs;
 using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Features.Chat.Repositories;
+using ItemTradeApp.Features.Shared;
 
 namespace ItemTradeApp.Features.Chat.Services;
 
@@ -86,8 +87,8 @@ public sealed class ChatService : IChatService
         message = message?.Trim() ?? string.Empty;
         if (message.Length == 0)
             throw new ArgumentException("message_empty");
-
-        var trimmedAuth0UserId = ChatIdentity.NormalizeAuth0UserId(auth0UserId);
+        
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         if (string.IsNullOrWhiteSpace(trimmedAuth0UserId))
         {
             throw new InvalidOperationException("sender_not_found");
@@ -274,7 +275,7 @@ public sealed class ChatService : IChatService
             MarkedAtUtc: DateTime.UtcNow,
             UnreadCount: unread);
 
-        var trimmedAuth0UserId = ChatIdentity.NormalizeAuth0UserId(auth0UserId);
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         if (!string.IsNullOrWhiteSpace(trimmedAuth0UserId))
         {
             await _chatRealtimePublisher.PublishThreadReadAsync(

@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.Features.Chat.Helpers;
 using ItemTradeApp.Features.Chat.Services;
+using ItemTradeApp.Features.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -21,7 +22,7 @@ public sealed class ChatHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var auth0 = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
+        var auth0 = Context.UserIdentifier is not null ? Auth0IdHandler.Trim(Context.UserIdentifier) : null;
         if (!string.IsNullOrWhiteSpace(auth0))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{auth0}");
@@ -42,7 +43,7 @@ public sealed class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var auth0 = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
+        var auth0 = Context.UserIdentifier is not null ? Auth0IdHandler.Trim(Context.UserIdentifier) : null;
         if (!string.IsNullOrWhiteSpace(auth0))
         {
             var changed = _presence.UserDisconnected(auth0);
@@ -61,7 +62,7 @@ public sealed class ChatHub : Hub
 
     public async Task JoinChat(int chatConversationId)
     {
-        var auth0UserId = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
+        var auth0UserId = Context.UserIdentifier is not null ? Auth0IdHandler.Trim(Context.UserIdentifier) : null;
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             throw new HubException("unauthorized");
@@ -85,7 +86,7 @@ public sealed class ChatHub : Hub
         if (string.IsNullOrWhiteSpace(message))
             throw new HubException("message_empty");
 
-        var auth0UserId = ChatIdentity.NormalizeAuth0UserId(Context.UserIdentifier);
+        var auth0UserId = Context.UserIdentifier is not null ? Auth0IdHandler.Trim(Context.UserIdentifier) : null;
         if (string.IsNullOrWhiteSpace(auth0UserId))
             throw new HubException("unauthorized");
 

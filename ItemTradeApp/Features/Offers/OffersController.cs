@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -39,10 +40,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         [FromBody] OfferDraftRequest request, CancellationToken ct = default)
     {
         var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-        var result = await offerService.CreateOfferAsync(trimmedAuth0UserId, request, ct);
+        var result = await offerService.CreateOfferAsync(auth0UserId, request, ct);
         return result.ToActionResult();
 
     }
@@ -54,10 +52,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     )
     {
         var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-        var result = await offerService.CancelOfferAsync(trimmedAuth0UserId, offerId, ct);
+        var result = await offerService.CancelOfferAsync(auth0UserId, offerId, ct);
         return result.ToActionResult();
     }
 
@@ -70,10 +65,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     )
     {
         var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-        var result = await offerService.UpdateOfferAsync(trimmedAuth0UserId, offerId, request, ct);
+        var result = await offerService.UpdateOfferAsync(auth0UserId, offerId, request, ct);
         return result.ToActionResult();
     }
 
@@ -128,11 +120,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         [FromRoute] int offerId,[FromBody] OfferUpdateDraftRequest request, CancellationToken ct = default)
     {
         var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-
-        var result = await offerService.GetUpdateQuoteAsync(trimmedAuth0UserId,offerId, request, ct);
+        var result = await offerService.GetUpdateQuoteAsync(auth0UserId,offerId, request, ct);
         return result.ToActionResult();
 
     }
@@ -142,10 +130,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     public async Task<ActionResult<Result<AcceptOfferResponse>>> AcceptOffer([FromRoute] int offerId, CancellationToken ct = default)
     {
         var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
-        var result = await offerService.AcceptOfferAsync(trimmedAuth0UserId, offerId, ct);
+        var result = await offerService.AcceptOfferAsync(auth0UserId, offerId, ct);
         return result.ToActionResult();
     }
 

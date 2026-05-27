@@ -1,3 +1,4 @@
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence.Models;
 
@@ -16,8 +17,8 @@ public sealed class UserContext(IUserRepository userRepo) : IUserContext
         if (string.IsNullOrWhiteSpace(auth0UserId))
             throw new Exception("Missing auth0 user id (sub claim).");
 
-        var trimmed = TrimAuth0UserId(auth0UserId);
-        var user = await userRepo.GetByAuth0UserIdAsync(trimmed!, ct);
+        var trimmed = Auth0IdHandler.Trim(auth0UserId);
+        var user = await userRepo.GetByAuth0UserIdAsync(trimmed, ct);
 
         return user;
     }
@@ -26,11 +27,4 @@ public sealed class UserContext(IUserRepository userRepo) : IUserContext
     {
         return GetRequiredUserAsync(auth0UserId, ct);
     }
-
-    private static string? TrimAuth0UserId(string? auth0UserId)
-        => string.IsNullOrWhiteSpace(auth0UserId)
-            ? null
-            : auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-                ? auth0UserId["auth0|".Length..]
-                : auth0UserId;
 }

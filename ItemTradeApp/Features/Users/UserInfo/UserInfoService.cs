@@ -1,4 +1,5 @@
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
@@ -88,9 +89,7 @@ public sealed class UserInfoService(
 
     public async Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct)
     {
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
 
         if (user is null || user.ProfileInfo is null)

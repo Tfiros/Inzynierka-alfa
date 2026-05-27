@@ -46,9 +46,7 @@ public sealed class NotificationsService(
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return null;
 
-        var trimmedAuth0UserId = auth0UserId.StartsWith("auth0|", StringComparison.OrdinalIgnoreCase)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
 
         return await identityRepo.GetUserIdByAuth0IdAsync(trimmedAuth0UserId, ct);
     }

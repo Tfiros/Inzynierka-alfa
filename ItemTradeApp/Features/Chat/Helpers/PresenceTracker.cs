@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using ItemTradeApp.Features.Shared;
 
 namespace ItemTradeApp.Features.Chat.Helpers;
 
@@ -8,26 +9,20 @@ public sealed class PresenceTracker
 
     public bool IsOnline(string auth0UserId)
     {
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         return _connections.TryGetValue(trimmedAuth0UserId, out var c) && c > 0;
     }
 
     public bool UserConnected(string auth0UserId)
     {
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         var count = _connections.AddOrUpdate(trimmedAuth0UserId, 1, (_, c) => c + 1);
         return count == 1;
     }
 
     public bool UserDisconnected(string auth0UserId)
     {
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
 
         while (true)
         {
