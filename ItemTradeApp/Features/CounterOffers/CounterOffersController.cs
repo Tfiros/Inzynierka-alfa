@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;

@@ -127,9 +127,7 @@ public sealed class UserInfoService(
     public async Task<Result<UserProfileInfoResponse>> UpdateAvatarAsync(string auth0UserId, UpdateAvatarRequest request,
         CancellationToken ct)
     {
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
 
         if (user is null || user.ProfileInfo is null)

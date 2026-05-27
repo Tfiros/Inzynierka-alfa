@@ -19,43 +19,43 @@ namespace ItemTradeApp.Features.CounterOffers;
 public interface ICounterOffersService
 {
     Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
-        string auth0UserId,
+        string? auth0UserId,
         CounterOfferListingsQuery query,
         CancellationToken ct = default);
 
     Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
-        string auth0UserId,
+        string? auth0UserId,
         CounterOfferListingsQuery query,
         CancellationToken ct = default);
     
     Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct);
 
     Task<Result<CounterOfferDto>> UpdateCounterOfferStatusAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int counterOfferId,
         int statusId,
         CancellationToken ct = default);
 
     Task<Result<AcceptCounterOfferResponse>> AcceptCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int counterOfferId,
         CancellationToken ct = default);
 
     Task<Result<CounterOfferCostDto>> QuoteCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct = default);
     Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CancellationToken ct = default);
 
-    Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string auth0UserId, int counterOfferId,
+    Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string? auth0UserId, int counterOfferId,
         CancellationToken ct = default);
 }
 
@@ -78,13 +78,15 @@ public sealed class CounterOffersService(
     }
 
     private async Task<(User? User, Result<T>? Error)> GetActiveUser<T>(
-        string auth0UserId,
+        string? auth0UserId,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return (null, Result<T>.Unauthorized("missing_sub_claim"));
+        
+        var trimmedAuth0 = Auth0IdHandler.Trim(auth0UserId); 
 
-        var user = await GetUserAsync(auth0UserId, ct);
+        var user = await GetUserAsync(trimmedAuth0, ct);
 
         if (user is null)
             return (null, Result<T>.Unauthorized("Nie znaleziono użytkownika"));
@@ -111,7 +113,7 @@ public sealed class CounterOffersService(
     }
 
     private static Result<CounterOfferDto>? ValidateCreateRequest(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request)
     {
@@ -158,7 +160,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
-        string auth0UserId,
+        string? auth0UserId,
         CounterOfferListingsQuery query,
         CancellationToken ct = default)
     {
@@ -193,7 +195,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
-        string auth0UserId,
+        string? auth0UserId,
         CounterOfferListingsQuery query,
         CancellationToken ct = default)
     {
@@ -228,7 +230,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct = default)
@@ -337,7 +339,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<CounterOfferDto>> UpdateCounterOfferStatusAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int counterOfferId,
         int statusId,
         CancellationToken ct = default)
@@ -403,7 +405,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<AcceptCounterOfferResponse>> AcceptCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int counterOfferId,
         CancellationToken ct = default)
     {
@@ -588,7 +590,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<CounterOfferCostDto>> QuoteCounterOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct = default)
@@ -607,7 +609,7 @@ public sealed class CounterOffersService(
     }
 
     private async Task<Result<CounterOfferCostDto>?> ValidateCounterOfferForQuote(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CounterOfferDraftRequest request,
         CancellationToken ct)
@@ -657,7 +659,7 @@ public sealed class CounterOffersService(
     }
 
     public async Task<Result<List<CounterOfferListItemDto>>> GetCounterOffersForOfferAsync(
-        string auth0UserId,
+        string? auth0UserId,
         int offerId,
         CancellationToken ct = default)
     {
@@ -678,7 +680,7 @@ public sealed class CounterOffersService(
         return Result<List<CounterOfferListItemDto>>.Success(items);
     }
 
-    public async Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string auth0UserId, int counterOfferId,
+    public async Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string? auth0UserId, int counterOfferId,
         CancellationToken ct = default)
     {
         if (counterOfferId <= 0)
