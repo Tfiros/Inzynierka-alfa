@@ -40,8 +40,7 @@ public sealed class NotificationsService(
 {
     private async Task<int?> ResolveUserIdAsync(ClaimsPrincipal user, CancellationToken ct)
     {
-        var auth0UserId = user.FindFirst("sub")?.Value
-                          ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(user);
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return null;

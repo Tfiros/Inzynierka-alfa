@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace ItemTradeApp.Features.Shared;
 
 public static class Auth0IdHandler
@@ -10,4 +12,8 @@ public static class Auth0IdHandler
 
     public static string CheckIfAuth0WithPrefix(string auth0UserId)
         => auth0UserId.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ? auth0UserId : Prefix + auth0UserId;
+
+    public static string? GetUserId(ClaimsPrincipal user) 
+        => user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub");
+    
 }

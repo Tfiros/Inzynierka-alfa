@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -17,7 +18,7 @@ public class FavouritesController(IFavouritesService favouritesService) : Contro
     public async Task<ActionResult<Result<PagedResponse<OfferListingDTO>>>> GetFavourites([FromQuery] int page = 1,
         [FromQuery] int pageSize = 10, CancellationToken ct = default)
     {
-        var user = GetNormalizedAuth0UserId();
+        var user = Auth0IdHandler.GetUserId(User);
         var result = await favouritesService.GetFavouritesAsync(user, page, pageSize, ct);
         return result.ToActionResult();
     }
@@ -25,7 +26,7 @@ public class FavouritesController(IFavouritesService favouritesService) : Contro
     [HttpGet("ids")]
     public async Task<ActionResult<Result<List<int>>>> GetFavouriteIds(CancellationToken ct = default)
     {
-        var user = GetNormalizedAuth0UserId();
+        var user = Auth0IdHandler.GetUserId(User);
         var result = await favouritesService.GetFavouriteIdsAsync(user, ct);
         return result.ToActionResult();
     }
@@ -33,7 +34,7 @@ public class FavouritesController(IFavouritesService favouritesService) : Contro
     [HttpPost("{offerId:int}")]
     public async Task<ActionResult<Result<bool>>> AddFavourite([FromRoute] int offerId, CancellationToken ct = default)
     {
-        var user = GetNormalizedAuth0UserId();
+        var user = Auth0IdHandler.GetUserId(User);
         var result = await favouritesService.AddFavourite(user, offerId, ct);
         return result.ToActionResult();
     }
@@ -41,20 +42,9 @@ public class FavouritesController(IFavouritesService favouritesService) : Contro
     [HttpDelete("{offerId:int}")]
     public async Task<ActionResult<Result<bool>>> RemoveFavourite([FromRoute] int offerId, CancellationToken ct = default)
     {
-        var user = GetNormalizedAuth0UserId();
+        var user = Auth0IdHandler.GetUserId(User);
         var result = await favouritesService.RemoveFavourite(user, offerId, ct);
         return result.ToActionResult();
     }
-
-    private string GetNormalizedAuth0UserId()
-    {
-        var user = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(user))
-            return string.Empty;
-
-        var pipePosition = user.IndexOf('|');
-        return (pipePosition >= 0 && pipePosition < user.Length - 1)
-            ? user[(pipePosition + 1)..]
-            : user;
-    }
+    
 }

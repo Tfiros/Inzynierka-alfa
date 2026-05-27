@@ -10,9 +10,7 @@ public class OwnResourceHanlder(IOwnResourcePolicyRepository ownResourcePolicyRe
         AuthorizationHandlerContext context,
         OwnResourceRequirement requirement)
     {
-        var auth0UserId =
-            context.User.FindFirst("sub")?.Value ??
-            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(context.User);
         if (string.IsNullOrEmpty(auth0UserId)) return;
         var routeData = context.Resource switch
         {

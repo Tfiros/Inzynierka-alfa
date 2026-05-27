@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
@@ -13,8 +14,6 @@ namespace ItemTradeApp.Features.Trades;
 [Route("[controller]")]
 public sealed class TradesController(ITradesService tradesService) : ControllerBase
 {
-    private string? GetAuth0UserId()
-        => User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     [HttpPost("assign-middleman")]
     [Authorize(Roles = "Middleman")]
@@ -22,7 +21,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromBody] AssignMiddlemanRequest? request,
         CancellationToken ct)
     {
-        var res = await tradesService.AssignMiddlemanAsync(request, GetAuth0UserId(), ct);
+        var res = await tradesService.AssignMiddlemanAsync(request, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -33,7 +32,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromBody] UpdateTradeRequest? request,
         CancellationToken ct)
     {
-        var res = await tradesService.UpdateTradeByMiddlemanAsync(tradeId, request, GetAuth0UserId(), ct);
+        var res = await tradesService.UpdateTradeByMiddlemanAsync(tradeId, request, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -46,7 +45,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         CancellationToken ct = default)
     {
         var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
-        var res = await tradesService.GetAvailableNewAsync(page, pageSize, q, GetAuth0UserId(), isMiddleman, ct);
+        var res = await tradesService.GetAvailableNewAsync(page, pageSize, q, Auth0IdHandler.GetUserId(User), isMiddleman, ct);
         return res.ToActionResult();
     }
 
@@ -63,7 +62,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
             page,
             pageSize,
             q,
-            GetAuth0UserId(),
+            Auth0IdHandler.GetUserId(User),
             isMiddleman,
             ct);
         return res.ToActionResult();
@@ -82,7 +81,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
             page,
             pageSize,
             q,
-            GetAuth0UserId(),
+            Auth0IdHandler.GetUserId(User),
             isMiddleman,
             ct);
         return res.ToActionResult();
@@ -102,7 +101,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
             page,
             pageSize,
             q,
-            GetAuth0UserId(),
+            Auth0IdHandler.GetUserId(User),
             isMiddleman,
             ct);
         return res.ToActionResult();
@@ -112,7 +111,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     [Authorize]
     public async Task<ActionResult<Result<UserTradeStatsResponse>>> GetStats(CancellationToken ct = default)
     {
-        var auth0UserId = GetAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var isMiddleman = User.IsInRole("Middleman") || User.IsInRole("Admin");
 
         var res = await tradesService.GetStatsAsync(auth0UserId, isMiddleman, ct);
@@ -126,7 +125,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromRoute] int tradeId,
         CancellationToken ct = default)
     {
-        var res = await tradesService.GetTradeDetailsAsync(tradeId, GetAuth0UserId(), ct);
+        var res = await tradesService.GetTradeDetailsAsync(tradeId, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -136,7 +135,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromRoute] int tradeId,
         CancellationToken ct = default)
     {
-        var res = await tradesService.SetTradeAsFailedAsync(tradeId, GetAuth0UserId(), ct);
+        var res = await tradesService.SetTradeAsFailedAsync(tradeId, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -147,7 +146,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         [FromBody] CompleteAndMarkTradeRequest request,
         CancellationToken ct = default)
     {
-        var res = await tradesService.SetTradeAsRealisedAsync(tradeId, GetAuth0UserId(), request, ct);
+        var res = await tradesService.SetTradeAsRealisedAsync(tradeId, Auth0IdHandler.GetUserId(User), request, ct);
         return res.ToActionResult();
     }
 
@@ -157,7 +156,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     public async Task<ActionResult<Result<TradeListItemDTO>>> GetById([FromRoute] int tradeId, CancellationToken ct)
     {
         var isMiddlemanView = User.IsInRole("Middleman");
-        var res = await tradesService.GetByIdAsync(tradeId, GetAuth0UserId(), isMiddlemanView, ct);
+        var res = await tradesService.GetByIdAsync(tradeId, Auth0IdHandler.GetUserId(User), isMiddlemanView, ct);
         return res.ToActionResult();
     }
     
@@ -171,7 +170,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
         var res = await tradesService.UploadTradeImageAsync(
             tradeId,
             request,
-            GetAuth0UserId(),
+            Auth0IdHandler.GetUserId(User),
             ct);
 
         return res.ToActionResult();

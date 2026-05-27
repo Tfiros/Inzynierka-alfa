@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using ItemTradeApp.Features.Shared;
 
 namespace ItemTradeApp.Middlewares;
 
@@ -20,9 +21,7 @@ public static class RateLimiterExtensions
 
                 var type = isAuth ? "auth" : "api";
 
-                var userId =
-                    ctx.User.FindFirstValue("sub") ??
-                    ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = Auth0IdHandler.GetUserId(ctx.User);
 
                 var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 

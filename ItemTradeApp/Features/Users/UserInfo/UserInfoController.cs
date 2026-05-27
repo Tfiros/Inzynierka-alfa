@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
@@ -43,7 +44,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
             return bad.ToActionResult();
         }
 
-        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
             var unauthorized = Result<UserProfileInfoResponse>.Unauthorized("Missing sub claim in JWT.");
@@ -87,7 +88,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
             return bad.ToActionResult();
         }
 
-        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
             var unauthorized = Result<UserProfileInfoResponse>.Unauthorized("Missing sub claim in JWT.");

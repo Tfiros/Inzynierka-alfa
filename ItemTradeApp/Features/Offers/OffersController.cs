@@ -39,7 +39,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     public async Task<ActionResult<Result<OfferDetailsDTO>>> CreateOffer(
         [FromBody] OfferDraftRequest request, CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await offerService.CreateOfferAsync(auth0UserId, request, ct);
         return result.ToActionResult();
 
@@ -51,7 +51,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         [FromRoute] int offerId, CancellationToken ct = default
     )
     {
-        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await offerService.CancelOfferAsync(auth0UserId, offerId, ct);
         return result.ToActionResult();
     }
@@ -64,7 +64,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         CancellationToken ct = default
     )
     {
-        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await offerService.UpdateOfferAsync(auth0UserId, offerId, request, ct);
         return result.ToActionResult();
     }
@@ -119,7 +119,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     public async Task<ActionResult<Result<OfferUpdateQuoteResponse>>> QuoteUpdate(
         [FromRoute] int offerId,[FromBody] OfferUpdateDraftRequest request, CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await offerService.GetUpdateQuoteAsync(auth0UserId,offerId, request, ct);
         return result.ToActionResult();
 
@@ -129,7 +129,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     [Authorize]
     public async Task<ActionResult<Result<AcceptOfferResponse>>> AcceptOffer([FromRoute] int offerId, CancellationToken ct = default)
     {
-        var auth0UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await offerService.AcceptOfferAsync(auth0UserId, offerId, ct);
         return result.ToActionResult();
     }

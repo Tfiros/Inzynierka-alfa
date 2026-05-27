@@ -2,6 +2,7 @@
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Chat.DTOs;
 using ItemTradeApp.Features.Chat.Services;
+using ItemTradeApp.Features.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +12,6 @@ namespace ItemTradeApp.Features.Chat;
 [Route("[controller]")]
 public sealed class ChatController(IChatService chatService) : ControllerBase
 {
-    private string? GetAuth0UserId()
-        => User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
     [HttpGet("threads")]
     [Authorize]
     public async Task<ActionResult<Result<IReadOnlyList<ChatThreadListItemDto>>>> GetThreads(
@@ -22,7 +20,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
-        var res = await chatService.GetThreadsAsync(page, pageSize, search, GetAuth0UserId(), ct);
+        var res = await chatService.GetThreadsAsync(page, pageSize, search, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -34,7 +32,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromQuery] int pageSize = 50,
         CancellationToken ct = default)
     {
-        var res = await chatService.GetMessagesAsync(chatId, beforeMessageId, pageSize, GetAuth0UserId(), ct);
+        var res = await chatService.GetMessagesAsync(chatId, beforeMessageId, pageSize, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
     
@@ -45,7 +43,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromBody] EditMessageRequest? request,
         CancellationToken ct = default)
     {
-        var res = await chatService.EditMessageAsync(messageId, request, GetAuth0UserId(), ct);
+        var res = await chatService.EditMessageAsync(messageId, request, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -55,7 +53,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromRoute] long messageId,
         CancellationToken ct = default)
     {
-        var res = await chatService.DeleteMessageAsync(messageId, GetAuth0UserId(), ct);
+        var res = await chatService.DeleteMessageAsync(messageId, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -66,7 +64,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromBody] MarkReadRequest? request,
         CancellationToken ct = default)
     {
-        var res = await chatService.MarkReadAsync(chatId, request, GetAuth0UserId(), ct);
+        var res = await chatService.MarkReadAsync(chatId, request, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 
@@ -76,7 +74,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         [FromRoute] int tradeId,
         CancellationToken ct)
     {
-        var res = await chatService.GetChatsForTradeAsync(tradeId, GetAuth0UserId(), ct);
+        var res = await chatService.GetChatsForTradeAsync(tradeId, Auth0IdHandler.GetUserId(User), ct);
         return res.ToActionResult();
     }
 }
