@@ -34,7 +34,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
     public async Task<List<Item>> GetByNameAndGameId(string searchText, int gameId, CancellationToken ct)
     {
         searchText = searchText.Trim();
-        if (searchText.Length <= 3)
+        if (searchText.Length < 3)
         {
             return new List<Item>();
         }
