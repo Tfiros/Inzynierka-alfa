@@ -9,15 +9,11 @@ public sealed class NotificationsHub(IUserIdentityRepository identityRepo,
 {
     public override async Task OnConnectedAsync()
     {
-        var auth0UserId = Context.User?.FindFirst("sub")?.Value
-                          ?? Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+        var auth0UserId = Context.User is not null ? Auth0IdHandler.GetUserId(Context.User) : null;
 
         if (!string.IsNullOrWhiteSpace(auth0UserId))
         {
-            string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-                ? auth0UserId.Substring("auth0|".Length)
-                : auth0UserId;
+            var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
             
             var userId = await identityRepo.GetUserIdByAuth0IdAsync(trimmedAuth0UserId, Context.ConnectionAborted);
             if (userId is not null)

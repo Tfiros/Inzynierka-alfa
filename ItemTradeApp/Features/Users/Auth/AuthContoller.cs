@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Users.Auth.DTOs.RequestDtos;
 using ItemTradeApp.Features.Users.Auth.DTOs.ResponseDtos;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
@@ -120,7 +121,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             User.FindFirst("preferred_username")?.Value ??
             User.FindFirst(ClaimTypes.Email)?.Value;
 
-        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<AuthMeDTO>.Unauthorized("Missing sub claim in JWT.").ToActionResult();

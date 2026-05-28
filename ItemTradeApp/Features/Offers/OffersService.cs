@@ -3,6 +3,7 @@ using ItemTradeApp.Features.Offers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Offers.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Offers.Internal;
 using ItemTradeApp.Features.Offers.Repositories;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
 using ItemTradeApp.Features.Shared.Emails.Services;
@@ -26,12 +27,12 @@ public interface IOffersService
         CancellationToken ct = default);
 
     Task<Result<OfferDetailsDTO>> 
-        CreateOfferAsync(string auth0UserId, OfferDraftRequest offerDraftRequest,
+        CreateOfferAsync(string? auth0UserId, OfferDraftRequest offerDraftRequest,
         CancellationToken ct = default);
 
-    Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
+    Task<Result<string>> CancelOfferAsync(string? auth0UserId, int offerId, CancellationToken ct = default);
 
-    Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId, OfferUpdateDraftRequest request,
+    Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string? auth0UserId, int offerId, OfferUpdateDraftRequest request,
         CancellationToken ct = default);
 
     Task<Result<OfferQuoteResponse>> GetQuoteAsync(OfferDraftRequest req, CancellationToken ct = default);
@@ -40,10 +41,10 @@ public interface IOffersService
     Task<Result<List<GameDTO>>> GetAllGames(CancellationToken ct = default);
     Task<Result<List<GenreDTO>>> GetAllGenres(CancellationToken ct = default);
     Task<Result<List<RarityDTO>>> GetRaritiesByGameId(int gameId, CancellationToken ct = default);
-    Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
+    Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string? auth0UserId, int offerId,
         OfferUpdateDraftRequest request, CancellationToken ct = default);
 
-    Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default);
+    Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string? auth0UserId, int offerId, CancellationToken ct = default);
 }
 
 public class OffersService(
@@ -107,13 +108,14 @@ public class OffersService(
         return Result<OfferDetailsDTO>.Success(response);
     }
 
-    public async Task<Result<OfferDetailsDTO>> CreateOfferAsync(string auth0UserId,
+    public async Task<Result<OfferDetailsDTO>> CreateOfferAsync(string? auth0UserId,
         OfferDraftRequest offerDraftRequest, CancellationToken ct = default)
     {
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
 
+        auth0UserId = Auth0IdHandler.Trim(auth0UserId);
     
         var (okDraft, errDraft, draft) = await BuildDraftAsync(offerDraftRequest.Title, offerDraftRequest.Description,offerDraftRequest.OfferedItems, offerDraftRequest.WantedItems, offerDraftRequest.DurationDays, offerDraftRequest.IsHighlighted, offerDraftRequest.TokensOffered, offerDraftRequest.TokensWanted, ct);
         if (!okDraft)
@@ -212,12 +214,15 @@ public class OffersService(
         }
     }
 
-    public async Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string auth0UserId, int offerId,
+    public async Task<Result<OfferDetailsDTO>> UpdateOfferAsync(string? auth0UserId, int offerId,
         OfferUpdateDraftRequest request,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<OfferDetailsDTO>.Unauthorized("missing_sub_claim");
+        
+        auth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        
         if (offerId <= 0) return Result<OfferDetailsDTO>.BadRequest("invalid_offer_id");
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
         if (!okUser) return Result<OfferDetailsDTO>.Unauthorized(errUser!);
@@ -292,13 +297,13 @@ public class OffersService(
 
     }
 
-    public async Task<Result<string>> CancelOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default)
+    public async Task<Result<string>> CancelOfferAsync(string? auth0UserId, int offerId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
         {
             return Result<string>.Unauthorized("missing_sub_claim");
         }
-
+        auth0UserId = Auth0IdHandler.Trim(auth0UserId);
         if (offerId <= 0)
         {
             return Result<string>.BadRequest("invalid_offer_id");
@@ -443,11 +448,14 @@ public class OffersService(
         return Result<List<RarityDTO>>.Success(response);
     }
 
-    public async Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string auth0UserId, int offerId,
+    public async Task<Result<OfferUpdateQuoteResponse>> GetUpdateQuoteAsync(string? auth0UserId, int offerId,
         OfferUpdateDraftRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<OfferUpdateQuoteResponse>.Unauthorized("missing_sub_claim");
+        
+        auth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        
         if (offerId <= 0) return Result<OfferUpdateQuoteResponse>.BadRequest("invalid_offer_id");
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);
         if (!okUser) return Result<OfferUpdateQuoteResponse>.Unauthorized(errUser!);
@@ -467,10 +475,13 @@ public class OffersService(
 
     }
 
-    public async Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string auth0UserId, int offerId, CancellationToken ct = default)
+    public async Task<Result<AcceptOfferResponse>> AcceptOfferAsync(string? auth0UserId, int offerId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<AcceptOfferResponse>.Unauthorized("missing_sub_claim");
+        
+        auth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        
         if (offerId <= 0) return Result<AcceptOfferResponse>.BadRequest("invalid_offer_id");
         
         var (okUser, errUser, userState) = await GetActiveUserOrErrorAsync(auth0UserId, ct);

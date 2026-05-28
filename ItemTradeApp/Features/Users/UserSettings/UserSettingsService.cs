@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.UserSettings.DTOs;
 
@@ -27,9 +28,9 @@ public sealed class UserSettingsService(IUserSettingsRepository userSettingsRepo
         {
             return Result<string>.Unauthorized("Missing auth0 user id (sub claim).");
         }
-        string trimmedAuth0UserId = auth0UserId.StartsWith("auth0|")
-            ? auth0UserId.Substring("auth0|".Length)
-            : auth0UserId;
+
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        
         var user = await userSettingsRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
         if (user is null)
         {

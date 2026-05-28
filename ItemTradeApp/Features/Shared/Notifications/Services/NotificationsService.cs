@@ -40,15 +40,12 @@ public sealed class NotificationsService(
 {
     private async Task<int?> ResolveUserIdAsync(ClaimsPrincipal user, CancellationToken ct)
     {
-        var auth0UserId = user.FindFirst("sub")?.Value
-                          ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var auth0UserId = Auth0IdHandler.GetUserId(user);
 
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return null;
 
-        var trimmedAuth0UserId = auth0UserId.StartsWith("auth0|", StringComparison.OrdinalIgnoreCase)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
 
         return await identityRepo.GetUserIdByAuth0IdAsync(trimmedAuth0UserId, ct);
     }

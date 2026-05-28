@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,24 +14,13 @@ namespace ItemTradeApp.Features.CounterOffers;
 [Authorize]
 public sealed class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
 {
-    private string GetNormalizedAuth0UserId()
-    {
-        var user = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(user))
-            return string.Empty;
-
-        var pipePosition = user.IndexOf('|');
-        return (pipePosition >= 0 && pipePosition < user.Length - 1)
-            ? user[(pipePosition + 1)..]
-            : user;
-    }
     
     [HttpGet("sent")]
     public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
         [FromQuery] CounterOfferListingsQuery query,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.GetSentCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
@@ -41,7 +30,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         [FromQuery] CounterOfferListingsQuery query,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
@@ -52,7 +41,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         [FromBody] CounterOfferDraftRequest request,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.CreateCounterOfferAsync(auth0UserId, offerId, request, ct);
         return result.ToActionResult();
     }
@@ -63,7 +52,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         [FromBody] UpdateCounterOfferStatusRequest request,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.UpdateCounterOfferStatusAsync(
             auth0UserId,
             counterOfferId,
@@ -78,7 +67,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         [FromRoute] int counterOfferId,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.AcceptCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
     }
@@ -89,7 +78,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         [FromBody] CounterOfferDraftRequest request,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
 
         var result = await counterOffersService.QuoteCounterOfferAsync(
             auth0UserId,
@@ -107,7 +96,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         CancellationToken ct)
     {
         var res = await counterOffersService.GetCounterOffersForOfferAsync(
-            GetNormalizedAuth0UserId(),
+            Auth0IdHandler.GetUserId(User),
             offerId,
             ct
         );
@@ -119,7 +108,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
     public async Task<ActionResult<Result<CounterOfferDto>>> CancelCounterOffer([FromRoute] int counterOfferId,
         CancellationToken ct)
     {
-        var auth0UserId = GetNormalizedAuth0UserId();
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.CancelCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
     }

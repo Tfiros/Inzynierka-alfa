@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Users.UserSettings.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,8 @@ public class UserSettingsController(IUserSettingsService service) : ControllerBa
             var bad = Result<string>.BadRequest("Body is required.");
             return bad.ToActionResult();
         }
-        var auth0UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
         
         var result = await service.UpdateSensitiveDataAsync(auth0UserId, request, ct);
         return result.ToActionResult();

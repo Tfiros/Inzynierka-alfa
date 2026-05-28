@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Users.Auth.DTOs.RequestDtos;
 using ItemTradeApp.Features.Users.Auth.DTOs.ResponseDtos;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
@@ -295,7 +296,7 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(auth0Id))
             return Result<RefreshResponse>.InternalServerError("Refresh response was invalid.");
 
-        var trimmedAuth0UserId = TrimAuth0Prefix(auth0Id);
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0Id);
 
         var user = await authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
 
@@ -367,7 +368,7 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(authZeroId))
             return Result<int>.BadRequest("Auth0 user id is required.");
 
-        var trimmedAuth0UserId = TrimAuth0Prefix(authZeroId);
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(authZeroId);
 
         var user = await authRepository.GetUserByAuth0Id(trimmedAuth0UserId);
 
@@ -400,14 +401,6 @@ public class AuthService(
 
         return new TokenPayload(accessToken, expiresIn, refreshToken, idToken);
     }
-
-    private static string TrimAuth0Prefix(string auth0UserId)
-    {
-        return auth0UserId.StartsWith("auth0|", StringComparison.OrdinalIgnoreCase)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
-    }
-
     private static string? GetProviderError(Result<AuthZeroBodyResponse> result)
     {
         return result.Data?.Details.ErrorDescription

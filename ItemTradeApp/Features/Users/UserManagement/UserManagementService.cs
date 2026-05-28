@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
@@ -38,16 +39,6 @@ public sealed class UserManagementService(
         (int)TradeStatuses.InRealization
     ];
 
-    private static string EnsureAuth0Prefix(string auth0UserId)
-        => auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-            ? auth0UserId
-            : "auth0|" + auth0UserId;
-
-    private static string TrimAuth0Prefix(string auth0UserId)
-        => auth0UserId.StartsWith("auth0|", StringComparison.Ordinal)
-            ? auth0UserId["auth0|".Length..]
-            : auth0UserId;
-
     public async Task<Result<string>> UpdateUserAsync(UpdateUserRequest request, CancellationToken ct = default)
     {
         if (request is null)
@@ -56,8 +47,8 @@ public sealed class UserManagementService(
         if (string.IsNullOrWhiteSpace(request.AuthZeroUserId))
             return Result<string>.BadRequest("auth0_user_id_required");
 
-        var trimmedAuth0UserId = TrimAuth0Prefix(request.AuthZeroUserId);
-
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(request.AuthZeroUserId);
+        
         var user = await userManagementRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
         if (user is null)
             return Result<string>.NotFound("user_not_found_local_db");
@@ -86,8 +77,8 @@ public sealed class UserManagementService(
         {
             return Result<string>.NoContent("no_changes");
         }
-
-        var fullAuth0UserId = EnsureAuth0Prefix(request.AuthZeroUserId);
+        
+        var fullAuth0UserId = Auth0IdHandler.CheckIfAuth0WithPrefix(request.AuthZeroUserId);
 
         if (hasEmailChange || hasPasswordChange || hasNicknameChange)
         {
@@ -190,9 +181,9 @@ public sealed class UserManagementService(
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
             return Result<string>.BadRequest("auth0_user_id_required");
-
-        var trimmedAuth0UserId = TrimAuth0Prefix(auth0UserId);
-        var fullAuth0UserId = EnsureAuth0Prefix(auth0UserId);
+        
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        var fullAuth0UserId = Auth0IdHandler.CheckIfAuth0WithPrefix(auth0UserId);
 
         var user = await userManagementRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
         if (user is null)
@@ -362,7 +353,7 @@ public sealed class UserManagementService(
             return Result<UserDetailsResponse>.NotFound("user_not_found");
 
         var rolesRes = await authZeroManagementClient
-            .GetUserRolesAsync(EnsureAuth0Prefix(auth0UserId), ct);
+            .GetUserRolesAsync(Auth0IdHandler.CheckIfAuth0WithPrefix(auth0UserId), ct);
 
         if (!rolesRes.IsSuccess || rolesRes.Data is null)
         {
@@ -408,13 +399,12 @@ public sealed class UserManagementService(
             return new Result<string[]>(false, middlemenRes.Status, null, middlemenRes.Message ?? "auth0_get_users_in_role_failed");
 
         var ids = middlemenRes.Data
-            .Select(u => TrimAuth0Prefix(u.UserId))
+            .Select(u => Auth0IdHandler.Trim(u.UserId))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToArray();
 
         return Result<string[]>.Success(ids);
     }
-
     private static Result<UserListPagedResponse> EmptyPaged(int page, int pageSize)
         => Result<UserListPagedResponse>.Success(new UserListPagedResponse
         {
