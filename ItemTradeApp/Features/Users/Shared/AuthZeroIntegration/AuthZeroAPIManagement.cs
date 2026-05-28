@@ -11,13 +11,13 @@ public interface IAuthZeroManagementClient
 {
     Task<Result<AuthZeroBodyResponse>> PatchUserAsync(string auth0UserId, object payload, CancellationToken ct = default);
     Task<Result<AuthZeroBodyResponse>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default);
-    Task<Result<List<Auth0UserSlim>>> GetUsersInRoleAsync(string roleId, CancellationToken ct = default);
+    Task<Result<List<AuthZeroUserSlim>>> GetUsersInRoleAsync(string roleId, CancellationToken ct = default);
 
     Task<Result<string>> AssignRolesToUserAsync(string auth0UserId, IReadOnlyCollection<string> roleIds, CancellationToken ct = default);
     Task<Result<string>> RemoveRolesFromUserAsync(string auth0UserId, IReadOnlyCollection<string> roleIds, CancellationToken ct = default);
 
-    Task<Result<List<Auth0RoleResponse>>> GetRolesAsync(CancellationToken ct = default);
-    Task<Result<List<Auth0RoleResponse>>> GetUserRolesAsync(string auth0UserId, CancellationToken ct = default);
+    Task<Result<List<AuthZeroRoleResponse>>> GetRolesAsync(CancellationToken ct = default);
+    Task<Result<List<AuthZeroRoleResponse>>> GetUserRolesAsync(string auth0UserId, CancellationToken ct = default);
 }
 
 public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
@@ -110,17 +110,17 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         return Result<AuthZeroBodyResponse>.NoContent("auth0_user_deleted");
     }
 
-    public async Task<Result<List<Auth0UserSlim>>> GetUsersInRoleAsync(
+    public async Task<Result<List<AuthZeroUserSlim>>> GetUsersInRoleAsync(
         string roleId,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(roleId))
-            return Result<List<Auth0UserSlim>>.BadRequest("auth0_role_id_required");
+            return Result<List<AuthZeroUserSlim>>.BadRequest("auth0_role_id_required");
 
         var tokenRes = await _tokenProvider.GetTokenAsync(ct);
         if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
         {
-            return new Result<List<Auth0UserSlim>>(
+            return new Result<List<AuthZeroUserSlim>>(
                 false,
                 tokenRes.Status,
                 null,
@@ -130,7 +130,7 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         var httpClient = CreateAuthorizedClient(tokenRes.Data);
         var encodedRoleId = Uri.EscapeDataString(roleId);
 
-        var all = new List<Auth0UserSlim>();
+        var all = new List<AuthZeroUserSlim>();
         var page = 0;
 
         while (true)
@@ -142,7 +142,7 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 
             if (!response.IsSuccessStatusCode)
             {
-                return MapAuth0ManagementError<List<Auth0UserSlim>>(
+                return MapAuth0ManagementError<List<AuthZeroUserSlim>>(
                     response.StatusCode,
                     body,
                     "get_users_in_role");
@@ -159,14 +159,14 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
             page++;
         }
 
-        return Result<List<Auth0UserSlim>>.Success(all);
+        return Result<List<AuthZeroUserSlim>>.Success(all);
     }
 
-    public async Task<Result<List<Auth0RoleResponse>>> GetRolesAsync(CancellationToken ct = default)
+    public async Task<Result<List<AuthZeroRoleResponse>>> GetRolesAsync(CancellationToken ct = default)
     {
         var tokenRes = await _tokenProvider.GetTokenAsync(ct);
         if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
-            return Result<List<Auth0RoleResponse>>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
+            return Result<List<AuthZeroRoleResponse>>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
 
         var httpClient = CreateAuthorizedClient(tokenRes.Data);
         var url = $"{ManagementBaseUrl}/roles?per_page={PerPage}&page=0";
@@ -176,28 +176,28 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 
         if (!response.IsSuccessStatusCode)
         {
-            return MapAuth0ManagementError<List<Auth0RoleResponse>>(
+            return MapAuth0ManagementError<List<AuthZeroRoleResponse>>(
                 response.StatusCode,
                 body,
                 "get_roles");
         }
 
-        var roles = await response.Content.ReadFromJsonAsync<List<Auth0RoleResponse>>(cancellationToken: ct)
-                    ?? new List<Auth0RoleResponse>();
+        var roles = await response.Content.ReadFromJsonAsync<List<AuthZeroRoleResponse>>(cancellationToken: ct)
+                    ?? new List<AuthZeroRoleResponse>();
 
-        return Result<List<Auth0RoleResponse>>.Success(roles);
+        return Result<List<AuthZeroRoleResponse>>.Success(roles);
     }
 
-    public async Task<Result<List<Auth0RoleResponse>>> GetUserRolesAsync(
+    public async Task<Result<List<AuthZeroRoleResponse>>> GetUserRolesAsync(
         string auth0UserId,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(auth0UserId))
-            return Result<List<Auth0RoleResponse>>.BadRequest("auth0_user_id_required");
+            return Result<List<AuthZeroRoleResponse>>.BadRequest("auth0_user_id_required");
 
         var tokenRes = await _tokenProvider.GetTokenAsync(ct);
         if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
-            return Result<List<Auth0RoleResponse>>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
+            return Result<List<AuthZeroRoleResponse>>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
 
         var httpClient = CreateAuthorizedClient(tokenRes.Data);
         var encodedUserId = Uri.EscapeDataString(auth0UserId);
@@ -208,17 +208,17 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 
         if (!response.IsSuccessStatusCode)
         {
-            return MapAuth0ManagementError<List<Auth0RoleResponse>>(
+            return MapAuth0ManagementError<List<AuthZeroRoleResponse>>(
                 response.StatusCode,
                 body,
                 "get_user_roles",
                 auth0UserId);
         }
 
-        var roles = await response.Content.ReadFromJsonAsync<List<Auth0RoleResponse>>(cancellationToken: ct)
-                    ?? new List<Auth0RoleResponse>();
+        var roles = await response.Content.ReadFromJsonAsync<List<AuthZeroRoleResponse>>(cancellationToken: ct)
+                    ?? new List<AuthZeroRoleResponse>();
 
-        return Result<List<Auth0RoleResponse>>.Success(roles);
+        return Result<List<AuthZeroRoleResponse>>.Success(roles);
     }
 
     public async Task<Result<string>> AssignRolesToUserAsync(
@@ -301,9 +301,9 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         return httpClient;
     }
 
-    private static Auth0UserSlim MapSlimUser(AuthZeroUserResponse user)
+    private static AuthZeroUserSlim MapSlimUser(AuthZeroUserResponse user)
     {
-        return new Auth0UserSlim
+        return new AuthZeroUserSlim
         {
             UserId = user.UserId,
             Email = user.Email,
