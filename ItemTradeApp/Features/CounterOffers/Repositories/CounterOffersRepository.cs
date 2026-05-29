@@ -71,7 +71,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .Take(pageSize)
             .Include(co => co.Offer)
             .Include(co => co.OfferStatus)
-            .Include(co => co.ListingCounterOfferItems)
+            .Include(co => co.ListingCounterOfferItems.Where(lci => !lci.Item.IsDeleted))
             .ThenInclude(i => i.Item)
             .ThenInclude(it => it.Game)
             .ToListAsync(ct);
@@ -139,7 +139,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .Take(pageSize)
             .Include(co => co.Offer)
             .Include(co => co.OfferStatus)
-            .Include(co => co.ListingCounterOfferItems)
+            .Include(co => co.ListingCounterOfferItems.Where(lci => !lci.Item.IsDeleted))
             .ThenInclude(i => i.Item)
             .ThenInclude(it => it.Game)
             .ToListAsync(ct);
@@ -246,7 +246,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         .OrderByDescending(co => co.CreationDate)
         .Include(co => co.Offer)
         .Include(co => co.OfferStatus)
-        .Include(co => co.ListingCounterOfferItems)
+        .Include(co => co.ListingCounterOfferItems.Where(lci => !lci.Item.IsDeleted))
         .ThenInclude(i => i.Item)
         .ThenInclude(it => it.Game)
         .ToListAsync(ct);

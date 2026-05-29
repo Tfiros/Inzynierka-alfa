@@ -114,7 +114,9 @@ public sealed class ItemRarityRepository(AppDbContext db) : IItemRarityRepositor
             return query;
 
         var s = searchText.Trim();
-        return query.Where(r => EF.Functions.ILike(r.RarityName, $"%{s}%"));
+        
+        var pattern = $"%{EscapePattern.Escape(s)}%";
+        return query.Where(r => EF.Functions.ILike(r.RarityName, pattern, "!"));
     }
 
 

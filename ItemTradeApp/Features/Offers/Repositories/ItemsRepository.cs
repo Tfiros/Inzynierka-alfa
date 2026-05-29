@@ -1,3 +1,4 @@
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
         {
             return new List<Item>();
         }
-        var escaped = Escape(searchText);
+        var escaped = EscapePattern.Escape(searchText);
 
 
         var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && EF.Functions.ILike(i.Name, $"%{escaped}%", "!"));
@@ -39,7 +40,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             return new List<Item>();
         }
 
-        var escaped = Escape(searchText);
+        var escaped = EscapePattern.Escape(searchText);
         var query = db.Items.AsNoTracking().Include(i => i.Game).Where(i => !i.IsDeleted && i.Game_ID == gameId && EF.Functions.ILike(i.Name, $"%{escaped}%","!"));
 
         return await query
@@ -47,11 +48,5 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .Take(5)
             .ToListAsync(ct);
     }
-
-    private static string Escape(string input, char escapeChar = '!')
-    {
-        return input.Replace(escapeChar.ToString(), new string(escapeChar, 2))
-            .Replace("%", $"{escapeChar}%")
-            .Replace("_", $"{escapeChar}_");
-    }
+    
 }

@@ -1,3 +1,4 @@
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
@@ -162,6 +163,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             return query;
 
         var s = q.SearchText.Trim();
+        var pattern = $"%{EscapePattern.Escape(s)}%";
 
         return q.SearchBy.Value switch
         {
@@ -172,16 +174,16 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 => query.Where(t => t.Offer_ID == offerId),
 
             TradeSearchBy.CustomerNickname
-                => query.Where(t => EF.Functions.ILike(t.Customer.ProfileInfo.Nickname!, $"%{s}%")),
+                => query.Where(t => EF.Functions.ILike(t.Customer.ProfileInfo.Nickname!, pattern, "!")),
 
             TradeSearchBy.CustomerEmail
-                => query.Where(t => EF.Functions.ILike(t.Customer.Email, $"%{s}%")),
+                => query.Where(t => EF.Functions.ILike(t.Customer.Email, pattern, "!")),
 
             TradeSearchBy.PostingUserNickname
-                => query.Where(t => EF.Functions.ILike(t.PostingUser.ProfileInfo.Nickname!, $"%{s}%")),
+                => query.Where(t => EF.Functions.ILike(t.PostingUser.ProfileInfo.Nickname!, pattern, "!")),
 
             TradeSearchBy.PostingUserEmail
-                => query.Where(t => EF.Functions.ILike(t.PostingUser.Email, $"%{s}%")),
+                => query.Where(t => EF.Functions.ILike(t.PostingUser.Email, pattern, "!")),
 
             _ => query
         };

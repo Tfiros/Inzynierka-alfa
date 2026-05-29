@@ -39,7 +39,7 @@ public class UserInfoOfferRepository(AppDbContext dbContext) : IUserInfoOfferRep
     {
 
         var localQuery = dbContext.Offers.AsNoTracking().AsQueryable();
-        localQuery = localQuery.Where(o => o.User.ID == id && o.OfferStatus_ID == (int)OfferStatuses.Completed || o.OfferStatus_ID == (int)OfferStatuses.Canceled);
+        localQuery = localQuery.Where(o => o.User.ID == id && (o.OfferStatus_ID == (int)OfferStatuses.Completed || o.OfferStatus_ID == (int)OfferStatuses.Canceled));
 
         var totalCount = await localQuery.CountAsync(ct);
 
