@@ -108,10 +108,10 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         return await dbContext.Offers
             .AsNoTracking()
             .AsSplitQuery()
-            .Include(o => o.ListingItems)
+            .Include(o => o.ListingItems.Where(li => !li.Item.IsDeleted))
             .ThenInclude(li => li.Item)
             .ThenInclude(i => i.Game)
-            .Include(o => o.ListingItems)
+            .Include(o => o.ListingItems.Where(li => !li.Item.IsDeleted))
             .ThenInclude(li => li.Item)
             .ThenInclude(i => i.ItemRarity)
             .FirstOrDefaultAsync(o => o.ID == offerId, ct);
