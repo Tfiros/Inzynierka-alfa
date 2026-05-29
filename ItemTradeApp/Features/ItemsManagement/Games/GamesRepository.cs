@@ -122,7 +122,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
     }
 
     public async Task<Game?> GetByNameAsync(string name, CancellationToken ct)
-        =>  await db.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Name == name, ct);
+        =>  await db.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Name == name && !g.IsDeleted, ct);
     
 
     public async Task SaveChangesAsync(CancellationToken ct) => await db.SaveChangesAsync(ct);
