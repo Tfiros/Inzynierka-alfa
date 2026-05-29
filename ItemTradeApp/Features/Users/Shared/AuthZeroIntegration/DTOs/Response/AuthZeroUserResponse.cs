@@ -2,7 +2,7 @@
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 
-internal sealed class AuthZeroUserResponse
+public sealed class AuthZeroUserResponse
 {
     [JsonPropertyName("user_id")] public string UserId { get; set; } = null!;
     [JsonPropertyName("email")] public string? Email { get; set; }
@@ -13,11 +13,11 @@ internal sealed class AuthZeroUserResponse
     [JsonPropertyName("app_metadata")] public Auth0AppMetadata? AppMetadata { get; set; }
 }
 
-internal sealed class Auth0AppMetadata
+public sealed class Auth0AppMetadata
 {
     [JsonPropertyName("roles")] public List<string>? Roles { get; set; }
 }
-public sealed class Auth0UserSlim
+public sealed class AuthZeroUserSlim
 {
     public string UserId { get; set; } = null!;
     public string? Email { get; set; }
