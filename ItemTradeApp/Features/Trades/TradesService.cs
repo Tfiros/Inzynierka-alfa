@@ -617,6 +617,9 @@ public sealed class TradesService(
                 }
             }
 
+            trade.Customer.Experience += CalculateExperience(request.BuyersGrade);
+            trade.PostingUser.Experience += CalculateExperience(request.SellersGrade);
+            
             await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -689,6 +692,23 @@ public sealed class TradesService(
         return trade.User_ID == userId || trade.Customer_ID == userId;
     }
 
+    private static int CalculateExperience(int rate)
+    {
+        return rate switch
+        { 
+            10 => 50,
+            9 => 45,
+            8 => 40,
+            7 => 35,
+            6 => 30,
+            5 => 25,
+            4 => 20,
+            3 => 15,
+            2 => 10,
+            1 => 5,
+        };
+    }
+    
     private static PagedResponse<T> ToPaged<T>(int page, int pageSize, int totalCount, List<T> elements)
         => new()
         {
