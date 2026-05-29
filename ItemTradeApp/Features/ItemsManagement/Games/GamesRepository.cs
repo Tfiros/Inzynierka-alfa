@@ -133,7 +133,8 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
             return query;
 
         searchText = searchText.Trim();
-        return query.Where(g => g.Name.Contains(searchText));
+        var escaped = EscapePattern.Escape(searchText);
+        return query.Where(g => EF.Functions.ILike(g.Name,$"%{escaped}%","!"));
     }
 
 

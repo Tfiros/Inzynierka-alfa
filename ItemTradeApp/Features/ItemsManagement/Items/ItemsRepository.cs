@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Persistence;
+﻿using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -57,7 +58,9 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             return query;
 
         searchText = searchText.Trim();
-        return query.Where(g => g.Name.Contains(searchText));
+        var escaped = EscapePattern.Escape(searchText);
+        return query.Where(g => EF.Functions.ILike(g.Name,$"%{escaped}%","!"));
+
     }
 
 }

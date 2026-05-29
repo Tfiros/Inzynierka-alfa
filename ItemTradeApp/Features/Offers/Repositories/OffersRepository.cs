@@ -156,8 +156,8 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
             var s = query.SearchText.Trim();
-
-            offers = offers.Where(o => o.ListingItems.Any(li => EF.Functions.ILike(li.Item.Name, $"%{s}%")));
+            var pattern = $"%{EscapePattern.Escape(s)}%";
+            offers = offers.Where(o => o.ListingItems.Any(li => EF.Functions.ILike(li.Item.Name, pattern, "!")));
         }
 
         var gameId = query.GameId;
