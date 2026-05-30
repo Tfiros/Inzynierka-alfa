@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>@ViewBag.Title</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:Inter,Arial,Helvetica,sans-serif;color:#0f172a;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0;background-color:#f8fafc;">
+<tr>
+<td align="center">
+
+<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+
+<tr>
+<td style="padding:24px 24px 8px 24px;font-size:18px;font-weight:600;">
+@ViewBag.Header
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px 16px 24px;font-size:13px;color:#64748b;">
+@ViewBag.Subtitle
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 24px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;">
+</td>
+</tr>
+
+@RenderBody()
+
+<tr>
+<td style="padding:16px;text-align:center;font-size:12px;color:#94a3b8;">
+© @DateTime.UtcNow.Year ItemTradeApp
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

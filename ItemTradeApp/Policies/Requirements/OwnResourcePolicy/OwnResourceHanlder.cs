@@ -1,0 +1,42 @@
+﻿using System.Security.Claims;
+using ItemTradeApp.Features.Shared;
+using Microsoft.AspNetCore.Authorization;
+
+namespace ItemTradeApp.Policies.Requirements.OwnResourcePolicy;
+
+public class OwnResourceHanlder(IOwnResourcePolicyRepository ownResourcePolicyRepository) : AuthorizationHandler<OwnResourceRequirement>
+{
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        OwnResourceRequirement requirement)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(context.User);
+        if (string.IsNullOrEmpty(auth0UserId)) return;
+        var routeData = context.Resource switch
+        {
+            Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext mvcCtx 
+                => mvcCtx.RouteData,
+            HttpContext httpCtx
+                => httpCtx.GetRouteData(),
+            _ => null
+        };
+
+        if (routeData is null)
+            return;
+
+        if (!routeData.Values.TryGetValue(requirement.RequirementParameterName, out var rawId))
+            return;
+
+        if (!int.TryParse(rawId?.ToString(), out var routeUserId))
+            return;
+        var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
+        var user = await ownResourcePolicyRepository.GetUserByAuthZeroId(trimmedAuth0UserId);
+        if (user is null)
+            return;
+
+        if (user.ID == routeUserId)
+        {
+            context.Succeed(requirement);
+        }
+    }
+}
