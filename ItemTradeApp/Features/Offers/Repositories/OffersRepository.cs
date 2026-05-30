@@ -157,7 +157,7 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
         {
             var s = query.SearchText.Trim();
             var pattern = $"%{EscapePattern.Escape(s)}%";
-            offers = offers.Where(o => o.ListingItems.Any(li => EF.Functions.ILike(li.Item.Name, pattern, "!")));
+            offers = offers.Where(o => o.ListingItems.Any(li => EF.Functions.ILike(li.Item.Name, pattern, "!") && !li.Item.IsDeleted));
         }
 
         var gameId = query.GameId;
