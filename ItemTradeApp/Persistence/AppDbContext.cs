@@ -366,7 +366,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.CreatedAt)
-                .HasColumnType("timestampz")
+                .HasColumnType("timestamptz")
                 .HasDefaultValueSql("now()");
 
             entity.HasMany(x => x.Members)
@@ -423,11 +423,11 @@ public partial class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(x => x.CreatedAt)
-                .HasColumnType("timestampz")
+                .HasColumnType("timestamptz")
                 .HasDefaultValueSql("now()");
 
-            entity.Property(x => x.EditedAt).HasColumnType("timestampz");
-            entity.Property(x => x.DeletedAt).HasColumnType("timestampz");
+            entity.Property(x => x.EditedAt).HasColumnType("timestamptz");
+            entity.Property(x => x.DeletedAt).HasColumnType("timestamptz");
 
             entity.HasOne(x => x.ChatConversation)
                 .WithMany(c => c.Messages)
