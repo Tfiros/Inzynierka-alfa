@@ -8,8 +8,6 @@ public sealed class ChatConversation
     public int Id { get; set; }
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
-    [Column("is_deleted")]
-    public bool IsDeleted { get; set; }
     
     [Column("trade_id")] 
     public int TradeId { get; set; }

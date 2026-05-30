@@ -369,9 +369,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("timestampz")
                 .HasDefaultValueSql("now()");
 
-            entity.Property(x => x.IsDeleted)
-                .HasDefaultValue(false);
-
             entity.HasMany(x => x.Members)
                 .WithOne(x => x.ChatConversation)
                 .HasForeignKey(x => x.ChatConversationId)
@@ -381,8 +378,7 @@ public partial class AppDbContext : DbContext
                 .WithOne(x => x.ChatConversation)
                 .HasForeignKey(x => x.ChatConversationId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => x.IsDeleted);
+            
             entity.Property(x => x.ClosedAt).HasColumnType("timestamptz");
             entity.HasOne(x => x.Trade)
                 .WithMany().HasForeignKey(x => x.TradeId)

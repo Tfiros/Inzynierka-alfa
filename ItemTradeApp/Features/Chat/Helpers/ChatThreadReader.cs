@@ -41,7 +41,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
         var baseChats = _db.ConversationMembers
             .AsNoTracking()
-            .Where(m => m.UserId == userId && !m.ChatConversation.IsDeleted);
+            .Where(m => m.UserId == userId);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -121,7 +121,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
         var myChatsQ = _db.ConversationMembers
             .AsNoTracking()
-            .Where(m => m.UserId == userId && m.ChatConversation.TradeId == tradeId && !m.ChatConversation.IsDeleted)
+            .Where(m => m.UserId == userId && m.ChatConversation.TradeId == tradeId)
             .Select(m => new {m.ChatConversationId, m.LastReadMessageId});
 
         var lastMsqQ = _db.ChatMessages
@@ -155,7 +155,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
         var conversations = await _db.ChatConversations
             .AsNoTracking()
-            .Where(c => chatIds.Contains(c.Id) && !c.IsDeleted)
+            .Where(c => chatIds.Contains(c.Id))
             .Select(c => new ConversationProjection
             {
                 Id = c.Id,
