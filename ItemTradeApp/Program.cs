@@ -139,10 +139,15 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.Configure<ApiBehaviorOptions>(o => o.SuppressModelStateInvalidFilter = true);
+var allowedOrigins = builder.Configuration
+                         .GetSection("Cors:AllowedOrigins")
+                         .Get<string[]>()
+                                ?? ["https://localhost:5173"];
+
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("AppCors", p => p
-        .WithOrigins("https://localhost:5173")
+        .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials()
@@ -172,7 +177,10 @@ if (app.Environment.IsDevelopment())
 }
 app.UseForwardedHeaders();
 app.UseGlobalExceptionHandling();
-app.UseHttpsRedirection();
+if (!app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
 app.UseCors("AppCors");
 app.UseAuthentication();

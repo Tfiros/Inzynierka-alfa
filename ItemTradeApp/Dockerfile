@@ -4,13 +4,11 @@ ARG BUILD_CONFIGURATION=Release
 
 WORKDIR /src
 
-COPY ["ItemTradeApp/ItemTradeApp.csproj", "ItemTradeApp/"]
+COPY ["ItemTradeApp.csproj", "./"]
 
-RUN dotnet restore "ItemTradeApp/ItemTradeApp.csproj"
+RUN dotnet restore "ItemTradeApp.csproj"
 
 COPY . .
-
-WORKDIR "/src/ItemTradeApp"
 
 RUN dotnet publish "ItemTradeApp.csproj" \
     -c $BUILD_CONFIGURATION \
