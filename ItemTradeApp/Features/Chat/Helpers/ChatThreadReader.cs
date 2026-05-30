@@ -1,4 +1,5 @@
 ﻿using ItemTradeApp.Features.Chat.DTOs;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +53,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
 
             foreach (var word in s.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             {
-                var pattern = $"%{Escape(word)}%";
+                var pattern = $"%{EscapePattern.Escape(word)}%";
                 
                 var searchHashNumber = word.StartsWith("#") ? word[1..] : word;
                 int? searchNumber = int.TryParse(searchHashNumber, out var wordNumber) ? wordNumber : null;
@@ -312,9 +313,4 @@ public sealed class ChatThreadsReader : IChatThreadsReader
         public string? AvatarUrl { get; init; }
     }
     
-
-    private static string Escape(string input, char esc = '!')
-        => input.Replace(esc.ToString(), new string(esc, 2))
-            .Replace("%", $"{esc}%")
-            .Replace("_", $"{esc}_");
 }

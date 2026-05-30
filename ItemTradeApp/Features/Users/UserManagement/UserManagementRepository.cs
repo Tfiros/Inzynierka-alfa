@@ -222,12 +222,12 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
 
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
-            var pattern = $"%{query.SearchText.Trim()}%";
+            var pattern = $"%{EscapePattern.Escape(query.SearchText.Trim())}%";
 
             q = q.Where(u =>
                 u.ProfileInfo != null &&
                 u.ProfileInfo.Nickname != null &&
-                EF.Functions.ILike(u.ProfileInfo.Nickname, pattern));
+                EF.Functions.ILike(u.ProfileInfo.Nickname, pattern, "!"));
         }
 
         if (query.RegisteredFrom is not null)

@@ -29,7 +29,7 @@ public static class OfferQueryExtentions
                 (float)o.Rating,
                 o.CompletedTrades == 0 ? 0f : (float)o.SuccesfulTrades / o.CompletedTrades
             ),
-            o.Offer.ListingItems.Where(li => !li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
+            o.Offer.ListingItems.Where(li => !li.IsWanted && !li.Item.IsDeleted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
                     new OfferListingItemDTO
                     (
@@ -42,7 +42,7 @@ public static class OfferQueryExtentions
                         li.Item.ItemRarity.ID,
                         li.Item.ItemRarity.RarityName
                     )).ToList(),
-            o.Offer.ListingItems.Where(li => li.IsWanted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
+            o.Offer.ListingItems.Where(li => li.IsWanted && !li.Item.IsDeleted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
                     new OfferListingItemDTO
                     (
@@ -55,8 +55,8 @@ public static class OfferQueryExtentions
                         li.Item.ItemRarity.ID,
                         li.Item.ItemRarity.RarityName
                     )).ToList(),
-            o.Offer.ListingItems.Count(li => !li.IsWanted),
-            o.Offer.ListingItems.Count(li => li.IsWanted)
+            o.Offer.ListingItems.Count(li => !li.IsWanted && !li.Item.IsDeleted),
+            o.Offer.ListingItems.Count(li => li.IsWanted && !li.Item.IsDeleted)
         ));
 
     public static IQueryable<OfferDetailsDTO> SelectOfferDetailsDto(this IQueryable<Offer> q)
@@ -75,7 +75,7 @@ public static class OfferQueryExtentions
             new OfferUserDTO(o.Offer.User.ID, o.Offer.User.ProfileInfo!.Nickname, o.Offer.User.ProfileInfo.ImageUrl,
                 o.SuccesfulTrades, (float)o.Rating,
                 o.CompletedTrades == 0 ? 0f : (float)o.SuccesfulTrades / o.CompletedTrades),
-            o.Offer.ListingItems.Where(li => !li.IsWanted).Select(li =>      new OfferListingItemDTO
+            o.Offer.ListingItems.Where(li => !li.IsWanted && !li.Item.IsDeleted).Select(li =>      new OfferListingItemDTO
             (
                 new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
                     new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)
@@ -86,7 +86,7 @@ public static class OfferQueryExtentions
                 li.Item.ItemRarity.ID,
                 li.Item.ItemRarity.RarityName
             )).ToList(),
-            o.Offer.ListingItems.Where(li => li.IsWanted).Select(li =>      new OfferListingItemDTO
+            o.Offer.ListingItems.Where(li => li.IsWanted && !li.Item.IsDeleted).Select(li =>      new OfferListingItemDTO
             (
                 new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
                     new GameDTO(li.Item.Game.ID,li.Item.Game.Name,li.Item.Game.Photo_URL,li.Item.Game.Genre_ID)

@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Persistence;
+﻿using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,7 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .FirstOrDefaultAsync(i => i.ID == id, ct);
 
     public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-            => db.Items.AsNoTracking().AnyAsync(i => i.Name == name, ct);
+            => db.Items.AsNoTracking().AnyAsync(i => i.Name == name && !i.IsDeleted, ct);
 
     public async Task AddAsync(Item item, CancellationToken ct)
         => await db.Items.AddAsync(item, ct).AsTask();
@@ -57,7 +58,9 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             return query;
 
         searchText = searchText.Trim();
-        return query.Where(g => g.Name.Contains(searchText));
+        var escaped = EscapePattern.Escape(searchText);
+        return query.Where(g => EF.Functions.ILike(g.Name,$"%{escaped}%","!"));
+
     }
 
 }
