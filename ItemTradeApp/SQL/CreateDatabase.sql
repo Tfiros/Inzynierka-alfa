@@ -516,4 +516,87 @@ ALTER TABLE Emails ADD CONSTRAINT User_emails_User
     INITIALLY IMMEDIATE
 ;
 
+-- Unique Index
+CREATE UNIQUE INDEX IF NOT EXISTS uq_item_game_name_active
+    ON item(Game_id, Name)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_item_rarity_game_name_active
+    ON item_rarity(Game_id, Rarity_name)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_genre_name_active
+    ON genre(Name)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_game_name_active
+    ON game(Name)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email
+    ON "User"(Email);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_auth0
+    ON "User"(Auth0_UserId);
+
+-- Selected FK
+    --Trade
+CREATE INDEX IF NOT EXISTS ix_trade_user_status
+    ON trade(User_id, Trade_status_id);
+
+CREATE INDEX IF NOT EXISTS ix_trade_customer
+    ON trade(Customer_Id);
+
+CREATE INDEX IF NOT EXISTS ix_trade_middleman_status
+    ON trade(Middleman_User_Id, Trade_status_id);
+
+CREATE INDEX IF NOT EXISTS ix_trade_offer_status
+    ON trade(Offer_id, Trade_status_id);
+
+CREATE INDEX IF NOT EXISTS ix_trade_status_creation
+    ON trade(Trade_status_id, Creation_Date);
+
+    --ListingItems
+CREATE INDEX IF NOT EXISTS ix_listing_items_offer_wanted
+    ON listing_items(Offer_Id, Is_wanted);
+
+    --CounterOffer
+CREATE INDEX IF NOT EXISTS ix_counter_offer_offer_status
+    ON counter_offer(Offer_Id, Counter_offer_Status_Id);
+
+CREATE INDEX IF NOT EXISTS ix_counter_offer_user_created
+    ON counter_offer(User_Id, Creation_Date);
+
+    --Offer
+CREATE INDEX IF NOT EXISTS ix_offer_user_status
+    ON offer(User_Id, Offer_Status_Id);
+
+    --FavouriteOffer
+CREATE INDEX IF NOT EXISTS ix_user_favourite_offer_user_added
+    ON User_favourite_offer(User_Id, Added_at DESC);
+
+    --Notification
+CREATE INDEX IF NOT EXISTS ix_notification_created
+    ON notification(User_Id, Created_at DESC, Id DESC)
+    WHERE is_deleted = false;
+
+    --Item
+CREATE INDEX IF NOT EXISTS ix_item_item_rarity
+    ON item(Item_rarity_id)
+    WHERE is_deleted = false;
+
+    --Listing CounterOffer Items
+CREATE INDEX IF NOT EXISTS ix_listing_counter_offer_id
+    ON listing_counter_offer_items(counter_offer_id);
+
+    --Chat
+CREATE INDEX IF NOT EXISTS ix_chat_conversation_trade
+    ON chat_conversation(Trade_id);
+
+CREATE INDEX IF NOT EXISTS ix_chat_messages_chat_conversation_id
+    ON chat_messages(Chat_conversation_id, Id DESC);
+
+CREATE INDEX IF NOT EXISTS ix_conversation_member
+    ON conversation_member(Chat_conversation_Id);
+
 -- End of file.
