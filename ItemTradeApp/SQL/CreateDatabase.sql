@@ -599,4 +599,18 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_chat_conversation_id
 CREATE INDEX IF NOT EXISTS ix_conversation_member
     ON conversation_member(Chat_conversation_Id);
 
+
+--ILike search GIN index
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    
+CREATE INDEX IF NOT EXISTS ix_item_name
+    ON item USING GIN (Name gin_trgm_ops)
+    WHERE is_deleted = false;
+
+CREATE INDEX IF NOT EXISTS ix_profile_info_nickname
+    ON profile_info USING GIN (Nickname gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS ix_user_email
+    ON "User" USING GIN (Email gin_trgm_ops);
+
 -- End of file.
