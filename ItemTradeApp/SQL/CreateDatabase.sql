@@ -613,4 +613,22 @@ CREATE INDEX IF NOT EXISTS ix_profile_info_nickname
 CREATE INDEX IF NOT EXISTS ix_user_email
     ON "User" USING GIN (Email gin_trgm_ops);
 
+--Active offer browsing
+CREATE INDEX IF NOT EXISTS ix_offer_active_created
+    ON offer (Creation_date) WHERE offer_status_id = 1;
+
+CREATE INDEX IF NOT EXISTS ix_offer_active_exp
+    ON offer (Exp_Date) WHERE offer_status_id = 1;
+
+CREATE INDEX IF NOT EXISTS ix_offer_active_token_cost
+    ON offer (Token_Cost) WHERE offer_status_id = 1;
+
+--Unread notifcations
+CREATE INDEX IF NOT EXISTS ix_notifications_unread
+    ON notification (User_id) WHERE read_at IS NULL AND is_deleted = false;
+
+--Business index
+CREATE UNIQUE INDEX uq_trade_offer_id_active
+    ON trade(Offer_id) WHERE trade_status_id != 4;
+
 -- End of file.
