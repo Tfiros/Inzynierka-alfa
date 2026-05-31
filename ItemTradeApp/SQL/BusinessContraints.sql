@@ -26,12 +26,6 @@ ALTER TABLE Rate
     ADD CONSTRAINT mark_range_check
         CHECK (Mark >= 1 AND Mark <= 10);
 
-ALTER TABLE "User"
-    ADD CONSTRAINT check_email_format
-        CHECK (
-            Email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-            );
-
 ALTER TABLE Offer
     ADD CONSTRAINT check_token_cost
         CHECK (Token_Cost >= 0);
@@ -84,16 +78,12 @@ ALTER TABLE Counter_Offer
     ADD CONSTRAINT check_co_creation_date
         CHECK (creation_date <= now());
 
-ALTER TABLE Profile_Info
-    ADD CONSTRAINT check_nickname_legnth
-        CHECK (char_length(trim(Nickname)) >= 2);
-
 ALTER TABLE Notification
     ADD CONSTRAINT check_notification_title
         CHECK (char_length(trim(Title)) > 0);
 
 ALTER TABLE Chat_messages
-    ADD CONSTRAINT check_message_lenght
+    ADD CONSTRAINT check_message_length
         CHECK (char_length(trim(Message)) > 0);
 
 ALTER TABLE Trade

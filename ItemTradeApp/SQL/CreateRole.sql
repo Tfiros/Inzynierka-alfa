@@ -21,8 +21,11 @@ GRANT USAGE, SELECT
 
 GRANT DELETE ON TABLE
     "user_favourite_offer",
-    "listing_items",
-    "listing_counter_offer_items",
-    "conversation_member",
-    "trade_urls"
+    "listing_items"
     TO CrossTrade_Api;
+
+REVOKE INSERT, UPDATE, DELETE
+    ON TABLE
+    "offer_status",
+    "trade_status"
+    FROM CrossTrade_Api;

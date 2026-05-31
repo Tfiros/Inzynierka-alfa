@@ -1,19 +1,19 @@
-INSERT INTO "Genre" ("Name", "Is_Deleted")
+INSERT INTO genre ("name", "is_deleted")
 VALUES
     ('FPS', false),
     ('RPG', false),
     ('MMORPG', false),
     ('Action', false);
 
-INSERT INTO "Game" ("Name", "Photo_URLl", "Genre_Id", "Is_Deleted")
+INSERT INTO game ("name", "photo_url", "genre_id", "is_deleted")
 VALUES
     ('Counter-Strike 2', null, 1, false),
     ('World of Warcraft', null, 3, false),
     ('Warframe', null, 3, false),
     ('Team Fortress 2', null, 1, false);
 
-INSERT INTO "Item_rarity"
-("Game_Id", "Rarity_name", "Is_Deleted")
+INSERT INTO item_rarity
+("game_id", "rarity_name", "is_deleted")
 VALUES
 
     (1, 'Consumer Grade', false),
@@ -51,8 +51,8 @@ VALUES
     (4, 'self-made', false),
     (4, 'valve', false);
 
-INSERT INTO "Item"
-("Game_Id", "Item_rarity_Id", "Name", "Photo_URL", "Is_Deleted", "Estimated_token_value")
+INSERT INTO item
+("game_id", "item_rarity_id", "name", "photo_url", "is_deleted", "estimated_token_value")
 VALUES
     (1, 6, 'AK-47 Aquamarine Revenge', null, false, 120),
     (1, 6, 'AWP Dragon Lore', null, false, 250),
@@ -75,18 +75,18 @@ VALUES
     (4, 23, 'Misdirector', null, false, 400);
 
 
-INSERT INTO "Offer"
+INSERT INTO offer
 (
-    "User_Id",
-    "Exp_Date",
-    "Creation_date",
-    "Token_Cost",
-    "Offer_Status_Id",
-    "Title",
-    "Description",
-    "Is_highlighted",
-    "Tokens_offered",
-    "Tokens_wanted"
+    "user_id",
+    "exp_date",
+    "creation_date",
+    "token_cost",
+    "offer_status_id",
+    "title",
+    "description",
+    "is_highlighted",
+    "tokens_offered",
+    "tokens_wanted"
 )
 VALUES
     (1, CURRENT_DATE + 30, CURRENT_DATE, 100, 1, 'CS2 skin trade', 'Szukam noża', false, 100, 150),
@@ -110,8 +110,8 @@ VALUES
     (1, CURRENT_DATE + 30, CURRENT_DATE, 175, 1, 'Warframe relics', 'Relicsy', false, 175, 220),
     (2, CURRENT_DATE + 30, CURRENT_DATE, 260, 1, 'TF2 hats trade', 'Hatki', true, 260, 320);
 
-INSERT INTO "Listing_Items"
-("Offer_Id", "Item_Id", "Quantity", "Is_wanted")
+INSERT INTO listing_items
+("offer_id", "item_id", "quantity", "is_wanted")
 VALUES
 
     (1, 1, 1, false),
