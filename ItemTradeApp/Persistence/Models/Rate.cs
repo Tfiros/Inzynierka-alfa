@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ItemTradeApp.Persistence.Models;
 
-[Table("Rate")]
+[Table("rate")]
 public partial class Rate
 {
     [Column("user_id")]
