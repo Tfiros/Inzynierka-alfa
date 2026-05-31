@@ -1,5 +1,6 @@
 ﻿using ItemTradeApp.Features.Shared.Images;
 using ItemTradeApp.Features.Users.UserInfo;
+using ItemTradeApp.Features.Users.UserInfo.DTOs;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.AspNetCore.Http;
@@ -26,8 +27,8 @@ public sealed class UserInfoServiceTests
     [Fact]
     public async Task GetNavbarInfoAsync_ShouldReturnNotFound_WhenUserDoesNotExist()
     {
-        _repo.Setup(x => x.GetUserWithProfileInfoByUserIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _repo.Setup(x => x.GetUserNavbarRowAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserNavbarRow?)null);
 
         var service = CreateService();
 
@@ -40,9 +41,9 @@ public sealed class UserInfoServiceTests
     [Fact]
     public async Task GetNavbarInfoAsync_ShouldReturnNavbarInfo_WhenUserExists()
     {
-        var user = CreateUser();
+        var user = CreateUserNavbarRow();
 
-        _repo.Setup(x => x.GetUserWithProfileInfoByUserIdAsync(1, It.IsAny<CancellationToken>()))
+        _repo.Setup(x => x.GetUserNavbarRowAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _repo.Setup(x => x.GetChatUnreadTotalAsync(1, It.IsAny<CancellationToken>()))
@@ -264,5 +265,18 @@ public sealed class UserInfoServiceTests
                 }
             }
         };
+    }
+    private static UserNavbarRow CreateUserNavbarRow()
+    {
+        return new UserNavbarRow(
+            1,
+            "test@example.com",
+            100,
+            20,
+            150,
+            "Tester",
+            "old-url",
+          new List<int>{10, 20}
+        );
     }
 }
