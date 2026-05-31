@@ -26,6 +26,7 @@ GRANT DELETE ON TABLE
 
 REVOKE INSERT, UPDATE, DELETE
     ON TABLE
+    "counter_offer_status",
     "offer_status",
     "trade_status"
     FROM CrossTrade_Api;
