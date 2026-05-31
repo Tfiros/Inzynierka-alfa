@@ -100,6 +100,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         var game = await db.Games
+            .AsSplitQuery()
             .Include(g => g.Items)
             .Include(g => g.ItemRarities)
             .FirstOrDefaultAsync(g => g.ID == gameId, ct);
