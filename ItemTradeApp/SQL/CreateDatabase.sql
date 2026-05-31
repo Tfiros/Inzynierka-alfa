@@ -559,6 +559,9 @@ CREATE INDEX IF NOT EXISTS ix_trade_status_creation
 CREATE INDEX IF NOT EXISTS ix_listing_items_offer_wanted
     ON listing_items(Offer_Id, Is_wanted);
 
+CREATE INDEX IF NOT EXISTS ix_listing_items_item_id
+    ON listing_items(Item_Id);
+
     --CounterOffer
 CREATE INDEX IF NOT EXISTS ix_counter_offer_offer_status
     ON counter_offer(Offer_Id, Counter_offer_Status_Id);
@@ -595,8 +598,12 @@ CREATE INDEX IF NOT EXISTS ix_chat_conversation_trade
 CREATE INDEX IF NOT EXISTS ix_chat_messages_chat_conversation_id
     ON chat_messages(Chat_conversation_id, Id DESC);
 
-CREATE INDEX IF NOT EXISTS ix_conversation_member
+CREATE INDEX IF NOT EXISTS ix_conversation_member_chat_conversation_id
     ON conversation_member(Chat_conversation_Id);
+
+    --Trade_urls
+CREATE INDEX IF NOT EXISTS  ix_trade_urls_trade_id
+    ON trade_urls(Trade_Id);
 
 
 --ILike search GIN index
