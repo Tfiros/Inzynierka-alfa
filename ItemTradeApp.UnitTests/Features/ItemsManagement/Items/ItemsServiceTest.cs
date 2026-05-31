@@ -261,14 +261,13 @@ public class ItemsServiceTest
             .ReturnsAsync(rarity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AK-47", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync("AK-47", game.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var result = await _service.CreateAsync(req, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("Item with the same name already exists.", result.Message);
-
+        Assert.Equal("Item with the same name already exists in this game.", result.Message);
         _itemsRepo.Verify(x => x.AddAsync(It.IsAny<Item>(), It.IsAny<CancellationToken>()), Times.Never);
         _itemsRepo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -295,7 +294,7 @@ public class ItemsServiceTest
             .ReturnsAsync(rarity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AK-47", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync("AK-47", game.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _itemsRepo
@@ -359,7 +358,7 @@ public class ItemsServiceTest
             .ReturnsAsync(rarity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AK-47", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync("AK-47", game.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _imageService
@@ -407,7 +406,7 @@ public class ItemsServiceTest
             .ReturnsAsync(rarity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AK-47", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync("AK-47", game.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _imageService
@@ -489,7 +488,7 @@ public class ItemsServiceTest
     }
 
     [Fact]
-    public async Task UpdateAsync_WhenNewNameAlreadyExists_ReturnsConflict()
+    public async Task UpdateAsync_WhenNewNameAlreadyExistsInSameGame_ReturnsConflict()
     {
         var entity = ExistingItem();
 
@@ -504,13 +503,17 @@ public class ItemsServiceTest
             .ReturnsAsync(entity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AWP", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync(
+                "AWP",
+                entity.Game_ID,
+                entity.ID,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var result = await _service.UpdateAsync(entity.ID, req, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("Item with the same name already exists.", result.Message);
+        Assert.Equal("Item with the same name already exists in this game.", result.Message);
 
         _itemsRepo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -599,7 +602,8 @@ public class ItemsServiceTest
             .ReturnsAsync(entity);
 
         _itemsRepo
-            .Setup(x => x.ExistsByNameAsync("AWP", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExistsByNameAsync(
+                "AWP", entity.Game_ID, entity.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _itemRarityRepo
