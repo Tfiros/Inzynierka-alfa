@@ -137,16 +137,16 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     {
         return orderByEnum switch
         {
-            OffersOrderByEnum.CreationDateAsc => offers.OrderBy(o => o.CreationDate),
-            OffersOrderByEnum.CreationDateDesc => offers.OrderByDescending(o => o.CreationDate),
+            OffersOrderByEnum.CreationDateAsc => offers.OrderBy(o => o.CreationDate).ThenBy(o => o.ID),
+            OffersOrderByEnum.CreationDateDesc => offers.OrderByDescending(o => o.CreationDate).ThenByDescending(o => o.ID),
 
-            OffersOrderByEnum.PriceAsc => offers.OrderBy(o => o.TokenCost),
-            OffersOrderByEnum.PriceDesc => offers.OrderByDescending(o => o.TokenCost),
+            OffersOrderByEnum.PriceAsc => offers.OrderBy(o => o.TokenCost).ThenBy(o => o.ID),
+            OffersOrderByEnum.PriceDesc => offers.OrderByDescending(o => o.TokenCost).ThenByDescending(o => o.ID),
 
-            OffersOrderByEnum.ExpiryAsc => offers.OrderBy(o => o.ExpDate),
-            OffersOrderByEnum.ExpiryDesc => offers.OrderByDescending(o => o.ExpDate),
+            OffersOrderByEnum.ExpiryAsc => offers.OrderBy(o => o.ExpDate).ThenBy(o => o.ID),
+            OffersOrderByEnum.ExpiryDesc => offers.OrderByDescending(o => o.ExpDate).ThenByDescending(o => o.ID),
             
-            _ => offers.OrderBy(o=>o.CreationDate)
+            _ => offers.OrderBy(o=>o.CreationDate).ThenBy(o => o.ID)
 
         };
     }

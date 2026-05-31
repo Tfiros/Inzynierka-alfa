@@ -213,18 +213,18 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         return orderByEnum switch
         {
             CounterOffersOrderByEnum.CreationDateAsc =>
-                counterOffers.OrderBy(co => co.CreationDate),
+                counterOffers.OrderBy(co => co.CreationDate).ThenBy(co => co.ID),
 
             CounterOffersOrderByEnum.CreationDateDesc =>
-                counterOffers.OrderByDescending(co => co.CreationDate),
+                counterOffers.OrderByDescending(co => co.CreationDate).ThenByDescending(co => co.ID),
 
             CounterOffersOrderByEnum.TokensAsc =>
-                counterOffers.OrderBy(co => co.TokensOffered),
+                counterOffers.OrderBy(co => co.TokensOffered).ThenBy(co => co.ID),
 
             CounterOffersOrderByEnum.TokensDesc =>
-                counterOffers.OrderByDescending(co => co.TokensOffered),
+                counterOffers.OrderByDescending(co => co.TokensOffered).ThenByDescending(co => co.ID),
 
-            _ => counterOffers.OrderByDescending(co => co.CreationDate)
+            _ => counterOffers.OrderByDescending(co => co.CreationDate).ThenByDescending(co => co.ID)
         };
     }
     
