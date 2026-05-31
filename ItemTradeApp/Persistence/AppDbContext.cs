@@ -65,14 +65,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
-            
-            entity.HasIndex(e => e.Email).IsUnique();
-            entity.HasIndex(e => e.Auth0UserID).IsUnique();
         });
 
         modelBuilder.Entity<UserFavouriteOffer>(entity =>
         {
-            entity.HasKey(e => new { e.User_ID, e.Offer_ID });
+            entity.HasKey(e => new {  e.Offer_ID, e.User_ID });
 
             entity.ToTable("user_favourite_offer");
 
@@ -173,10 +170,6 @@ public partial class AppDbContext : DbContext
                 .WithMany(g => g.ItemRarities)
                 .HasForeignKey(x => x.GameId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            e.HasIndex(x => new { x.GameId, x.RarityName })
-                .IsUnique()
-                .HasDatabaseName("uq_item_rarity_game_name");
         });
         modelBuilder.Entity<ListingCounterOfferItem>(entity =>
         {
@@ -297,12 +290,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => new { e.UserId, e.TradeId })
                 .HasName("PK_Rate");
 
-            entity.ToTable("rate", t =>
-            {
-                t.HasCheckConstraint(
-                    "CK_Rate_Mark_1_10",
-                    "[Mark] >= 1.0 AND [Mark] <= 10.0");
-            });
+            entity.ToTable("rate");
 
             entity.Property(e => e.Mark)
                 .HasColumnType("decimal(3,1)");
@@ -406,9 +394,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => new { x.LastReadMessageId, x.LastReadMessageChatConversationId })
                 .HasPrincipalKey(m => new { m.Id, m.ChatConversationId })
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => x.ChatConversationId);
-            entity.HasIndex(x => x.UserId);
         });
         modelBuilder.Entity<ChatMessage>(entity =>
         {
@@ -438,9 +423,6 @@ public partial class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => new { x.ChatConversationId, x.CreatedAt });
-            entity.HasIndex(x => x.SenderId);
         });
         OnModelCreatingPartial(modelBuilder);
     }
