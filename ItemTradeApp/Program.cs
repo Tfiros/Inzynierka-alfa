@@ -44,13 +44,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
         ForwardedHeaders.XForwardedFor |
         ForwardedHeaders.XForwardedProto;
 
-    var knownProxy = builder.Configuration["ForwardedHeaders:KnownProxy"];
-
-    if (!string.IsNullOrWhiteSpace(knownProxy) &&
-        IPAddress.TryParse(knownProxy, out var proxyIp))
-    {
-        options.KnownProxies.Add(proxyIp);
-    }
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 builder.Services.AddAppRateLimiter();
 builder.Services.AddEndpointsApiExplorer();
