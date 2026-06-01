@@ -65,14 +65,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Auth0UserID).HasMaxLength(128);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.StripeCustomerID).HasMaxLength(128);
-            
-            entity.HasIndex(e => e.Email).IsUnique();
-            entity.HasIndex(e => e.Auth0UserID).IsUnique();
         });
 
         modelBuilder.Entity<UserFavouriteOffer>(entity =>
         {
-            entity.HasKey(e => new { e.User_ID, e.Offer_ID });
+            entity.HasKey(e => new {  e.Offer_ID, e.User_ID });
 
             entity.ToTable("user_favourite_offer");
 
@@ -173,10 +170,6 @@ public partial class AppDbContext : DbContext
                 .WithMany(g => g.ItemRarities)
                 .HasForeignKey(x => x.GameId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            e.HasIndex(x => new { x.GameId, x.RarityName })
-                .IsUnique()
-                .HasDatabaseName("uq_item_rarity_game_name");
         });
         modelBuilder.Entity<ListingCounterOfferItem>(entity =>
         {
@@ -297,12 +290,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => new { e.UserId, e.TradeId })
                 .HasName("PK_Rate");
 
-            entity.ToTable("rate", t =>
-            {
-                t.HasCheckConstraint(
-                    "CK_Rate_Mark_1_10",
-                    "[Mark] >= 1.0 AND [Mark] <= 10.0");
-            });
+            entity.ToTable("rate");
 
             entity.Property(e => e.Mark)
                 .HasColumnType("decimal(3,1)");
@@ -366,11 +354,8 @@ public partial class AppDbContext : DbContext
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.CreatedAt)
-                .HasColumnType("timestampz")
+                .HasColumnType("timestamptz")
                 .HasDefaultValueSql("now()");
-
-            entity.Property(x => x.IsDeleted)
-                .HasDefaultValue(false);
 
             entity.HasMany(x => x.Members)
                 .WithOne(x => x.ChatConversation)
@@ -381,8 +366,7 @@ public partial class AppDbContext : DbContext
                 .WithOne(x => x.ChatConversation)
                 .HasForeignKey(x => x.ChatConversationId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => x.IsDeleted);
+            
             entity.Property(x => x.ClosedAt).HasColumnType("timestamptz");
             entity.HasOne(x => x.Trade)
                 .WithMany().HasForeignKey(x => x.TradeId)
@@ -410,9 +394,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => new { x.LastReadMessageId, x.LastReadMessageChatConversationId })
                 .HasPrincipalKey(m => new { m.Id, m.ChatConversationId })
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => x.ChatConversationId);
-            entity.HasIndex(x => x.UserId);
         });
         modelBuilder.Entity<ChatMessage>(entity =>
         {
@@ -427,11 +408,11 @@ public partial class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(x => x.CreatedAt)
-                .HasColumnType("timestampz")
+                .HasColumnType("timestamptz")
                 .HasDefaultValueSql("now()");
 
-            entity.Property(x => x.EditedAt).HasColumnType("timestampz");
-            entity.Property(x => x.DeletedAt).HasColumnType("timestampz");
+            entity.Property(x => x.EditedAt).HasColumnType("timestamptz");
+            entity.Property(x => x.DeletedAt).HasColumnType("timestamptz");
 
             entity.HasOne(x => x.ChatConversation)
                 .WithMany(c => c.Messages)
@@ -442,9 +423,6 @@ public partial class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => new { x.ChatConversationId, x.CreatedAt });
-            entity.HasIndex(x => x.SenderId);
         });
         OnModelCreatingPartial(modelBuilder);
     }

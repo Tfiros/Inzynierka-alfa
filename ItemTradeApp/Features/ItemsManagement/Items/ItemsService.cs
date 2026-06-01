@@ -48,8 +48,9 @@ public sealed class ItemsService(
         if (itemRarity is null || itemRarity.IsDeleted || !game.ItemRarities.Contains(itemRarity))
             return Result<ItemResponse>.NotFound("Provided itemRarity doesn't exist.");
 
-        if (await itemsRepo.ExistsByNameAsync(name, ct))
-            return Result<ItemResponse>.BadRequest("Item with the same name already exists.");
+        if (await itemsRepo.ExistsByNameAsync(name, req.GameId, ct))
+            return Result<ItemResponse>.BadRequest(
+                "Item with the same name already exists in this game.");
 
         string? uploadedPhotoUrl = null;
 
@@ -98,8 +99,15 @@ public sealed class ItemsService(
         if (!string.IsNullOrWhiteSpace(newName) &&
             !string.Equals(entity.Name, newName, StringComparison.Ordinal))
         {
-            if (await itemsRepo.ExistsByNameAsync(newName, ct))
-                return Result<ItemResponse>.Conflict("Item with the same name already exists.");
+            if (await itemsRepo.ExistsByNameAsync(
+                    newName,
+                    entity.Game_ID,
+                    entity.ID,
+                    ct))
+            {
+                return Result<ItemResponse>.Conflict(
+                    "Item with the same name already exists in this game.");
+            }
 
             entity.Name = newName;
             changed = true;

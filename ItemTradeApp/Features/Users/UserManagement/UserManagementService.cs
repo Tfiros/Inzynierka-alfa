@@ -59,7 +59,9 @@ public sealed class UserManagementService(
 
         var hasPasswordChange = !string.IsNullOrWhiteSpace(request.NewPassword);
         var hasNicknameChange = !string.IsNullOrWhiteSpace(request.Nickname);
-
+        var hasTokensChange =
+            request.Tokens is not null &&
+            request.Tokens.Value != user.Tokens;
         var hasDescriptionChange =
             request.ProfileDescription is not null &&
             !string.Equals(
@@ -73,7 +75,8 @@ public sealed class UserManagementService(
             !hasPasswordChange &&
             !hasNicknameChange &&
             !hasDescriptionChange &&
-            !hasRolesChange)
+            !hasRolesChange &&
+            !hasTokensChange)
         {
             return Result<string>.NoContent("no_changes");
         }
@@ -162,7 +165,8 @@ public sealed class UserManagementService(
 
         if (hasEmailChange)
             user.Email = request.Email!;
-
+        if (hasTokensChange)
+            user.Tokens = request.Tokens!.Value;
         if (user.ProfileInfo is not null)
         {
             if (hasNicknameChange)
@@ -370,7 +374,13 @@ public sealed class UserManagementService(
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return Result<UserDetailsResponse>.Success(new UserDetailsResponse(user.ProfileInfo!.Description, roles));
+        return Result<UserDetailsResponse>.Success(
+            new UserDetailsResponse(
+                user.ProfileInfo!.Description,
+                user.Tokens,
+                roles
+            )
+        );
     }
 
     private async Task<Result<Dictionary<string, string>>> GetRoleIdByNameAsync(CancellationToken ct)

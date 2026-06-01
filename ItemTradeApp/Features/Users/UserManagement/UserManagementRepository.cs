@@ -249,25 +249,25 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         => orderBy switch
         {
             UserListOrderBy.NicknameAsc =>
-                q.OrderBy(u => u.ProfileInfo != null ? u.ProfileInfo.Nickname : null),
+                q.OrderBy(u => u.ProfileInfo != null ? u.ProfileInfo.Nickname : null).ThenBy(u => u.ID),
 
             UserListOrderBy.NicknameDesc =>
-                q.OrderByDescending(u => u.ProfileInfo != null ? u.ProfileInfo.Nickname : null),
+                q.OrderByDescending(u => u.ProfileInfo != null ? u.ProfileInfo.Nickname : null).ThenByDescending(u => u.ID),
 
             UserListOrderBy.EmailAsc =>
-                q.OrderBy(u => u.Email),
+                q.OrderBy(u => u.Email).ThenBy(u => u.ID),
 
             UserListOrderBy.EmailDesc =>
-                q.OrderByDescending(u => u.Email),
+                q.OrderByDescending(u => u.Email).ThenByDescending(u => u.ID),
 
             UserListOrderBy.RegisteredAtAsc =>
-                q.OrderBy(u => u.RegistrationDate),
+                q.OrderBy(u => u.RegistrationDate).ThenBy(u => u.ID),
 
             UserListOrderBy.RegisteredAtDesc =>
-                q.OrderByDescending(u => u.RegistrationDate),
+                q.OrderByDescending(u => u.RegistrationDate).ThenByDescending(u => u.ID),
 
             _ =>
-                q.OrderByDescending(u => u.RegistrationDate),
+                q.OrderByDescending(u => u.RegistrationDate).ThenByDescending(u => u.ID),
         };
 
     private static string[] NormalizeAuth0Ids(IEnumerable<string>? auth0Ids)

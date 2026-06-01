@@ -66,6 +66,7 @@ public sealed class GenresRepository(AppDbContext db) : IGenresRepository
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         var genre = await db.Genres
+            .AsSplitQuery()
             .Include(g => g.Games)
                 .ThenInclude(game => game.Items)
             .Include(g => g.Games)

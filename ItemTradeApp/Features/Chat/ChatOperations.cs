@@ -15,7 +15,6 @@ public sealed class ChatOperations(IChatRepository chatRepository, IChatRealtime
         var buyerChat = new ChatConversation
         {
             CreatedAt = now,
-            IsDeleted = false,
             TradeId = ctx.TradeId,
             ClosedAt = null,
             Members = new List<ConversationMember>
@@ -28,7 +27,6 @@ public sealed class ChatOperations(IChatRepository chatRepository, IChatRealtime
         var sellerChat= new ChatConversation
         {
             CreatedAt = now,
-            IsDeleted = false,
             TradeId = ctx.TradeId,
             ClosedAt = null,
             Members = new List<ConversationMember>

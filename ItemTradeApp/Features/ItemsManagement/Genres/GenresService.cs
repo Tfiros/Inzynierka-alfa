@@ -27,7 +27,7 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         var genreOfName = await repo.GetByNameAsync(name, ct);
         if (genreOfName is not null && !genreOfName.IsDeleted)
         {
-            return Result<GenreDTO>.Conflict("There is already a game with this name.");
+            return Result<GenreDTO>.Conflict("There is already a genre with this name.");
         }
 
         var entity = new Genre
@@ -55,7 +55,7 @@ public sealed class GenresService(IGenresRepository repo) : IGenresService
         var genreOfName = await repo.GetByNameAsync(name, ct);
         if (genreOfName is not null && !genreOfName.IsDeleted)
         {
-            return Result<GenreDTO>.Conflict("There is already a game with this name.");
+            return Result<GenreDTO>.Conflict("There is already a genre with this name.");
         }
 
         entity.Name = name;
