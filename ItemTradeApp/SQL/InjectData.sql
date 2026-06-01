@@ -3,14 +3,18 @@ VALUES
     ('FPS', false),
     ('RPG', false),
     ('MMORPG', false),
-    ('Action', false);
+    ('Action', false),
+    ('Hack & Slash', false),
+    ('Sport',false);
 
 INSERT INTO game ("name", "photo_url", "genre_id", "is_deleted")
 VALUES
     ('Counter-Strike 2', null, 1, false),
     ('World of Warcraft', null, 3, false),
     ('Warframe', null, 3, false),
-    ('Team Fortress 2', null, 1, false);
+    ('Team Fortress 2', null, 1, false),
+    ('Fifa',null,6, false),
+    ('Path Of Exile 2', null,5, false);
 
 INSERT INTO item_rarity
 ("game_id", "rarity_name", "is_deleted")
@@ -49,7 +53,17 @@ VALUES
     (4, 'decorated', false),
     (4, 'community', false),
     (4, 'self-made', false),
-    (4, 'valve', false);
+    (4, 'valve', false),
+
+    (5, 'Common', false),
+    (5, 'Rare', false),
+    (5, 'Icon', false),
+    (5, 'Tots champion', false),
+
+    (6, 'Normal', false),
+    (6, 'Magic', false),
+    (6, 'Rare', false),
+    (6, 'Unique', false);
 
 INSERT INTO item
 ("game_id", "item_rarity_id", "name", "photo_url", "is_deleted", "estimated_token_value")
@@ -58,6 +72,8 @@ VALUES
     (1, 6, 'AWP Dragon Lore', null, false, 250),
     (1, 6, 'M9 Bayonet Doppler', null, false, 180),
     (1, 6, 'Karambit Doppler', null, false, 900),
+    (1, 6, 'Butterfly Lure', null, false, 920),
+    (1, 6, 'Butterfly Gamma Doppler', null, false, 900),
 
     (2, 7, 'Thunderfury, Blessed Blade of the Windseeker', null, false, 700),
     (2, 8, 'Enchant Weapon – Spell Power', null, false, 500),
@@ -72,104 +88,14 @@ VALUES
     (4, 20, 'Familiar Fez', null, false, 50),
     (4, 21, 'Night Vision Gawkers', null, false, 300),
     (4, 22, 'Frostbite Bonnet', null, false, 180),
-    (4, 23, 'Misdirector', null, false, 400);
+    (4, 23, 'Misdirector', null, false, 400),
 
+    (5, 24, 'Lukasz Piszczek', null, false, 50),
+    (5, 25, 'Lionel Messi', null, false, 300),
+    (5, 26, 'Wojtek Szczesny', null, false, 350),
+    (5, 27, 'Robert Lewandowski', null, false, 400),
 
-INSERT INTO offer
-(
-    "user_id",
-    "exp_date",
-    "creation_date",
-    "token_cost",
-    "offer_status_id",
-    "title",
-    "description",
-    "is_highlighted",
-    "tokens_offered",
-    "tokens_wanted"
-)
-VALUES
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 100, 1, 'CS2 skin trade', 'Szukam noża', false, 100, 150),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 200, 1, 'WoW items', 'Rare itemy', true, 200, 250),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 300, 1, 'Warframe stuff', 'Prime części', false, 300, 350),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 150, 1, 'TF2 hats', 'Czapki unusual', false, 150, 180),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 120, 1, 'CS skins', 'Trade skinów', true, 120, 140),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 90, 1, 'WoW gold', 'Gold + itemy', false, 90, 130),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 400, 1, 'Warframe mods', 'Riveny', true, 400, 500),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 80, 1, 'TF2 trade', 'Random itemy', false, 80, 100),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 220, 1, 'CS inventory', 'Sprzedam inventory', true, 220, 260),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 110, 1, 'WoW mounts', 'Mounty', false, 110, 150),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 160, 1, 'Warframe account', 'Stuff na konto', false, 160, 200),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 500, 1, 'TF2 unusual', 'Unusual hat', true, 500, 600),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 130, 1, 'CS knife', 'Knife trade', false, 130, 180),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 70, 1, 'WoW gear', 'Raid gear', false, 70, 120),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 210, 1, 'Warframe prime', 'Prime frame', true, 210, 280),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 95, 1, 'TF2 cosmetics', 'Kosmetyki', false, 95, 110),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 330, 1, 'CS2 inventory', 'Full eq', true, 330, 450),
-    (3, CURRENT_DATE + 30, CURRENT_DATE, 140, 1, 'WoW classic', 'Classic itemy', false, 140, 170),
-    (1, CURRENT_DATE + 30, CURRENT_DATE, 175, 1, 'Warframe relics', 'Relicsy', false, 175, 220),
-    (2, CURRENT_DATE + 30, CURRENT_DATE, 260, 1, 'TF2 hats trade', 'Hatki', true, 260, 320);
-
-INSERT INTO listing_items
-("offer_id", "item_id", "quantity", "is_wanted")
-VALUES
-
-    (1, 1, 1, false),
-    (1, 2, 1, true),
-
-    (2, 5, 1, false),
-    (2, 6, 1, true),
-
-    (3, 9, 1, false),
-    (3, 10, 1, true),
-
-    (4, 13, 1, false),
-    (4, 14, 1, true),
-
-    (5, 3, 1, false),
-    (5, 4, 1, true),
-
-    (6, 7, 1, false),
-    (6, 8, 1, true),
-
-    (7, 11, 1, false),
-    (7, 12, 1, true),
-
-    (8, 15, 1, false),
-    (8, 16, 1, true),
-
-    (9, 2, 1, false),
-    (9, 1, 1, true),
-
-    (10, 6, 1, false),
-    (10, 5, 1, true),
-
-    (11, 10, 1, false),
-    (11, 9, 1, true),
-
-    (12, 14, 1, false),
-    (12, 13, 1, true),
-
-    (13, 4, 1, false),
-    (13, 3, 1, true),
-
-    (14, 8, 1, false),
-    (14, 7, 1, true),
-
-    (15, 12, 1, false),
-    (15, 11, 1, true),
-
-    (16, 16, 1, false),
-    (16, 15, 1, true),
-
-    (17, 1, 1, false),
-    (17, 4, 1, true),
-
-    (18, 5, 1, false),
-    (18, 8, 1, true),
-
-    (19, 9, 1, false),
-    (19, 12, 1, true),
-
-    (20, 13, 1, false),
-    (20, 16, 1, true);
+    (5, 28, 'Facebreaker Stocky Mitts', null, false, 200),
+    (5, 29, 'Northpaw Suede Bracers', null, false, 300),
+    (5, 30, 'Horror''s Flight Engraved Bracers', null, false, 180),
+    (5, 31, 'Aurseize Layered Gauntlets', null, false, 400);
