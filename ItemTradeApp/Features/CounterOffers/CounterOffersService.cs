@@ -232,7 +232,7 @@ public sealed class CounterOffersService(
     public async Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
         string? auth0UserId,
         int offerId,
-        CounterOfferDraftRequest? request,
+        CounterOfferDraftRequest request,
         CancellationToken ct = default)
     {
         var reqValidation = ValidateCreateRequest(auth0UserId, offerId, request);
