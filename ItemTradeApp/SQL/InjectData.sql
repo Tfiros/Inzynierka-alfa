@@ -1,3 +1,24 @@
+INSERT INTO offer_status (id, status_name)
+VALUES
+    (1, 'Active'),
+    (2, 'Expired'),
+    (3, 'InRealization'),
+    (4, 'Completed'),
+    (5, 'Canceled');
+
+INSERT INTO counter_offer_status (id, status_name)
+VALUES
+    (1, 'Pending'),
+    (2, 'Accepted'),
+    (3, 'Denied');
+
+INSERT INTO trade_status (id, status_name)
+VALUES
+    (1, 'New'),
+    (2, 'InRealization'),
+    (3, 'SuccesfulRealization'),
+    (4, 'Failed');
+
 INSERT INTO genre ("name", "is_deleted")
 VALUES
     ('FPS', false),
