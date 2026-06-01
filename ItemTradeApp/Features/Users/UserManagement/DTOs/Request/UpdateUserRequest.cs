@@ -7,5 +7,6 @@ public class UpdateUserRequest
     public string? ProfileDescription { get; set; }
     public string? Email { get; set; }
     public string? NewPassword { get; set; }
+    public int? Tokens { get; set; }
     public List<string>? Roles { get; set; }
 }
