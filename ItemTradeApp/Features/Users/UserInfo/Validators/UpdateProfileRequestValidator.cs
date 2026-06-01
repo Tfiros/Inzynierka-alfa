@@ -7,7 +7,7 @@ public class UpdateProfileRequestValidator : AbstractValidator<UpdateProfileRequ
 {
     public UpdateProfileRequestValidator()
     {
-        RuleFor(x => x.Nickname).MinimumLength(3).MaximumLength(20).When(x => x.Nickname is not null);
+        RuleFor(x => x.Nickname).NotEmpty().MinimumLength(3).MaximumLength(20).When(x => x.Nickname is not null);
         RuleFor(x => x.Description).MaximumLength(500).When(x => x.Description is not null);
 
     }

@@ -87,7 +87,12 @@ public sealed class ChatService : IChatService
         message = message?.Trim() ?? string.Empty;
         if (message.Length == 0)
             throw new ArgumentException("message_empty");
-        
+
+        if (message.Length > 2000)
+        {
+            throw new ArgumentException("message_too_long");
+        }
+
         var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
         if (string.IsNullOrWhiteSpace(trimmedAuth0UserId))
         {
