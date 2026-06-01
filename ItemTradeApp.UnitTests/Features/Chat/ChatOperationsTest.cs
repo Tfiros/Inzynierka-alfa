@@ -54,14 +54,12 @@ public class ChatOperationsTest
         var sellerChat = capturedChats[1];
 
         Assert.Equal(100, buyerChat.TradeId);
-        Assert.False(buyerChat.IsDeleted);
         Assert.Null(buyerChat.ClosedAt);
         Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, buyerChat.CreatedAt);
         Assert.Contains(buyerChat.Members, x => x.UserId == 1);
         Assert.Contains(buyerChat.Members, x => x.UserId == 3);
 
         Assert.Equal(100, sellerChat.TradeId);
-        Assert.False(sellerChat.IsDeleted);
         Assert.Null(sellerChat.ClosedAt);
         Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, sellerChat.CreatedAt);
         Assert.Contains(sellerChat.Members, x => x.UserId == 2);

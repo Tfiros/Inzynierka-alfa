@@ -26,7 +26,9 @@ public class UserInfoOfferRepository(AppDbContext dbContext) : IUserInfoOfferRep
 
         var totalCount = await localQuery.CountAsync(ct);
 
-        var offers = await localQuery.Skip((page - 1) * pageSize)
+        var offers = await localQuery.OrderByDescending(o => o.CreationDate)
+            .ThenByDescending(o => o.ID)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
         return (offers, totalCount);
 
@@ -43,7 +45,9 @@ public class UserInfoOfferRepository(AppDbContext dbContext) : IUserInfoOfferRep
 
         var totalCount = await localQuery.CountAsync(ct);
 
-        var offers = await localQuery.Skip((page - 1) * pageSize)
+        var offers = await localQuery.OrderByDescending(o => o.CreationDate)
+            .ThenByDescending(o => o.ID)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
         return (offers, totalCount);
 

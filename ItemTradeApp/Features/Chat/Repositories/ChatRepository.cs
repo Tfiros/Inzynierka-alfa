@@ -61,7 +61,7 @@ public sealed class ChatRepository : IChatRepository
     public Task<bool> ChatExistsAsync(int chatConversationId, CancellationToken ct)
         => _db.ChatConversations
             .AsNoTracking()
-            .AnyAsync(c => c.Id == chatConversationId && !c.IsDeleted, ct);
+            .AnyAsync(c => c.Id == chatConversationId, ct);
 
     public Task<bool> IsMemberAsync(int chatId, int userId, CancellationToken ct)
         => _db.ConversationMembers
@@ -230,7 +230,7 @@ public sealed class ChatRepository : IChatRepository
     {
         var rows = await _db.ChatConversations
             .AsNoTracking()
-            .Where(c => c.TradeId == tradeId && !c.IsDeleted)
+            .Where(c => c.TradeId == tradeId)
             .Select(c => new
             {
                 c.Id,
