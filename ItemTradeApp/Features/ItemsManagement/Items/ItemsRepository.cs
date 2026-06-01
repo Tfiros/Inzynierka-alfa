@@ -10,7 +10,8 @@ public interface IItemsRepository
     Task<Item?> GetByIdAsync(int id, CancellationToken ct);
     Task AddAsync(Item item, CancellationToken ct);
     Task<(List<Item> Items, int TotalCount)> GetPagedAsync(int gameId,int page, int pageSize, string? searchText, CancellationToken ct);
-    Task<bool> ExistsByNameAsync(string name, CancellationToken ct);
+    Task<bool> ExistsByNameAsync(string name, int gameId, CancellationToken ct);
+    Task<bool> ExistsByNameAsync(string name, int gameId, int excludeItemId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 
@@ -21,9 +22,18 @@ public sealed class ItemsRepository(AppDbContext db) : IItemsRepository
             .Include(i => i.Game)
             .FirstOrDefaultAsync(i => i.ID == id, ct);
 
-    public Task<bool> ExistsByNameAsync(string name, CancellationToken ct)
-            => db.Items.AsNoTracking().AnyAsync(i => i.Name == name && !i.IsDeleted, ct);
-
+    public async Task<bool> ExistsByNameAsync(string name, int gameId, CancellationToken ct)
+        => await db.Items
+            .AsNoTracking()
+            .AnyAsync(i => i.Name == name && i.Game_ID == gameId && !i.IsDeleted, ct);
+    public async Task<bool> ExistsByNameAsync(string name, int gameId, int excludeItemId, CancellationToken ct)
+        => await db.Items
+            .AsNoTracking()
+            .AnyAsync(i =>
+                    i.Name == name &&
+                    i.Game_ID == gameId &&
+                    i.ID != excludeItemId &&
+                    !i.IsDeleted, ct);
     public async Task AddAsync(Item item, CancellationToken ct)
         => await db.Items.AddAsync(item, ct).AsTask();
     public async Task SaveChangesAsync(CancellationToken ct) => await db.SaveChangesAsync(ct);
