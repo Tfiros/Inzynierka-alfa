@@ -38,7 +38,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
     [HttpPost("{offerId:int}/counter")]
     public async Task<ActionResult<Result<CounterOfferDto>>> CreateCounterOffer(
         [FromRoute] int offerId,
-        [FromBody] CounterOfferDraftRequest request,
+        [FromBody] CounterOfferDraftRequest? request,
         CancellationToken ct)
     {
         var auth0UserId = Auth0IdHandler.GetUserId(User);

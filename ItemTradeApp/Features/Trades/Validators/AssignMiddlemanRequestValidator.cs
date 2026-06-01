@@ -8,5 +8,6 @@ public class AssignMiddlemanRequestValidator : AbstractValidator<AssignMiddleman
     public AssignMiddlemanRequestValidator()
     {
         RuleFor(x => x.TradeId).GreaterThan(0);
+        RuleFor(x => x.TradeId).NotNull();
     }
 }
