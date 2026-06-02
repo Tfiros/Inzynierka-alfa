@@ -176,6 +176,14 @@ public class OffersService(
             offersRepository.Add(offer);
 
             await unitOfWork.SaveChangesAsync(ct);
+            
+            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
+            if (response is null)
+            {
+                await tx.RollbackAsync(ct);
+                return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+            }
+
             await tx.CommitAsync(ct);
             try
             {
@@ -198,8 +206,7 @@ public class OffersService(
             {
                 Console.WriteLine(ex);
             }
-            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
-            if (response is null) return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+            
             return Result<OfferDetailsDTO>.Created(response);
 
 
@@ -528,7 +535,7 @@ public class OffersService(
             var setInRealization = await offersRepository.SetOfferInRealizationAsync(offer.ID, ct);
             if (!setInRealization)
             {
-                return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
+                return Result<AcceptOfferResponse>.Conflict("update_offer_status_failed");
             }
 
             await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);
