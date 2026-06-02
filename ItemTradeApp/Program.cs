@@ -14,7 +14,6 @@ using Microsoft.OpenApi.Models;
 using ItemTradeApp.Features.ContactPage;
 using ItemTradeApp.Features.CounterOffers;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using ItemTradeApp.Filters;
 using Microsoft.AspNetCore.Mvc;
 using ItemTradeApp.Features.Chat;
@@ -151,7 +150,6 @@ builder.Services.AddCors(opts =>
 });
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();
-builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Scoped);
 builder.Services.RegisterPoliciesDi();
 builder.Services.RegisterUserFeatureDi(builder.Configuration);

@@ -31,7 +31,7 @@ public interface ICounterOffersService
     Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
         string? auth0UserId,
         int offerId,
-        CounterOfferDraftRequest? request,
+        CounterOfferDraftRequest request,
         CancellationToken ct);
 
     Task<Result<CounterOfferDto>> UpdateCounterOfferStatusAsync(

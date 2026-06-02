@@ -11,13 +11,15 @@ public sealed class CounterOfferDraftRequestValidator : AbstractValidator<Counte
         RuleFor(x => x.TokensOffered)
             .GreaterThanOrEqualTo(0);
 
-        RuleFor(x => x.Items)
-            .NotNull();
-
-        RuleFor(x => x.Items)
-            .Must(items => items is not null && items.Any());
-
-        RuleForEach(x => x.Items)
-            .SetValidator(new OfferItemDTOValidator());
+        RuleFor(x => x)
+            .Must(x =>
+                x.TokensOffered > 0 ||
+                (x.Items is not null && x.Items.Any()));
+        
+        When(x => x.Items is not null && x.Items.Any(), () =>
+        {
+            RuleForEach(x => x.Items)
+                .SetValidator(new OfferItemDTOValidator());
+        });
     }
 }
