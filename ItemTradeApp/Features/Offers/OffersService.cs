@@ -542,6 +542,11 @@ public class OffersService(
                 return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
             }
 
+            if (offer.TokensWanted > 0 && userState.Tokens < offer.TokensWanted)
+            {
+                return Result<AcceptOfferResponse>.BadRequest("not_enough_tokens");
+            }
+
 
             var setInRealization = await offersRepository.SetOfferInRealizationAsync(offer.ID, ct);
             if (!setInRealization)

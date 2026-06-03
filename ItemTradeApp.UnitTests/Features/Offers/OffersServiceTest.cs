@@ -1902,6 +1902,29 @@ public class OffersServiceTest
         Assert.Equal("update_offer_status_failed", res.Message);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task AcceptOfferAsync_WhenBuyerCannotAffordWantedTokens_ReturnsBadRequest()
+    {
+        var tx = new Mock<IDbContextTransaction>();
+        var offer = ActiveOffer(tokensOffered: 0);
+        offer.User_ID = 2;
+        offer.TokensWanted = 50;
+        _userRepo.Setup(x => x.GetStateByAuth0IdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserState(1, false, 10));
+        _userRepo.Setup(x => x.GetNotificationDataByAuth0IdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Buyer());
+        _uow.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+        _offersRepo.Setup(x => x.GetOfferByIdAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+        _tradesRepo.Setup(x => x.TradeExistsForOfferAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        
+        var res = await _offersService.AcceptOfferAsync("auth0|abc", 7);
+        
+        Assert.False(res.IsSuccess);
+        Assert.Equal("not_enough_tokens", res.Message);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
     
     [Fact]
     public async Task AcceptOfferAsync_WhenOfferedTokensTransferFails_RollsbackAndReturnsConflict()
