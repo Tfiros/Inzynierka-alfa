@@ -1,6 +1,5 @@
 using FluentValidation;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
-using ItemTradeApp.Persistence;
 
 namespace ItemTradeApp.Features.CounterOffers.Validators;
 
@@ -10,7 +9,7 @@ public class UpdateCounterOfferStatusRequestValidator
     public UpdateCounterOfferStatusRequestValidator()
     {
         RuleFor(x => x.StatusId)
-            .Must(statusId => Enum.IsDefined(typeof(CounterOfferStatuses), statusId))
+            .IsInEnum()
             .WithMessage("Invalid counter offer status.");
     }
 }
