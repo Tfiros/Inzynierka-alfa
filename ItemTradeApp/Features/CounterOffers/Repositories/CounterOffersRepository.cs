@@ -293,7 +293,7 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
     }).ToList();
 }
     
-    public Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
-        => db.CounterOffers.AnyAsync(
+    public async Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
+        => await db.CounterOffers.AnyAsync(
             co => co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending, ct);
 }
