@@ -7,6 +7,7 @@ namespace ItemTradeApp.Features.Offers.Repositories;
 public interface ICounterOfferRepository
 {
     Task<List<CounterOffer>> GetAllPendingForOfferAsync(int offerId, CancellationToken ct);
+    Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct);
 }
 
 public class CounterOfferRepository(AppDbContext db) : ICounterOfferRepository
@@ -15,4 +16,8 @@ public class CounterOfferRepository(AppDbContext db) : ICounterOfferRepository
         => db.CounterOffers.Where(co =>
                 co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
             .ToListAsync(ct);
+
+    public Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
+        => db.CounterOffers.AnyAsync(
+            co => co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending, ct);
 }

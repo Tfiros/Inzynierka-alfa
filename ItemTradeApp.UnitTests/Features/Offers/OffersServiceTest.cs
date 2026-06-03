@@ -749,6 +749,8 @@ public class OffersServiceTest
                 TokenCost = 20,
                 ExpDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7)
             });
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         
         SetupValidItems();
 
@@ -771,6 +773,8 @@ public class OffersServiceTest
                 TokenCost = 20,
                 ExpDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7)
             });
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         SetupValidItems();
 
         var res = await _offersService.GetUpdateQuoteAsync("auth0|abc", 7, ValidUpdateRequest(durationDays: 14));
@@ -778,10 +782,29 @@ public class OffersServiceTest
         Assert.True(res.IsSuccess);
         Assert.Equal(70, res.Data!.NewTotalCost);
         Assert.Equal(50, res.Data!.UpdateFee);
-
-        
     }
-    
+
+    [Fact]
+    public async Task GetUpdateQuoteAsync_WhenPendingCounterOffersExist_ReturnsBadRequest()
+    {
+        _userRepo.Setup(x => x.GetStateByAuth0IdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserState(1, false, 1000));
+        _offersRepo.Setup(x => x.GetTrackedOfferAsync(7, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Offer
+            {
+                OfferStatus_ID = (int)OfferStatuses.Active,
+                TokenCost = 20,
+                ExpDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7)
+            });
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var res = await _offersService.GetUpdateQuoteAsync("auth0|abc", 7, ValidUpdateRequest());
+        
+        Assert.False(res.IsSuccess);
+        Assert.Equal("resolve_all_counter_offers_before_editing", res.Message);
+    }
+
     //CancelOfferAsync
     [Fact]
     public async Task CancelOfferAsync_WhenAuth0IdMissing_ReturnsUnauthorized()
@@ -1536,6 +1559,8 @@ public class OffersServiceTest
             .ReturnsAsync(tx.Object);
         _offersRepo.Setup(x => x.GetTrackedOfferAsync(7, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(offer);
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _userRepo.Setup(x => x.TrySubtractTokenCostAsync(1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         var details = UpdatedDetails();
@@ -1585,7 +1610,8 @@ public class OffersServiceTest
             .ReturnsAsync(tx.Object);
         _offersRepo.Setup(x => x.GetTrackedOfferAsync(7, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(offer);
-
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _offersRepo.Setup(
                 x => x.GetItemsByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
@@ -1675,7 +1701,26 @@ public class OffersServiceTest
         tx.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
         
     }
-    
+
+    [Fact]
+    public async Task UpdateOfferAsync_WhenPendingCounterOffersExist_ReturnsBadRequestAndChargesNothing()
+    {
+        _userRepo.Setup(x => x.GetStateByAuth0IdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserState(1, false, 1000));
+        _offersRepo.Setup(x => x.GetTrackedOfferAsync(7, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ActiveOffer(tokenCost: 20));
+        _counterOffersRepo.Setup(x => x.HasPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var res = await _offersService.UpdateOfferAsync("auth0|abc", 7, ValidUpdateRequest());
+        
+        Assert.False(res.IsSuccess);
+        Assert.Equal("resolve_all_counter_offers_before_editing", res.Message);
+        _uow.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _userRepo.Verify(x => x.TrySubtractTokenCostAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _tokenEscrow.Verify(x => x.TryLockOwnTokensAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     //AcceptOfferAsync
     [Fact]
     public async Task AcceptOfferAsync_WhenAuth0IdMissing_ReturnsUnauthorized()

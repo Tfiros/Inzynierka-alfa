@@ -237,6 +237,12 @@ public class OffersService(
         if (offer is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferDetailsDTO>.BadRequest("offer_not_active");
+
+        if (await counterOfferRepository.HasPendingForOfferAsync(offerId, ct))
+        {
+            return Result<OfferDetailsDTO>.BadRequest("resolve_all_counter_offers_before_editing");
+        }
+
         var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted, offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
@@ -470,6 +476,11 @@ public class OffersService(
         if (offer is null) return Result<OfferUpdateQuoteResponse>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferUpdateQuoteResponse>.BadRequest("offer_not_active");
+        
+        if (await counterOfferRepository.HasPendingForOfferAsync(offerId, ct))
+        {
+            return Result<OfferUpdateQuoteResponse>.BadRequest("resolve_all_counter_offers_before_editing");
+        }
         
         var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
         if (!okDraft)
