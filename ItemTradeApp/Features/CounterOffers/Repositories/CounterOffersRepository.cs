@@ -30,6 +30,10 @@ public interface ICounterOffersRepository
     Task<List<CounterOfferListItemDto>> GetPendingCounterOffersForOfferAsync(
         int offerId,
         CancellationToken ct);
+    
+    Task<CounterOffer?> GetAcceptedCounterOfferForOfferAsync(
+        int offerId,
+        CancellationToken ct);
 }
 
 public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
@@ -290,4 +294,20 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         );
     }).ToList();
 }
+    
+    public async Task<CounterOffer?> GetAcceptedCounterOfferForOfferAsync(
+        int offerId,
+        CancellationToken ct)
+    {
+        return await db.CounterOffers
+            .AsNoTracking()
+            .Include(x => x.ListingCounterOfferItems)
+            .ThenInclude(x => x.Item)
+            .ThenInclude(x => x.Game)
+            .FirstOrDefaultAsync(x =>
+                    x.Offer_Id == offerId &&
+                    x.CounterOfferStatus_Id == (int)CounterOfferStatuses.Accepted,
+                ct);
+    }
+    
 }

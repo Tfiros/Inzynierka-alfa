@@ -472,28 +472,6 @@ public sealed class CounterOffersService(
                 }
             }
 
-            var oldWantedItems = offer.ListingItems
-                .Where(x => x.IsWanted)
-                .ToList();
-
-            if (oldWantedItems.Any())
-            {
-                offerRepository.RemoveListingItems(oldWantedItems);
-            }
-
-            foreach (var counterItem in counterOffer.ListingCounterOfferItems)
-            {
-                offer.ListingItems.Add(new ListingItems
-                {
-                    Offer_ID = offer.ID,
-                    Item_ID = counterItem.Item_ID,
-                    Quantity = counterItem.Quantity,
-                    IsWanted = true
-                });
-            }
-
-            offer.TokensWanted = counterOffer.TokensOffered;
-
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,

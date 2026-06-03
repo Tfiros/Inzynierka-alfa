@@ -54,16 +54,15 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             if (q.OnlyMine)
             {
                 query = query.Where(t =>
-                    t.User_ID == userId ||
-                    t.Customer_ID == userId);
+                    t.MiddlemanUser_ID == userId);
             }
             else
             {
                 query = status == TradeStatuses.New
                     ? query.Where(t =>
-                        t.MiddlemanUser_ID == null ||
-                        t.User_ID == userId ||
-                        t.Customer_ID == userId)
+                        t.MiddlemanUser_ID == null &&
+                        t.User_ID != userId &&
+                        t.Customer_ID != userId)
                     : query.Where(t =>
                         t.MiddlemanUser_ID == userId ||
                         t.User_ID == userId ||
@@ -95,39 +94,60 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
         return (items, total);
     }
 
-    private static IQueryable<TradeListItemDTO> ProjectToListItemDto(
-        IQueryable<Trade> query,
-        bool isMiddlemanView)
-        => query
-            .Select(t => new TradeListItemDTO(
-                t.ID,
-                t.Offer_ID,
-                t.TradeStatus_ID,
-                t.CreationDate,
-                new InTradeUserDTO(
-                    t.Customer.ID,
-                    t.Customer.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.Customer.Email : null,
-                    t.Customer.ProfileInfo.ImageUrl,
-                    t.Offer.ListingItems
+private static IQueryable<TradeListItemDTO> ProjectToListItemDto(
+    IQueryable<Trade> query,
+    bool isMiddlemanView)
+    => query
+        .Select(t => new TradeListItemDTO(
+            t.ID,
+            t.Offer_ID,
+            t.TradeStatus_ID,
+            t.CreationDate,
+            new InTradeUserDTO(
+                t.Customer.ID,
+                t.Customer.ProfileInfo.Nickname,
+                isMiddlemanView ? t.Customer.Email : null,
+                t.Customer.ProfileInfo.ImageUrl,
+
+                t.Offer.CounterOffers.Any(co =>
+                    co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Accepted)
+                    ? t.Offer.CounterOffers
+                        .Where(co => co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Accepted)
+                        .SelectMany(co => co.ListingCounterOfferItems)
+                        .Select(x => new ItemInfoDTO(
+                            x.Item.Name,
+                            x.Quantity
+                        ))
+                        .ToList()
+                    : t.Offer.ListingItems
                         .Where(x => x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                        .Select(x => new ItemInfoDTO(
+                            x.Item.Name,
+                            x.Quantity
+                        ))
                         .ToList()
-                ),
-                new InTradeUserDTO(
-                    t.PostingUser.ID,
-                    t.PostingUser.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.PostingUser.Email : null,
-                    t.PostingUser.ProfileInfo.ImageUrl,
-                    t.Offer.ListingItems
-                        .Where(x => !x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
-                        .ToList()
-                ),
-                t.MiddlemanUser_ID,
-                t.Offer.TokensOffered,
-                t.Offer.TokensWanted
-            ));
+            ),
+            new InTradeUserDTO(
+                t.PostingUser.ID,
+                t.PostingUser.ProfileInfo.Nickname,
+                isMiddlemanView ? t.PostingUser.Email : null,
+                t.PostingUser.ProfileInfo.ImageUrl,
+                t.Offer.ListingItems
+                    .Where(x => !x.IsWanted)
+                    .Select(x => new ItemInfoDTO(
+                        x.Item.Name,
+                        x.Quantity
+                    ))
+                    .ToList()
+            ),
+            t.MiddlemanUser_ID,
+            t.Offer.TokensOffered,
+
+            t.Offer.CounterOffers
+                .Where(co => co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Accepted)
+                .Select(co => (int?)co.TokensOffered)
+                .FirstOrDefault() ?? t.Offer.TokensWanted
+        ));
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {

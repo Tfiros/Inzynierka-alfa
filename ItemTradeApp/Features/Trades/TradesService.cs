@@ -1,4 +1,5 @@
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.CounterOffers.Repositories;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -8,11 +9,11 @@ using ItemTradeApp.Features.Shared.Notifications;
 using ItemTradeApp.Features.Trades.DTOs;
 using ItemTradeApp.Features.Trades.DTOs.Request;
 using ItemTradeApp.Features.Trades.DTOs.Response;
-using ItemTradeApp.Features.Trades.Repositories;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using ItemTradeApp.Resources.NotificationsTemplates;
 using Microsoft.Extensions.Options;
+using ITradeRepository = ItemTradeApp.Features.Trades.Repositories.ITradeRepository;
 
 namespace ItemTradeApp.Features.Trades;
 
@@ -77,6 +78,7 @@ public sealed class TradesService(
     INotificationSender notificationsSender,
     IEmailGenerationService emailGenerationService,
     IImageService imageService,
+    ICounterOffersRepository counterOfferRepository,
     IOptions<S3Folders> foldersOptions
 ) : ITradesService
 {
@@ -458,12 +460,14 @@ public sealed class TradesService(
                 }
             }
 
-            if (trade.Offer.TokensWanted > 0)
+            var buyerTokens = await GetBuyerTokens(trade, ct);
+
+            if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
                         trade.User_ID,
                         trade.Customer_ID,
-                        trade.Offer.TokensWanted,
+                        buyerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
@@ -593,15 +597,17 @@ public sealed class TradesService(
             trade.Rates.Add(sellersRate);
 
             
-            if (trade.Offer.TokensOffered > 0)
+            var buyerTokens = await GetBuyerTokens(trade, ct);
+
+            if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
-                        trade.Customer_ID,
-                        trade.Offer.TokensOffered,
+                        trade.User_ID,
+                        buyerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release offered tokens.");
+                    return Result<string>.BadRequest("Failed to release wanted tokens.");
                 }
             }
 
@@ -804,5 +810,12 @@ public sealed class TradesService(
 
             return Result<string>.InternalServerError("Upload Failed");
         }
+    }
+    private async Task<int> GetBuyerTokens(Trade trade, CancellationToken ct)
+    {
+        var acceptedCounterOffer = await counterOfferRepository
+            .GetAcceptedCounterOfferForOfferAsync(trade.Offer_ID, ct);
+
+        return acceptedCounterOffer?.TokensOffered ?? trade.Offer.TokensWanted;
     }
 }
