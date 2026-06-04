@@ -16,6 +16,7 @@ public sealed class UserRepository(AppDbContext db):IUserRepository
     public async Task<User?> GetUserInfo(string auth0UserId, CancellationToken ct)
     {
         return await db.Users
+            .Include(u => u.ProfileInfo)
             .FirstOrDefaultAsync(u => u.Auth0UserID == auth0UserId && !u.IsDeleted, ct);
     }
 

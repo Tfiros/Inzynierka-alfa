@@ -320,7 +320,7 @@ public sealed class CounterOffersService(
                 await notificationSender.SendAsync(
                     offer.User_ID,
                     NotificationsMessages.ReceivedCounterOfferMessage(
-                        user.ProfileInfo?.Nickname ?? user.Email,
+                        user.ProfileInfo?.Nickname!,
                         offer.Title),
                     ct);
             }
