@@ -29,27 +29,26 @@ public sealed class UserInfoService(
     private readonly S3Folders folders = foldersOptions.Value;
     public async Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default)
     {
-        var user = await userInfoRepository.GetUserWithProfileInfoByUserIdAsync(userId, ct);
-        if (user is null || user.ProfileInfo is null)
+        var userRow = await userInfoRepository.GetUserNavbarRowAsync(userId, ct);
+        if (userRow is null)
         {
             return Result<UserNavbarInfoResponse>.NotFound("user_or_profile_info_not_found: User not found");
         }
-        var level    = UserLevelCalculator.CalculateLevel(user.Experience);
-        var chatIds = user.Chats.Select(c => c.ChatConversationId).ToList();
+        var level    = UserLevelCalculator.CalculateLevel(userRow.Experience);
         var unreadChatThreadsTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
         var unreadNotificationTotal = await userInfoRepository.GetNumberOfUnreadNotifications(userId, ct);
         var dto = new UserNavbarInfoResponse(
-            user.ID,
-            user.ProfileInfo.Nickname,
-            user.Email,
-            user.Tokens,
-            user.EscrowedTokens,
-            user.Experience,
+            userRow.Id,
+            userRow.Nickname,
+            userRow.Email,
+            userRow.Tokens,
+            userRow.EscrowedTokens,
+            userRow.Experience,
             level,
-            chatIds,
+            userRow.ChatIds,
             unreadChatThreadsTotal,
             unreadNotificationTotal,
-            user.ProfileInfo.ImageUrl
+            userRow.ImageUrl
         );
         return Result<UserNavbarInfoResponse>.Success(dto);
     }

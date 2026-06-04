@@ -67,45 +67,22 @@ public sealed class ChatThreadsReader : IChatThreadsReader
                 );
             }
         }
-        
-        
-        var myChatsQ = baseChats
-            .Select(m => new
+
+        var rows = await baseChats
+            .Select(cm => new
             {
-                m.ChatConversationId,
-                m.LastReadMessageId
-            });
+                cm.ChatConversationId,
+                cm.LastReadMessageId,
+                LastId = _db.ChatMessages
+                    .Where(x => x.ChatConversationId == cm.ChatConversationId && x.DeletedAt == null)
+                    .Max(x => (long?)x.Id)
 
-        var lastMsgQ = _db.ChatMessages
-            .Where(msg => msg.DeletedAt == null)
-            .AsNoTracking()
-            .GroupBy(msg => msg.ChatConversationId)
-            .Select(g => new
-            {
-                ChatId = g.Key,
-                LastId = (long?)g.Max(x => x.Id)
-            });
-
-        var baseQ = myChatsQ
-            .GroupJoin(
-                lastMsgQ,
-                mc => mc.ChatConversationId,
-                lm => lm.ChatId,
-                (mc, lmj) => new { mc, lmj }
-            )
-            .SelectMany(
-                x => x.lmj.DefaultIfEmpty(),
-                (x,lm) => 
-                    new {x.mc.ChatConversationId, 
-                        x.mc.LastReadMessageId, 
-                        LastId = lm == null ? null : lm.LastId}
-            );
-
-        var rows = await baseQ
-            .OrderByDescending(x => x.LastId ?? 0L)
+            })
+            .OrderBy(x => x.LastId ?? 0L)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+        
         var pageRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
             .ToList();
         return await BuildThreadItemsAsync(userId, pageRows, ct);
@@ -118,22 +95,23 @@ public sealed class ChatThreadsReader : IChatThreadsReader
         {
             return Array.Empty<ChatThreadListItemDto>();
         }
-
-        var myChatsQ = _db.ConversationMembers
+        
+        var rows = await _db.ConversationMembers
             .AsNoTracking()
-            .Where(m => m.UserId == userId && m.ChatConversation.TradeId == tradeId)
-            .Select(m => new {m.ChatConversationId, m.LastReadMessageId});
+            .Where(cm => cm.UserId == userId && cm.ChatConversation.TradeId == tradeId)
+            .Select(cm => new
+            {
+                cm.ChatConversationId,
+                cm.LastReadMessageId,
+                LastId = _db.ChatMessages
+                    .Where(x => x.ChatConversationId == cm.ChatConversationId && x.DeletedAt == null)
+                    .Max(x => (long?)x.Id)
 
-        var lastMsqQ = _db.ChatMessages
-            .AsNoTracking().Where(msg => msg.DeletedAt == null)
-            .GroupBy(msg => msg.ChatConversationId)
-            .Select(g => new { ChatId = g.Key, LastId = (long?)g.Max(x => x.Id) });
-
-        var rows = await myChatsQ.GroupJoin(lastMsqQ, mc => mc.ChatConversationId, lm => lm.ChatId,
-                (mc, lmj) => new { mc, lmj })
-            .SelectMany(x => x.lmj.DefaultIfEmpty(),
-                (x,lm) => new {x.mc.ChatConversationId, x.mc.LastReadMessageId, LastId = lm == null ? null : lm.LastId})
-            .OrderBy(x => x.LastId ?? 0L).ToListAsync(ct);
+            })
+            .OrderBy(x => x.LastId ?? 0L)
+            
+            .ToListAsync(ct);
+        
         var pagedRows = rows.Select(x => new ThreadPageRow(x.ChatConversationId, x.LastReadMessageId, x.LastId))
             .ToList();
         return await BuildThreadItemsAsync(userId, pagedRows, ct);
@@ -204,36 +182,21 @@ public sealed class ChatThreadsReader : IChatThreadsReader
                 .Where(m => lastIds.Contains(m.Id))
                 .ToDictionaryAsync(m => m.ChatConversationId, m => m, ct);
 
-        var lastReadByChat = filteredPageRows.ToDictionary(
-            x => x.ChatConversationId,
-            x => x.LastReadMessageId);
-
-        var unreadRaw = await _db.ChatMessages
+        var unreadByChat = await _db.ConversationMembers
             .AsNoTracking()
-            .Where(m =>
-                filteredChatIds.Contains(m.ChatConversationId) &&
-                m.DeletedAt == null &&
-                m.SenderId != userId)
-            .Select(m => new
+            .Where(cm =>
+                filteredChatIds.Contains(cm.ChatConversationId) &&
+                cm.UserId == userId)
+            .Select(cm => new
             {
-                m.ChatConversationId,
-                m.Id
+                cm.ChatConversationId,
+                UnreadCount = _db.ChatMessages.Count(m => m.ChatConversationId == cm.ChatConversationId &&
+                                                          m.DeletedAt == null && m.SenderId != userId
+                                                          && (cm.LastReadMessageId == null || m.Id > cm.LastReadMessageId))
             })
-            .ToListAsync(ct);
+            .ToDictionaryAsync(x => x.ChatConversationId, x => x.UnreadCount, ct);
 
-        var unreadByChat = unreadRaw
-            .GroupBy(x => x.ChatConversationId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    lastReadByChat.TryGetValue(g.Key, out var lastRead);
-
-                    if (lastRead is null)
-                        return g.Count();
-
-                    return g.Count(x => x.Id > lastRead.Value);
-                });
+        
 
         var result = new List<ChatThreadListItemDto>(filteredPageRows.Count);
 
