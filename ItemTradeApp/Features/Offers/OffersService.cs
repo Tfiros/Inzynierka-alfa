@@ -176,6 +176,14 @@ public class OffersService(
             offersRepository.Add(offer);
 
             await unitOfWork.SaveChangesAsync(ct);
+            
+            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
+            if (response is null)
+            {
+                await tx.RollbackAsync(ct);
+                return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+            }
+
             await tx.CommitAsync(ct);
             try
             {
@@ -198,8 +206,7 @@ public class OffersService(
             {
                 Console.WriteLine(ex);
             }
-            var response = await offersRepository.GetOfferWithDetailsByIdAsync(offer.ID, ct);
-            if (response is null) return Result<OfferDetailsDTO>.InternalServerError("create_offer_failed");
+            
             return Result<OfferDetailsDTO>.Created(response);
 
 
@@ -230,6 +237,12 @@ public class OffersService(
         if (offer is null) return Result<OfferDetailsDTO>.NotFound("offer_not_found");
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferDetailsDTO>.BadRequest("offer_not_active");
+
+        if (await counterOfferRepository.HasPendingForOfferAsync(offerId, ct))
+        {
+            return Result<OfferDetailsDTO>.BadRequest("resolve_all_counter_offers_before_editing");
+        }
+
         var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted, offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
         if (!okDraft)
             return Result<OfferDetailsDTO>.BadRequest(errDraft);
@@ -464,6 +477,11 @@ public class OffersService(
         if (offer.OfferStatus_ID != (int)OfferStatuses.Active)
             return Result<OfferUpdateQuoteResponse>.BadRequest("offer_not_active");
         
+        if (await counterOfferRepository.HasPendingForOfferAsync(offerId, ct))
+        {
+            return Result<OfferUpdateQuoteResponse>.BadRequest("resolve_all_counter_offers_before_editing");
+        }
+        
         var (okDraft, errDraft, draft) = await BuildDraftForUpdateAsync(request.Title,request.Description,request.OfferedItems, request.WantedItems, request.DurationDays, request.IsHighlighted,offer.ExpDate, request.TokensOffered, request.TokensWanted, ct);
         if (!okDraft)
             return Result<OfferUpdateQuoteResponse>.BadRequest(errDraft);
@@ -524,11 +542,16 @@ public class OffersService(
                 return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
             }
 
+            if (offer.TokensWanted > 0 && userState.Tokens < offer.TokensWanted)
+            {
+                return Result<AcceptOfferResponse>.BadRequest("not_enough_tokens");
+            }
+
 
             var setInRealization = await offersRepository.SetOfferInRealizationAsync(offer.ID, ct);
             if (!setInRealization)
             {
-                return Result<AcceptOfferResponse>.Conflict("trade_already_exists");
+                return Result<AcceptOfferResponse>.Conflict("update_offer_status_failed");
             }
 
             await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);

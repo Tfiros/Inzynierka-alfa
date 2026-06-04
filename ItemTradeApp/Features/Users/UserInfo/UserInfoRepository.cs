@@ -1,4 +1,5 @@
-﻿using ItemTradeApp.Persistence;
+﻿using ItemTradeApp.Features.Users.UserInfo.DTOs;
+using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 public interface IUserInfoRepository
 {
     Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct);
+    Task<UserNavbarRow?> GetUserNavbarRowAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
     Task UpdateUserWithProfileInfoAsync(ProfileInfo profile, CancellationToken ct);
@@ -25,18 +27,28 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
 
     public async Task<int> GetNumberOfUnreadNotifications(int userId, CancellationToken ct) =>
         await dbContext.Notifications
-            .Where(n => n.UserId == userId)
-            .Where(n => n.ReadAt == null)
-            .Where(n => !n.User.IsDeleted)
+            .Where(n => n.UserId == userId && n.ReadAt == null && !n.IsDeleted)
             .CountAsync(ct);
+
+    public async Task<UserNavbarRow?> GetUserNavbarRowAsync(int id, CancellationToken ct)
+        => await dbContext.Users.AsNoTracking()
+            .Where(u => u.ID == id && !u.IsDeleted && u.ProfileInfo != null)
+            .Select(u => new UserNavbarRow(
+                u.ID,
+                u.Email,
+                u.Tokens,
+                u.EscrowedTokens,
+                u.Experience,
+                u.ProfileInfo.Nickname,
+                u.ProfileInfo.ImageUrl,
+                u.Chats.Select(c => c.ChatConversationId).ToList()
+            )).SingleOrDefaultAsync(ct);
     public async Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct)
     {
         var user = await dbContext.Users
             .AsNoTracking()
             .Where(u => !u.IsDeleted)
             .Include(u => u.ProfileInfo)
-            .Include(u => u.Chats)
-            .ThenInclude(c => c.ChatConversation)
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
     }
