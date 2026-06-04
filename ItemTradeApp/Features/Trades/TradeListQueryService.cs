@@ -104,6 +104,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 t.Offer_ID,
                 t.TradeStatus_ID,
                 t.CreationDate,
+                t.Offer.TokenCost,
                 new InTradeUserDTO(
                     t.Customer.ID,
                     t.Customer.ProfileInfo.Nickname,
@@ -197,6 +198,12 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
 
             TradeSortBy.CreationDateDesc
                 => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID),
+            
+            TradeSortBy.CreationCostAsc
+                => query.OrderBy(t => t.Offer.TokenCost).ThenBy(t => t.ID),
+            
+            TradeSortBy.CreationCostDesc
+                => query.OrderByDescending(t => t.Offer.TokenCost).ThenByDescending(t => t.ID),
 
             TradeSortBy.TradeIdAsc
                 => query.OrderBy(t => t.ID),
@@ -204,6 +211,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             TradeSortBy.TradeIdDesc
                 => query.OrderByDescending(t => t.ID),
 
-            _ => query.OrderByDescending(t => t.CreationDate)
+            _ => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID)
         };
 }
