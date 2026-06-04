@@ -12,12 +12,12 @@ public interface ICounterOfferRepository
 
 public class CounterOfferRepository(AppDbContext db) : ICounterOfferRepository
 {
-    public Task<List<CounterOffer>> GetAllPendingForOfferAsync(int offerId, CancellationToken ct)
-        => db.CounterOffers.Where(co =>
+    public async Task<List<CounterOffer>> GetAllPendingForOfferAsync(int offerId, CancellationToken ct)
+        => await db.CounterOffers.Where(co =>
                 co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending)
             .ToListAsync(ct);
 
-    public Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
-        => db.CounterOffers.AnyAsync(
+    public async Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
+        => await db.CounterOffers.AnyAsync(
             co => co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending, ct);
 }
