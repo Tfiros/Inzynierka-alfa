@@ -56,7 +56,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         var result = await counterOffersService.UpdateCounterOfferStatusAsync(
             auth0UserId,
             counterOfferId,
-            request.StatusId,
+            (int)request.StatusId,
             ct);
 
         return result.ToActionResult();
