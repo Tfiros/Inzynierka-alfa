@@ -736,7 +736,7 @@ public sealed class TradesService(
     {
         try
         {
-            var user = await userContext.GetRequiredMiddlemanAsync(auth0UserId, ct);
+            var user = await userContext.GetRequiredUserAsync(auth0UserId, ct);
             return user is null ? (null, "User not found") : (user, null);
         }
         catch (Exception ex)
