@@ -1,5 +1,8 @@
 ﻿using System.Security.Claims;
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.CounterOffers;
+using ItemTradeApp.Features.CounterOffers.DTOs;
+using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
@@ -13,7 +16,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 [ApiController]
 [Route("[controller]")]
 [Authorize]
-public class UserInfoController(IUserInfoService userInfoService, IUserInfoOfferService userInfoOfferService) : ControllerBase
+public class UserInfoController(IUserInfoService userInfoService, IUserInfoOfferService userInfoOfferService, ICounterOffersService counterOffersService) : ControllerBase
 {
     [HttpGet("profileInfo/{id:int}")]
     public async Task<ActionResult<Result<UserProfileInfoResponse>>> GetProfileInfo(
@@ -96,6 +99,25 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         }
 
         var result = await userInfoService.UpdateAvatarAsync(auth0UserId, request, ct);
+        return result.ToActionResult();
+    }
+    [HttpGet("counteroffers/sent")]
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, query, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("counteroffers/received")]
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
 }
