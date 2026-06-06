@@ -8,7 +8,7 @@ public sealed class UpdateTradeRequestValidator : AbstractValidator<UpdateTradeR
     public UpdateTradeRequestValidator()
     {
         RuleFor(x => x)
-            .Must(x => x.HasBuyerItems is not null or false || x.HasSellerItems is not null or false)
-            .WithMessage("MiddleMan can't have items");
+            .Must(x => x.HasBuyerItems is not null || x.HasSellerItems is not null)
+            .WithMessage("At least one item confirmation value must be provided.");
     }
 }
