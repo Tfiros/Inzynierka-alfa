@@ -637,4 +637,11 @@ CREATE INDEX IF NOT EXISTS ix_notifications_unread
 CREATE UNIQUE INDEX uq_trade_offer_id_active
     ON trade(Offer_id) WHERE trade_status_id != 4;
 
+ALTER TABLE trade
+    ADD counter_offer_id int NULL;
+
+ALTER TABLE trade
+    ADD CONSTRAINT FK_trade_counter_offer
+        FOREIGN KEY (counter_offer_id)
+            REFERENCES counter_offer(id);
 -- End of file.

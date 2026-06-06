@@ -341,7 +341,7 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
 
             await chatOperations.CreateChatsForTradeAsync(
-                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.User_ID, user.ID), ct);
+                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.Seller_ID, user.ID), ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         }
@@ -357,7 +357,7 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.User_ID,
+                    trade.Seller_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeStatusChanged(
@@ -445,12 +445,15 @@ public sealed class TradesService(
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            if (trade.Offer.TokensOffered > 0)
+            var sellerTokens = trade.Offer.TokensOffered;
+            var buyerTokens = GetBuyerTokensAmount(trade);
+
+            if (sellerTokens > 0)
             {
                 if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
                         trade.Customer_ID,
-                        trade.User_ID,
-                        trade.Offer.TokensOffered,
+                        trade.Seller_ID,
+                        sellerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
@@ -458,24 +461,24 @@ public sealed class TradesService(
                 }
             }
 
-            if (trade.Offer.TokensWanted > 0)
+            if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
-                        trade.User_ID,
+                        trade.Seller_ID,
                         trade.Customer_ID,
-                        trade.Offer.TokensWanted,
+                        buyerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
                     return Result<string>.BadRequest("Failed to refund buyer's wanted tokens.");
                 }
             }
-
+            trade.TradeStatus_ID = (int)TradeStatuses.Failed;
+            trade.AcceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await tokenEscrow.TryLockOwnTokensAsync(trade.User_ID, trade.Offer.TokensOffered, ct))
+                if (!await tokenEscrow.TryLockOwnTokensAsync(trade.Seller_ID, trade.Offer.TokensOffered, ct))
                 {
-                    trade.TradeStatus_ID = (int)TradeStatuses.Failed;
                     trade.Offer.OfferStatus_ID = (int)OfferStatuses.Canceled;
                     await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
                     await unitOfWork.SaveChangesAsync(ct);
@@ -484,7 +487,6 @@ public sealed class TradesService(
                 }
             }
 
-            trade.TradeStatus_ID = (int)TradeStatuses.Failed;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
             trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
             await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
@@ -501,7 +503,7 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.User_ID,
+                    trade.Seller_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeCancelled(
@@ -509,7 +511,7 @@ public sealed class TradesService(
                 ct);
 
             await emailGenerationService.SendTradeCancelledAsync(
-                trade.User_ID,
+                trade.Seller_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
                 user.ProfileInfo?.Nickname ?? user.Email,
@@ -584,7 +586,7 @@ public sealed class TradesService(
             var sellersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = trade.User_ID,
+                UserId = trade.Seller_ID,
                 Mark = request.SellersGrade,
                 Description = request.SellersDescription
             };
@@ -593,27 +595,30 @@ public sealed class TradesService(
             trade.Rates.Add(sellersRate);
 
             
-            if (trade.Offer.TokensOffered > 0)
+            var sellerTokens = trade.Offer.TokensOffered;
+            var buyerTokens = GetBuyerTokensAmount(trade);
+
+            if (sellerTokens > 0)
             {
                 if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
                         trade.Customer_ID,
-                        trade.Offer.TokensOffered,
+                        sellerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release offered tokens.");
+                    return Result<string>.BadRequest("Failed to release seller's offered tokens.");
                 }
             }
 
-            if (trade.Offer.TokensWanted > 0)
+            if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
-                        trade.User_ID,
-                        trade.Offer.TokensWanted,
+                        trade.Seller_ID,
+                        buyerTokens,
                         ct))
                 {
                     await tx.RollbackAsync(ct);
-                    return Result<string>.BadRequest("Failed to release wanted tokens.");
+                    return Result<string>.BadRequest("Failed to release buyer's wanted tokens.");
                 }
             }
 
@@ -635,7 +640,7 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.User_ID,
+                    trade.Seller_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeStatusChanged(
@@ -644,7 +649,7 @@ public sealed class TradesService(
                 ct);
 
             await emailGenerationService.SendTradeCompletedAsync(
-                trade.User_ID,
+                trade.Seller_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
                 trade,
@@ -689,7 +694,7 @@ public sealed class TradesService(
     
     private static bool IsInTrade(Trade trade, int userId)
     {
-        return trade.User_ID == userId || trade.Customer_ID == userId;
+        return trade.Seller_ID == userId || trade.Customer_ID == userId;
     }
 
     private static int CalculateExperience(int rate)
@@ -731,7 +736,12 @@ public sealed class TradesService(
             return (null, ex.Message);
         }
     }
-
+    private static int GetBuyerTokensAmount(Trade trade)
+    {
+        return trade.AcceptedCounterOffer_ID is not null
+            ? trade.AcceptedCounterOffer?.TokensOffered ?? 0
+            : trade.Offer.TokensWanted;
+    }
     private async Task<(User? User, string? Error)> TryGetMiddleman(string? auth0UserId, CancellationToken ct)
     {
         try

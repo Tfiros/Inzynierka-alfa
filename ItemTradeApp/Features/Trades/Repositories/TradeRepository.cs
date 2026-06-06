@@ -32,10 +32,16 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         => await db.Trades
             .Where(t => t.ID == tradeId)
             .Include(t => t.Offer)
+            .ThenInclude(o => o.ListingItems)
+            .ThenInclude(li => li.Item)
             .Include(t => t.Customer)
             .ThenInclude(u => u.ProfileInfo)
             .Include(t => t.PostingUser)
             .ThenInclude(u => u.ProfileInfo)
+            .Include(t => t.AcceptedCounterOffer)
+            .ThenInclude(co => co!.ListingCounterOfferItems)
+            .ThenInclude(i => i.Item)
+            .Include(t => t.Rates)
             .FirstOrDefaultAsync(ct);
 
     public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct) =>
@@ -98,7 +104,7 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
     {
         var raw = await db.Trades
             .AsNoTracking()
-            .Where(t => t.User_ID == userId || t.Customer_ID == userId)
+            .Where(t => t.Seller_ID == userId || t.Customer_ID == userId)
             .GroupBy(_ => 1)
             .Select(g => new
             {

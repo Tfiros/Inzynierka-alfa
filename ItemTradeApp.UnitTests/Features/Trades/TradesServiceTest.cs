@@ -11,6 +11,7 @@ using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 
 namespace ItemTradeApp.UnitTests.Features.Trades;
@@ -51,7 +52,70 @@ public class TradesServiceTest
             folders
         );
     }
+    private Mock<IDbContextTransaction> SetupTransaction()
+    {
+        var tx = new Mock<IDbContextTransaction>();
 
+        tx.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        tx.Setup(x => x.RollbackAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tx.Object);
+
+        _unitOfWork
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        _chatOperations
+            .Setup(x => x.CloseChatsForTradeAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _chatOperations
+            .Setup(x => x.PublishChatsClosedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return tx;
+    }
+
+    private static Trade ValidTradeInRealization()
+    {
+        return new Trade
+        {
+            ID = 1,
+            Seller_ID = 1,
+            Customer_ID = 2,
+            MiddlemanUser_ID = 99,
+            TradeStatus_ID = (int)TradeStatuses.InRealization,
+
+            Offer = ValidOffer(),
+
+            Customer = new User
+            {
+                ID = 2,
+                Email = "buyer@test.com",
+                ProfileInfo = new ProfileInfo
+                {
+                    Nickname = "Buyer"
+                }
+            },
+
+            PostingUser = new User
+            {
+                ID = 1,
+                Email = "seller@test.com",
+                ProfileInfo = new ProfileInfo
+                {
+                    Nickname = "Seller"
+                }
+            },
+
+            Rates = new List<Rate>()
+        };
+    }
     [Fact]
     public async Task AssignMiddlemanAsync_RequestNull()
     {
@@ -80,7 +144,9 @@ public class TradesServiceTest
     public async Task AssignMiddlemanAsync_WithoutMiddleman()
     {
         _userContext
-            .Setup(x => x.GetRequiredMiddlemanAsync(null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRequiredUserAsync(
+                null,
+                It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("missing_sub_claim"));
 
         var result = await _service.AssignMiddlemanAsync(
@@ -91,7 +157,141 @@ public class TradesServiceTest
         Assert.False(result.IsSuccess);
         Assert.Equal("missing_sub_claim", result.Message);
     }
+    [Fact]
+    public async Task SetTradeAsFailedAsync_RefundsBothSidesTokens()
+    {
+        SetupMiddleman(99);
+        SetupTransaction();
 
+        var trade = ValidTradeInRealization();
+
+        trade.Offer.TokensOffered = 100;
+        trade.Offer.TokensWanted = 200;
+
+        _tradeRepo
+            .Setup(x => x.GetTradeWithOfferAndUsersDetailsByIdAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(trade);
+
+        _tokenEscrow
+            .Setup(x => x.TryRefundEscrowToOtherAsync(
+                2,
+                1,
+                100,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _tokenEscrow
+            .Setup(x => x.TryRefundEscrowToOtherAsync(
+                1,
+                2,
+                200,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _tokenEscrow
+            .Setup(x => x.TryLockOwnTokensAsync(
+                1,
+                100,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.SetTradeAsFailedAsync(
+            1,
+            "auth0",
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            (int)TradeStatuses.Failed,
+            trade.TradeStatus_ID);
+
+        Assert.Equal(
+            (int)OfferStatuses.Active,
+            trade.Offer.OfferStatus_ID);
+
+        _tokenEscrow.Verify(
+            x => x.TryRefundEscrowToOtherAsync(
+                2,
+                1,
+                100,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _tokenEscrow.Verify(
+            x => x.TryRefundEscrowToOtherAsync(
+                1,
+                2,
+                200,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+    [Fact]
+    public async Task SetTradeAsRealisedAsync_ReleasesEscrowForBothSides()
+    {
+        SetupMiddleman(99);
+        SetupTransaction();
+
+        var trade = ValidTradeInRealization();
+
+        trade.HasBuyersItems = true;
+        trade.HasSellersItems = true;
+
+        trade.Offer.TokensOffered = 100;
+        trade.Offer.TokensWanted = 200;
+
+        _tradeRepo
+            .Setup(x => x.GetTradeWithOfferAndUsersDetailsByIdAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(trade);
+
+        _tokenEscrow
+            .Setup(x => x.TryReleaseOwnEscrowAsync(
+                2,
+                100,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _tokenEscrow
+            .Setup(x => x.TryReleaseOwnEscrowAsync(
+                1,
+                200,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.SetTradeAsRealisedAsync(
+            1,
+            "auth0",
+            ValidCompleteRequest(),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            (int)TradeStatuses.SuccesfulRealization,
+            trade.TradeStatus_ID);
+
+        Assert.Equal(
+            (int)OfferStatuses.Completed,
+            trade.Offer.OfferStatus_ID);
+
+        _tokenEscrow.Verify(
+            x => x.TryReleaseOwnEscrowAsync(
+                2,
+                100,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _tokenEscrow.Verify(
+            x => x.TryReleaseOwnEscrowAsync(
+                1,
+                200,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
     [Fact]
     public async Task AssignMiddlemanAsync_InvalidTrade()
     {
@@ -120,7 +320,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 10,
+                Seller_ID = 10,
                 Customer_ID = 20,
                 TradeStatus_ID = (int)TradeStatuses.InRealization,
                 Offer = ValidOffer()
@@ -145,7 +345,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 3,
                 TradeStatus_ID = (int)TradeStatuses.New,
@@ -171,7 +371,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 TradeStatus_ID = (int)TradeStatuses.New,
                 Offer = ValidOffer()
@@ -196,7 +396,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = null,
                 TradeStatus_ID = (int)TradeStatuses.InRealization
@@ -222,7 +422,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 3,
                 TradeStatus_ID = (int)TradeStatuses.InRealization
@@ -249,7 +449,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 99,
                 TradeStatus_ID = (int)TradeStatuses.New
@@ -273,7 +473,7 @@ public class TradesServiceTest
         var trade = new Trade
         {
             ID = 1,
-            User_ID = 1,
+            Seller_ID = 1,
             Customer_ID = 2,
             MiddlemanUser_ID = 99,
             TradeStatus_ID = (int)TradeStatuses.InRealization,
@@ -344,7 +544,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 99,
                 TradeStatus_ID = (int)TradeStatuses.New,
@@ -402,7 +602,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = null,
                 TradeStatus_ID = (int)TradeStatuses.InRealization,
@@ -429,7 +629,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 3,
                 TradeStatus_ID = (int)TradeStatuses.InRealization,
@@ -456,7 +656,7 @@ public class TradesServiceTest
             .ReturnsAsync(new Trade
             {
                 ID = 1,
-                User_ID = 1,
+                Seller_ID = 1,
                 Customer_ID = 2,
                 MiddlemanUser_ID = 99,
                 TradeStatus_ID = (int)TradeStatuses.InRealization,
@@ -644,15 +844,17 @@ public class TradesServiceTest
     private void SetupMiddleman(int id = 99)
     {
         _userContext
-            .Setup(x => x.GetRequiredMiddlemanAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetRequiredUserAsync(
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
                 ID = id,
-                Email = "testowy@middleman.com",
+                Email = "middleman@test.com",
                 Tokens = 10000,
-                ProfileInfo = new ProfileInfo()
+                ProfileInfo = new ProfileInfo
                 {
-                    Nickname = "TestUser"
+                    Nickname = "Middleman"
                 }
             });
     }

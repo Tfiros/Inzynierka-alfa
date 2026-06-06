@@ -140,7 +140,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
                 TradeId = c.TradeId,
                 ClosedAt = c.ClosedAt,
                 BuyerUserId = c.Trade.Customer_ID,
-                SellerUserId = c.Trade.User_ID,
+                SellerUserId = c.Trade.Seller_ID,
                 MiddlemanUserId = c.Trade.MiddlemanUser_ID,
                 Members = c.Members.Select(m => new ConversationMemberProjection
                 {
