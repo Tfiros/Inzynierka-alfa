@@ -131,6 +131,11 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {
+        if (q.MinTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered >= q.MinTokenCost.Value);
+
+        if (q.MaxTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered <= q.MaxTokenCost.Value);
 
         if (q.CreatedFrom is not null)
             query = query.Where(t => t.CreationDate >= q.CreatedFrom.Value);
@@ -163,6 +168,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             return query;
 
         var s = q.SearchText.Trim();
+
+        if (s.Length < 2)
+            return query;
+
         var pattern = $"%{EscapePattern.Escape(s)}%";
 
         return q.SearchBy.Value switch
