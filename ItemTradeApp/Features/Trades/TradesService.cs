@@ -565,7 +565,7 @@ public sealed class TradesService(
         
 
         if (!trade.HasBuyersItems || !trade.HasSellersItems)
-            return Result<string>.Forbidden("Cannot set trade as realised as users items are still in your possession.");
+            return Result<string>.BadRequest("Cannot set trade as realised as users items are still in your possession.");
         
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -736,7 +736,7 @@ public sealed class TradesService(
     {
         try
         {
-            var user = await userContext.GetRequiredMiddlemanAsync(auth0UserId, ct);
+            var user = await userContext.GetRequiredUserAsync(auth0UserId, ct);
             return user is null ? (null, "User not found") : (user, null);
         }
         catch (Exception ex)

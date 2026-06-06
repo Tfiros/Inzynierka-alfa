@@ -20,6 +20,8 @@ public interface ICounterOffersRepository
     Task<List<CounterOfferListItemDto>> GetPendingCounterOffersForOfferAsync(
         int offerId,
         CancellationToken ct);
+    
+    Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct);
 }
 
 public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRepository
@@ -113,4 +115,8 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
         );
     }).ToList();
 }
+    
+    public async Task<bool> HasPendingForOfferAsync(int offerId, CancellationToken ct)
+        => await db.CounterOffers.AnyAsync(
+            co => co.Offer_Id == offerId && co.CounterOfferStatus_Id == (int)CounterOfferStatuses.Pending, ct);
 }

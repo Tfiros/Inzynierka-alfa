@@ -91,4 +91,12 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         var result = await counterOffersService.CancelCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
     }
+
+    [HttpGet("offer/{offerId:int}/has-pending")]
+    public async Task<ActionResult<Result<bool>>> HasPendingForOffer([FromRoute] int offerId, CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var res = await counterOffersService.HasPendingCounterOffersForOfferAsync(auth0UserId, offerId, ct);
+        return res.ToActionResult();
+    }
 }

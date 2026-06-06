@@ -46,6 +46,8 @@ public interface ICounterOffersService
 
     Task<Result<CounterOfferDto>> CancelCounterOfferAsync(string? auth0UserId, int counterOfferId,
         CancellationToken ct = default);
+
+    Task<Result<bool>> HasPendingCounterOffersForOfferAsync(string? auth0UserId, int offerId, CancellationToken ct);
 }
 
 public sealed class CounterOffersService(
@@ -239,7 +241,7 @@ public sealed class CounterOffersService(
                 await notificationSender.SendAsync(
                     offer.User_ID,
                     NotificationsMessages.ReceivedCounterOfferMessage(
-                        user.ProfileInfo?.Nickname ?? user.Email,
+                        user.ProfileInfo?.Nickname!,
                         offer.Title),
                     ct);
             }
@@ -651,5 +653,31 @@ public sealed class CounterOffersService(
             await transaction.RollbackAsync(ct);
             return Result<CounterOfferDto>.InternalServerError("Anulowanie kontroferty nie powiodlow sie");
         }
+    }
+
+    public async Task<Result<bool>> HasPendingCounterOffersForOfferAsync(string? auth0UserId, int offerId,
+        CancellationToken ct)
+    {
+        if (offerId <= 0)
+        {
+            return Result<bool>.BadRequest("invalid_offer_id");
+        }
+
+        var (user, userError) = await GetActiveUser<bool>(auth0UserId, ct);
+        if (userError is not null)
+        {
+            return userError;
+        }
+
+        var offerOwnerId = await offerRepository.GetOfferOwnerIdAsync(offerId, ct);
+
+        if (offerOwnerId != user!.ID)
+        {
+            return Result<bool>.Forbidden();
+        }
+
+        var hasPending = await repository.HasPendingForOfferAsync(offerId, ct);
+
+        return Result<bool>.Success(hasPending);
     }
 }

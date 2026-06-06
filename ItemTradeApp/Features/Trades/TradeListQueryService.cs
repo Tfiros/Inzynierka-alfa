@@ -104,6 +104,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 t.Offer_ID,
                 t.TradeStatus_ID,
                 t.CreationDate,
+                t.Offer.TokenCost,
                 new InTradeUserDTO(
                     t.Customer.ID,
                     t.Customer.ProfileInfo.Nickname,
@@ -131,6 +132,11 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {
+        if (q.MinTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered >= q.MinTokenCost.Value);
+
+        if (q.MaxTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered <= q.MaxTokenCost.Value);
 
         if (q.CreatedFrom is not null)
             query = query.Where(t => t.CreationDate >= q.CreatedFrom.Value);
@@ -163,6 +169,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             return query;
 
         var s = q.SearchText.Trim();
+
+        if (s.Length < 2)
+            return query;
+
         var pattern = $"%{EscapePattern.Escape(s)}%";
 
         return q.SearchBy.Value switch
@@ -197,6 +207,12 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
 
             TradeSortBy.CreationDateDesc
                 => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID),
+            
+            TradeSortBy.CreationCostAsc
+                => query.OrderBy(t => t.Offer.TokenCost).ThenBy(t => t.ID),
+            
+            TradeSortBy.CreationCostDesc
+                => query.OrderByDescending(t => t.Offer.TokenCost).ThenByDescending(t => t.ID),
 
             TradeSortBy.TradeIdAsc
                 => query.OrderBy(t => t.ID),
@@ -204,6 +220,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             TradeSortBy.TradeIdDesc
                 => query.OrderByDescending(t => t.ID),
 
-            _ => query.OrderByDescending(t => t.CreationDate)
+            _ => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID)
         };
 }
