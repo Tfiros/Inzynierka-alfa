@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using ItemTradeApp.ApiResultHandling;
+﻿using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
@@ -96,6 +95,25 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         }
 
         var result = await userInfoService.UpdateAvatarAsync(auth0UserId, request, ct);
+        return result.ToActionResult();
+    }
+    [HttpGet("profileInfo/counteroffers/sent")]
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var result = await userInfoService.GetSentCounterOffers(auth0UserId, query, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("profileInfo/counteroffers/received")]
+    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
+        [FromQuery] CounterOfferListingsQuery query,
+        CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var result = await userInfoService.GetReceivedCounterOffers(auth0UserId, query, ct);
         return result.ToActionResult();
     }
 }

@@ -1,4 +1,4 @@
-namespace ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
+namespace ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 
 public sealed class CounterOfferListingsQuery
 {
@@ -6,4 +6,12 @@ public sealed class CounterOfferListingsQuery
     public int PageSize { get; set; } = 20;
     public CounterOffersOrderByEnum OrderBy { get; set; } =
         CounterOffersOrderByEnum.CreationDateDesc;
+}
+
+public enum CounterOffersOrderByEnum
+{
+    CreationDateAsc = 1,
+    CreationDateDesc = 2,
+    TokensAsc = 3,
+    TokensDesc = 4
 }

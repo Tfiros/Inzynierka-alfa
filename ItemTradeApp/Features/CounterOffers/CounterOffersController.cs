@@ -14,27 +14,6 @@ namespace ItemTradeApp.Features.CounterOffers;
 [Authorize]
 public sealed class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
 {
-    
-    [HttpGet("sent")]
-    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
-        [FromQuery] CounterOfferListingsQuery query,
-        CancellationToken ct)
-    {
-        var auth0UserId = Auth0IdHandler.GetUserId(User);
-        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, query, ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("received")]
-    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
-        [FromQuery] CounterOfferListingsQuery query,
-        CancellationToken ct)
-    {
-        var auth0UserId = Auth0IdHandler.GetUserId(User);
-        var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, query, ct);
-        return result.ToActionResult();
-    }
-    
     [HttpPost("{offerId:int}/counter")]
     public async Task<ActionResult<Result<CounterOfferDto>>> CreateCounterOffer(
         [FromRoute] int offerId,
