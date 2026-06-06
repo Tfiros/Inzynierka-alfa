@@ -473,12 +473,12 @@ public sealed class TradesService(
                     return Result<string>.BadRequest("Failed to refund buyer's wanted tokens.");
                 }
             }
-
+            trade.TradeStatus_ID = (int)TradeStatuses.Failed;
+            trade.AcceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
             if (trade.Offer.TokensOffered > 0)
             {
                 if (!await tokenEscrow.TryLockOwnTokensAsync(trade.Seller_ID, trade.Offer.TokensOffered, ct))
                 {
-                    trade.TradeStatus_ID = (int)TradeStatuses.Failed;
                     trade.Offer.OfferStatus_ID = (int)OfferStatuses.Canceled;
                     await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
                     await unitOfWork.SaveChangesAsync(ct);
@@ -487,7 +487,6 @@ public sealed class TradesService(
                 }
             }
 
-            trade.TradeStatus_ID = (int)TradeStatuses.Failed;
             trade.Offer.OfferStatus_ID = (int)OfferStatuses.Active;
             trade.Offer.ExpDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
             await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
