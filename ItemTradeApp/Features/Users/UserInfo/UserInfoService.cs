@@ -1,9 +1,12 @@
 using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared;
+using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.Images;
+using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
+using ItemTradeApp.features.Users.UserInfo.DTOs.Response;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -14,10 +17,16 @@ public interface IUserInfoService
     Task<Result<UserNavbarInfoResponse>> GetNavbarInfoAsync(int userId, CancellationToken ct = default);
     Task<Result<UserProfileInfoResponse>> GetProfileInfoAsync(int userId, CancellationToken ct = default);
     Task<Result<UserProfileInfoResponse>> UpdateProfileAsync(string auth0UserId, UpdateProfileRequest request, CancellationToken ct);
-
     Task<Result<UserProfileInfoResponse>> UpdateAvatarAsync(string auth0UserId, UpdateAvatarRequest request,
         CancellationToken ct);
-
+    Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
+        string? auth0UserId,
+        CounterOfferListingsQuery query,
+        CancellationToken ct = default);
+    Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
+        string? auth0UserId,
+        CounterOfferListingsQuery query,
+        CancellationToken ct = default);
 }
 
 public sealed class UserInfoService(
@@ -183,4 +192,83 @@ public sealed class UserInfoService(
 
         return Result<UserProfileInfoResponse>.Success(dto);
     }
+    public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
+    string? auth0UserId,
+    CounterOfferListingsQuery query,
+    CancellationToken ct = default)
+{
+    if (string.IsNullOrWhiteSpace(auth0UserId))
+        return Result<PagedResponse<CounterOfferListItemDto>>.Unauthorized("missing_sub_claim");
+
+    if (query.Page <= 0)
+        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
+
+    if (query.PageSize <= 0)
+        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
+
+    query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
+
+    var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
+    var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
+
+    if (user is null)
+        return Result<PagedResponse<CounterOfferListItemDto>>.NotFound("user_not_found");
+
+    var (items, totalCount) = await userInfoRepository.GetSentCounterOffersAsync(user.ID, query, ct);
+
+    var totalPages = totalCount == 0
+        ? 1
+        : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+
+    var response = new PagedResponse<CounterOfferListItemDto>
+    {
+        Page = query.Page,
+        PageSize = query.PageSize,
+        TotalCount = totalCount,
+        TotalPages = totalPages,
+        Elements = items
+    };
+
+    return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
+}
+
+public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
+    string? auth0UserId,
+    CounterOfferListingsQuery query,
+    CancellationToken ct = default)
+{
+    if (string.IsNullOrWhiteSpace(auth0UserId))
+        return Result<PagedResponse<CounterOfferListItemDto>>.Unauthorized("missing_sub_claim");
+
+    if (query.Page <= 0)
+        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
+
+    if (query.PageSize <= 0)
+        return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
+
+    query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
+
+    var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
+    var user = await userInfoRepository.GetUserWithProfileByAuth0IdAsync(trimmedAuth0UserId, ct);
+
+    if (user is null)
+        return Result<PagedResponse<CounterOfferListItemDto>>.NotFound("user_not_found");
+
+    var (items, totalCount) = await userInfoRepository.GetReceivedCounterOffersAsync(user.ID, query, ct);
+
+    var totalPages = totalCount == 0
+        ? 1
+        : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+
+    var response = new PagedResponse<CounterOfferListItemDto>
+    {
+        Page = query.Page,
+        PageSize = query.PageSize,
+        TotalCount = totalCount,
+        TotalPages = totalPages,
+        Elements = items
+    };
+
+    return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
+}
 }

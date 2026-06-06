@@ -10,6 +10,7 @@ using ItemTradeApp.Features.Shared.Notifications;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Features.Shared.TradeCreation.DTOs;
+using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using ItemTradeApp.Resources.NotificationsTemplates;
@@ -18,16 +19,6 @@ namespace ItemTradeApp.Features.CounterOffers;
 
 public interface ICounterOffersService
 {
-    Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
-        string? auth0UserId,
-        CounterOfferListingsQuery query,
-        CancellationToken ct = default);
-
-    Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
-        string? auth0UserId,
-        CounterOfferListingsQuery query,
-        CancellationToken ct = default);
-    
     Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
         string? auth0UserId,
         int offerId,
@@ -157,76 +148,6 @@ public sealed class CounterOffersService(
                 .Select(i => new CounterOfferItemDto(i.Item_ID, i.Quantity))
                 .ToList()
         };
-    }
-
-    public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetSentCounterOffers(
-        string? auth0UserId,
-        CounterOfferListingsQuery query,
-        CancellationToken ct = default)
-    {
-        if (query.Page <= 0)
-            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
-
-        if (query.PageSize <= 0)
-            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
-
-        query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
-
-        var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
-        if (userError is not null)
-            return userError;
-
-        var (items, totalCount) = await repository.GetSentCounterOffersAsync(user!.ID, query, ct);
-
-        var totalPages = totalCount == 0
-            ? 1
-            : (int)Math.Ceiling(totalCount / (double)query.PageSize);
-
-        var response = new PagedResponse<CounterOfferListItemDto>
-        {
-            Page = query.Page,
-            PageSize = query.PageSize,
-            TotalCount = totalCount,
-            TotalPages = totalPages,
-            Elements = items
-        };
-
-        return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
-    }
-
-    public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCounterOffers(
-        string? auth0UserId,
-        CounterOfferListingsQuery query,
-        CancellationToken ct = default)
-    {
-        if (query.Page <= 0)
-            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_number");
-
-        if (query.PageSize <= 0)
-            return Result<PagedResponse<CounterOfferListItemDto>>.BadRequest("invalid_page_size");
-
-        query.PageSize = query.PageSize > 100 ? 100 : query.PageSize;
-
-        var (user, userError) = await GetActiveUser<PagedResponse<CounterOfferListItemDto>>(auth0UserId, ct);
-        if (userError is not null)
-            return userError;
-
-        var (items, totalCount) = await repository.GetReceivedCounterOffersAsync(user!.ID, query, ct);
-
-        var totalPages = totalCount == 0
-            ? 1
-            : (int)Math.Ceiling(totalCount / (double)query.PageSize);
-
-        var response = new PagedResponse<CounterOfferListItemDto>
-        {
-            Page = query.Page,
-            PageSize = query.PageSize,
-            TotalCount = totalCount,
-            TotalPages = totalPages,
-            Elements = items
-        };
-
-        return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
     }
 
     public async Task<Result<CounterOfferDto>> CreateCounterOfferAsync(
