@@ -30,7 +30,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     {
         var query = tradeRepo.QueryNoTracking()
             .Where(t => t.ID == tradeId)
-            .Where(t => t.Customer_ID == callerUserId || t.User_ID == callerUserId ||
+            .Where(t => t.Customer_ID == callerUserId || t.Seller_ID == callerUserId ||
                         t.MiddlemanUser_ID == callerUserId);
         return await ProjectToListItemDto(query, isMiddleman).SingleOrDefaultAsync(ct);
     }
@@ -54,7 +54,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             if (q.OnlyMine)
             {
                 query = query.Where(t =>
-                    t.User_ID == userId ||
+                    t.Seller_ID == userId ||
                     t.Customer_ID == userId);
             }
             else
@@ -62,18 +62,18 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 query = status == TradeStatuses.New
                     ? query.Where(t =>
                         t.MiddlemanUser_ID == null ||
-                        t.User_ID == userId ||
+                        t.Seller_ID == userId ||
                         t.Customer_ID == userId)
                     : query.Where(t =>
                         t.MiddlemanUser_ID == userId ||
-                        t.User_ID == userId ||
+                        t.Seller_ID == userId ||
                         t.Customer_ID == userId);
             }
         }
         else
         {
             query = query.Where(t =>
-                t.User_ID == userId ||
+                t.Seller_ID == userId ||
                 t.Customer_ID == userId);
         }
 
@@ -110,10 +110,14 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                     t.Customer.ProfileInfo.Nickname,
                     isMiddlemanView ? t.Customer.Email : null,
                     t.Customer.ProfileInfo.ImageUrl,
-                    t.Offer.ListingItems
-                        .Where(x => x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
-                        .ToList()
+                    t.AcceptedCounterOffer_ID != null
+                        ? t.AcceptedCounterOffer!.ListingCounterOfferItems
+                            .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                            .ToList()
+                        : t.Offer.ListingItems
+                            .Where(x => x.IsWanted)
+                            .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                            .ToList()
                 ),
                 new InTradeUserDTO(
                     t.PostingUser.ID,
@@ -127,7 +131,9 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 ),
                 t.MiddlemanUser_ID,
                 t.Offer.TokensOffered,
-                t.Offer.TokensWanted
+                t.AcceptedCounterOffer_ID != null
+                    ? t.AcceptedCounterOffer!.TokensOffered
+                    : t.Offer.TokensWanted
             ));
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
