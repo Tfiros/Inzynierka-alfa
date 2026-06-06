@@ -14,20 +14,23 @@ public enum TradeSortBy
 
 public enum TradeSearchBy
 {
-    TradeId,
-    OfferId,
+    TradeId = 1,
+    OfferId = 2,
 
-    CustomerNickname,
-    CustomerEmail,
+    CustomerNickname = 3,
+    CustomerEmail = 4,
 
-    PostingUserNickname,
-    PostingUserEmail,
+    PostingUserNickname = 5,
+    PostingUserEmail = 6,
 }
 
 public sealed class TradesQuery
 {
     public string? SearchText { get; init; }
     public TradeSearchBy? SearchBy { get; init; }
+
+    public int? MinTokenCost { get; init; }
+    public int? MaxTokenCost { get; init; }
 
     public DateTime? CreatedFrom { get; init; }
     public DateTime? CreatedTo { get; init; }
