@@ -1,4 +1,4 @@
-namespace ItemTradeApp.features.Users.UserInfo.DTOs.Response;
+namespace ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 
 public sealed record CounterOfferListItemDto(
     int CounterOfferId,

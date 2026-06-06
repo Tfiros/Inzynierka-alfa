@@ -1,4 +1,4 @@
-namespace ItemTradeApp.features.Users.UserInfo.DTOs.Request;
+namespace ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 
 public sealed class CounterOfferListingsQuery
 {

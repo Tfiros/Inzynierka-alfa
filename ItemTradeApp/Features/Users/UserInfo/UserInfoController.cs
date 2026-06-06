@@ -2,9 +2,7 @@
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.DTOs.ResponseDTOs;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -99,7 +97,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         var result = await userInfoService.UpdateAvatarAsync(auth0UserId, request, ct);
         return result.ToActionResult();
     }
-    [HttpGet("counteroffers/sent")]
+    [HttpGet("profileInfo/counteroffers/sent")]
     public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
         [FromQuery] CounterOfferListingsQuery query,
         CancellationToken ct)
@@ -109,7 +107,7 @@ public class UserInfoController(IUserInfoService userInfoService, IUserInfoOffer
         return result.ToActionResult();
     }
 
-    [HttpGet("counteroffers/received")]
+    [HttpGet("profileInfo/counteroffers/received")]
     public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
         [FromQuery] CounterOfferListingsQuery query,
         CancellationToken ct)

@@ -2,13 +2,9 @@ using ItemTradeApp.ApiResultHandling;
 using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.DTOs;
 using ItemTradeApp.Features.Shared.Images;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
-using ItemTradeApp.Persistence;
-using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
-using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Response;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
+using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 
 namespace ItemTradeApp.Features.Users.UserInfo;
 

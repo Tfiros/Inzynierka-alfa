@@ -1,5 +1,5 @@
-﻿using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Response;
+﻿using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
+using ItemTradeApp.Features.Users.UserInfo.DTOs.Response;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;

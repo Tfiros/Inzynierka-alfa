@@ -1,7 +1,6 @@
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.ResponseDTOs;
-using ItemTradeApp.features.Users.UserInfo.DTOs.Request;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
