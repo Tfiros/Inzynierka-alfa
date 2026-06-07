@@ -268,10 +268,10 @@ public class ItemsServiceTest
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Item with the same name already exists in this game.", result.Message);
+
         _itemsRepo.Verify(x => x.AddAsync(It.IsAny<Item>(), It.IsAny<CancellationToken>()), Times.Never);
         _itemsRepo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
-
     [Fact]
     public async Task CreateAsync_WhenValidRequestWithoutImage_CreatesItemAndSaves()
     {
