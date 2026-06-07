@@ -107,8 +107,8 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 t.Offer.TokenCost,
                 new InTradeUserDTO(
                     t.Customer.ID,
-                    t.Customer.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.Customer.Email : null,
+                    t.Customer.IsDeleted ? $"Deleted User: {t.Customer.ProfileInfo.Nickname}" : t.Customer.ProfileInfo.Nickname,
+                    isMiddlemanView ? t.Customer.IsDeleted ? "User deleted - email unavailable" : t.Customer.Email : null,
                     t.Customer.ProfileInfo.ImageUrl,
                     t.AcceptedCounterOffer_ID != null
                         ? t.AcceptedCounterOffer!.ListingCounterOfferItems
@@ -121,8 +121,8 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 ),
                 new InTradeUserDTO(
                     t.PostingUser.ID,
-                    t.PostingUser.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.PostingUser.Email : null,
+                    t.PostingUser.IsDeleted ? $"Deleted User: {t.PostingUser.ProfileInfo.Nickname}" : t.PostingUser.ProfileInfo.Nickname,
+                    isMiddlemanView ? t.PostingUser.IsDeleted ? "User deleted - email unavailable" : t.PostingUser.Email : null,
                     t.PostingUser.ProfileInfo.ImageUrl,
                     t.Offer.ListingItems
                         .Where(x => !x.IsWanted)
