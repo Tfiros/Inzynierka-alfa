@@ -14,27 +14,6 @@ namespace ItemTradeApp.Features.CounterOffers;
 [Authorize]
 public sealed class CounterOffersController(ICounterOffersService counterOffersService) : ControllerBase
 {
-    
-    [HttpGet("sent")]
-    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetSent(
-        [FromQuery] CounterOfferListingsQuery query,
-        CancellationToken ct)
-    {
-        var auth0UserId = Auth0IdHandler.GetUserId(User);
-        var result = await counterOffersService.GetSentCounterOffers(auth0UserId, query, ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("received")]
-    public async Task<ActionResult<Result<PagedResponse<CounterOfferListItemDto>>>> GetReceived(
-        [FromQuery] CounterOfferListingsQuery query,
-        CancellationToken ct)
-    {
-        var auth0UserId = Auth0IdHandler.GetUserId(User);
-        var result = await counterOffersService.GetReceivedCounterOffers(auth0UserId, query, ct);
-        return result.ToActionResult();
-    }
-    
     [HttpPost("{offerId:int}/counter")]
     public async Task<ActionResult<Result<CounterOfferDto>>> CreateCounterOffer(
         [FromRoute] int offerId,
@@ -56,7 +35,7 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         var result = await counterOffersService.UpdateCounterOfferStatusAsync(
             auth0UserId,
             counterOfferId,
-            request.StatusId,
+            (int)request.StatusId,
             ct);
 
         return result.ToActionResult();
@@ -111,5 +90,13 @@ public sealed class CounterOffersController(ICounterOffersService counterOffersS
         var auth0UserId = Auth0IdHandler.GetUserId(User);
         var result = await counterOffersService.CancelCounterOfferAsync(auth0UserId, counterOfferId, ct);
         return result.ToActionResult();
+    }
+
+    [HttpGet("offer/{offerId:int}/has-pending")]
+    public async Task<ActionResult<Result<bool>>> HasPendingForOffer([FromRoute] int offerId, CancellationToken ct)
+    {
+        var auth0UserId = Auth0IdHandler.GetUserId(User);
+        var res = await counterOffersService.HasPendingCounterOffersForOfferAsync(auth0UserId, offerId, ct);
+        return res.ToActionResult();
     }
 }

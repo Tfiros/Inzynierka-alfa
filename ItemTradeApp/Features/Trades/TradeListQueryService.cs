@@ -30,7 +30,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     {
         var query = tradeRepo.QueryNoTracking()
             .Where(t => t.ID == tradeId)
-            .Where(t => t.Customer_ID == callerUserId || t.User_ID == callerUserId ||
+            .Where(t => t.Customer_ID == callerUserId || t.Seller_ID == callerUserId ||
                         t.MiddlemanUser_ID == callerUserId);
         return await ProjectToListItemDto(query, isMiddleman).SingleOrDefaultAsync(ct);
     }
@@ -54,7 +54,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             if (q.OnlyMine)
             {
                 query = query.Where(t =>
-                    t.User_ID == userId ||
+                    t.Seller_ID == userId ||
                     t.Customer_ID == userId);
             }
             else
@@ -62,18 +62,18 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 query = status == TradeStatuses.New
                     ? query.Where(t =>
                         t.MiddlemanUser_ID == null ||
-                        t.User_ID == userId ||
+                        t.Seller_ID == userId ||
                         t.Customer_ID == userId)
                     : query.Where(t =>
                         t.MiddlemanUser_ID == userId ||
-                        t.User_ID == userId ||
+                        t.Seller_ID == userId ||
                         t.Customer_ID == userId);
             }
         }
         else
         {
             query = query.Where(t =>
-                t.User_ID == userId ||
+                t.Seller_ID == userId ||
                 t.Customer_ID == userId);
         }
 
@@ -104,20 +104,25 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 t.Offer_ID,
                 t.TradeStatus_ID,
                 t.CreationDate,
+                t.Offer.TokenCost,
                 new InTradeUserDTO(
                     t.Customer.ID,
-                    t.Customer.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.Customer.Email : null,
+                    t.Customer.IsDeleted ? $"Deleted User: {t.Customer.ProfileInfo.Nickname}" : t.Customer.ProfileInfo.Nickname,
+                    isMiddlemanView ? t.Customer.IsDeleted ? "User deleted - email unavailable" : t.Customer.Email : null,
                     t.Customer.ProfileInfo.ImageUrl,
-                    t.Offer.ListingItems
-                        .Where(x => x.IsWanted)
-                        .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
-                        .ToList()
+                    t.AcceptedCounterOffer_ID != null
+                        ? t.AcceptedCounterOffer!.ListingCounterOfferItems
+                            .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                            .ToList()
+                        : t.Offer.ListingItems
+                            .Where(x => x.IsWanted)
+                            .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
+                            .ToList()
                 ),
                 new InTradeUserDTO(
                     t.PostingUser.ID,
-                    t.PostingUser.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.PostingUser.Email : null,
+                    t.PostingUser.IsDeleted ? $"Deleted User: {t.PostingUser.ProfileInfo.Nickname}" : t.PostingUser.ProfileInfo.Nickname,
+                    isMiddlemanView ? t.PostingUser.IsDeleted ? "User deleted - email unavailable" : t.PostingUser.Email : null,
                     t.PostingUser.ProfileInfo.ImageUrl,
                     t.Offer.ListingItems
                         .Where(x => !x.IsWanted)
@@ -126,11 +131,18 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 ),
                 t.MiddlemanUser_ID,
                 t.Offer.TokensOffered,
-                t.Offer.TokensWanted
+                t.AcceptedCounterOffer_ID != null
+                    ? t.AcceptedCounterOffer!.TokensOffered
+                    : t.Offer.TokensWanted
             ));
     
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {
+        if (q.MinTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered >= q.MinTokenCost.Value);
+
+        if (q.MaxTokenCost is not null)
+            query = query.Where(t => t.Offer.TokensOffered <= q.MaxTokenCost.Value);
 
         if (q.CreatedFrom is not null)
             query = query.Where(t => t.CreationDate >= q.CreatedFrom.Value);
@@ -163,6 +175,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             return query;
 
         var s = q.SearchText.Trim();
+
+        if (s.Length < 2)
+            return query;
+
         var pattern = $"%{EscapePattern.Escape(s)}%";
 
         return q.SearchBy.Value switch
@@ -197,6 +213,12 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
 
             TradeSortBy.CreationDateDesc
                 => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID),
+            
+            TradeSortBy.CreationCostAsc
+                => query.OrderBy(t => t.Offer.TokenCost).ThenBy(t => t.ID),
+            
+            TradeSortBy.CreationCostDesc
+                => query.OrderByDescending(t => t.Offer.TokenCost).ThenByDescending(t => t.ID),
 
             TradeSortBy.TradeIdAsc
                 => query.OrderBy(t => t.ID),
@@ -204,6 +226,6 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             TradeSortBy.TradeIdDesc
                 => query.OrderByDescending(t => t.ID),
 
-            _ => query.OrderByDescending(t => t.CreationDate)
+            _ => query.OrderByDescending(t => t.CreationDate).ThenByDescending(t => t.ID)
         };
 }

@@ -14,12 +14,14 @@ public partial class Trade
     public int TradeStatus_ID { get; set; }
     [Column("offer_id")]
     public int Offer_ID { get; set; }
+    [Column("counter_offer_id")] 
+    public int? AcceptedCounterOffer_ID { get; set; }
     [Column("customer_id")]
     public int Customer_ID { get; set; }
     [Column("middleman_user_id")]
     public int? MiddlemanUser_ID { get; set; }
     [Column("user_id")]
-    public int User_ID { get; set; }
+    public int Seller_ID { get; set; }
     [Column("has_buyers_items")]
     public bool HasBuyersItems { get; set; } = false;
 
@@ -30,6 +32,7 @@ public partial class Trade
     public virtual User? MiddlemanUser { get; set; } = null!;
 
     public virtual Offer Offer { get; set; } = null!;
+    public virtual CounterOffer AcceptedCounterOffer { get; set; } = null!;
 
     public virtual TradeStatus TradeStatus { get; set; } = null!;
     // offer posting user

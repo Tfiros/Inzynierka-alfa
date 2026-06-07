@@ -49,7 +49,7 @@ public class GenresServiceTest
         var result = await _service.CreateAsync(req, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("There is already a game with this name.", result.Message);
+        Assert.Equal("There is already a genre with this name.", result.Message);
 
         _repo.Verify(x => x.AddAsync(It.IsAny<Genre>(), It.IsAny<CancellationToken>()), Times.Never);
         _repo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -208,8 +208,7 @@ public class GenresServiceTest
         var result = await _service.UpdateAsync(1, req, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("There is already a game with this name.", result.Message);
-
+        Assert.Equal("There is already a genre with this name.", result.Message);
         _repo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

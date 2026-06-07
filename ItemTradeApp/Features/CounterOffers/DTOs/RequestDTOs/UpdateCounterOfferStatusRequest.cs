@@ -1,3 +1,8 @@
+using ItemTradeApp.Persistence;
+
 namespace ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 
-public sealed record UpdateCounterOfferStatusRequest(int StatusId);
+public class UpdateCounterOfferStatusRequest
+{
+    public CounterOfferStatuses StatusId { get; set; }
+}

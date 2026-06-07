@@ -16,7 +16,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
 {
 
     [HttpPost("assign-middleman")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<string>>> AssignMiddleman(
         [FromBody] AssignMiddlemanRequest? request,
         CancellationToken ct)
@@ -26,7 +26,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpPut("update-trade/{tradeId:int}")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<string>>> UpdateByMiddleman(
         [FromRoute] int tradeId,
         [FromBody] UpdateTradeRequest? request,
@@ -120,7 +120,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
 
 
     [HttpGet("middleman/{tradeId:int}/details")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<TradeDetailsResponse>>> GetTradeDetails(
         [FromRoute] int tradeId,
         CancellationToken ct = default)
@@ -130,7 +130,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpPut("middleman/{tradeId:int}/set-as-failed")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<string>>> SetTradeAsFailed(
         [FromRoute] int tradeId,
         CancellationToken ct = default)
@@ -140,7 +140,7 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     }
 
     [HttpPut("middleman/{tradeId:int}/set-realised")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<string>>> SetTradeAsRealised(
         [FromRoute] int tradeId,
         [FromBody] CompleteAndMarkTradeRequest request,
@@ -155,13 +155,13 @@ public sealed class TradesController(ITradesService tradesService) : ControllerB
     [Authorize]
     public async Task<ActionResult<Result<TradeListItemDTO>>> GetById([FromRoute] int tradeId, CancellationToken ct)
     {
-        var isMiddlemanView = User.IsInRole("Middleman");
+        var isMiddlemanView = User.IsInRole("Middleman") || User.IsInRole("Admin");
         var res = await tradesService.GetByIdAsync(tradeId, Auth0IdHandler.GetUserId(User), isMiddlemanView, ct);
         return res.ToActionResult();
     }
     
     [HttpPost("{tradeId:int}/photos")]
-    [Authorize(Roles = "Middleman")]
+    [Authorize(Roles = "Middleman,Admin")]
     public async Task<ActionResult<Result<string>>> UploadTradePhoto(
         [FromRoute] int tradeId,
         [FromForm] UploadTradeImageRequest request,

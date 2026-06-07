@@ -18,6 +18,7 @@ public sealed record TradeListItemDTO(
     int OfferId,
     int TradeStatusId,
     DateTime CreationDate,
+    int CreationCost,
     InTradeUserDTO Customer,
     InTradeUserDTO PostingUser,
     int? MiddlemanUserId,

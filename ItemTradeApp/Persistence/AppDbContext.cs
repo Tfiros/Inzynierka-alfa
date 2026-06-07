@@ -264,9 +264,12 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.TradeStatus).WithMany(p => p.Trades)
                 .HasForeignKey(d => d.TradeStatus_ID)
                 .HasConstraintName("trade_tradestatus");
-
+            entity.HasOne(t => t.AcceptedCounterOffer)
+                .WithMany()
+                .HasForeignKey(t => t.AcceptedCounterOffer_ID)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
-                .HasForeignKey(d => d.User_ID)
+                .HasForeignKey(d => d.Seller_ID)
                 .HasConstraintName("user_buyer");
             entity.HasMany(t => t.Urls)
                 .WithOne(u => u.Trade)

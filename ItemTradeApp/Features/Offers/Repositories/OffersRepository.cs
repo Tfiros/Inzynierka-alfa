@@ -135,18 +135,20 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
     private static IQueryable<Offer> ApplyOrdering(IQueryable<Offer> offers, OffersOrderByEnum orderByEnum)
     {
+        var promoted = offers.OrderByDescending(o => o.IsHighlighted);
+        
         return orderByEnum switch
         {
-            OffersOrderByEnum.CreationDateAsc => offers.OrderBy(o => o.CreationDate).ThenBy(o => o.ID),
-            OffersOrderByEnum.CreationDateDesc => offers.OrderByDescending(o => o.CreationDate).ThenByDescending(o => o.ID),
+            OffersOrderByEnum.CreationDateAsc => promoted.ThenBy(o => o.CreationDate).ThenBy(o => o.ID),
+            OffersOrderByEnum.CreationDateDesc => promoted.ThenByDescending(o => o.CreationDate).ThenByDescending(o => o.ID),
 
-            OffersOrderByEnum.PriceAsc => offers.OrderBy(o => o.TokenCost).ThenBy(o => o.ID),
-            OffersOrderByEnum.PriceDesc => offers.OrderByDescending(o => o.TokenCost).ThenByDescending(o => o.ID),
+            OffersOrderByEnum.PriceAsc => promoted.ThenBy(o => o.TokenCost).ThenBy(o => o.ID),
+            OffersOrderByEnum.PriceDesc => promoted.ThenByDescending(o => o.TokenCost).ThenByDescending(o => o.ID),
 
-            OffersOrderByEnum.ExpiryAsc => offers.OrderBy(o => o.ExpDate).ThenBy(o => o.ID),
-            OffersOrderByEnum.ExpiryDesc => offers.OrderByDescending(o => o.ExpDate).ThenByDescending(o => o.ID),
+            OffersOrderByEnum.ExpiryAsc => promoted.ThenBy(o => o.ExpDate).ThenBy(o => o.ID),
+            OffersOrderByEnum.ExpiryDesc => promoted.ThenByDescending(o => o.ExpDate).ThenByDescending(o => o.ID),
             
-            _ => offers.OrderBy(o=>o.CreationDate).ThenBy(o => o.ID)
+            _ => promoted.ThenBy(o=>o.CreationDate).ThenBy(o => o.ID)
 
         };
     }

@@ -7,7 +7,6 @@ namespace ItemTradeApp.Features.Trades;
 public interface IUserContext
 {
     Task<User?> GetRequiredUserAsync(string? auth0UserId, CancellationToken ct);
-    Task<User?> GetRequiredMiddlemanAsync(string? auth0UserId, CancellationToken ct);
 }
 
 public sealed class UserContext(IUserRepository userRepo) : IUserContext
@@ -21,10 +20,5 @@ public sealed class UserContext(IUserRepository userRepo) : IUserContext
         var user = await userRepo.GetByAuth0UserIdAsync(trimmed, ct);
 
         return user;
-    }
-
-    public Task<User?> GetRequiredMiddlemanAsync(string? auth0UserId, CancellationToken ct)
-    {
-        return GetRequiredUserAsync(auth0UserId, ct);
     }
 }
