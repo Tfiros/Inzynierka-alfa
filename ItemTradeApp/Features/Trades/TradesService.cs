@@ -474,7 +474,11 @@ public sealed class TradesService(
                 }
             }
             trade.TradeStatus_ID = (int)TradeStatuses.Failed;
-            trade.AcceptedCounterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+            if (trade.AcceptedCounterOffer is not null)
+            {
+                trade.AcceptedCounterOffer.CounterOfferStatus_Id =
+                    (int)CounterOfferStatuses.Denied;
+            }
             if (trade.Offer.TokensOffered > 0)
             {
                 if (!await tokenEscrow.TryLockOwnTokensAsync(trade.Seller_ID, trade.Offer.TokensOffered, ct))

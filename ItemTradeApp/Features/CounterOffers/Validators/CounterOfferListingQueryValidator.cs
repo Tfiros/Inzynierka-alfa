@@ -1,6 +1,7 @@
 using FluentValidation;
 using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
+using ItemTradeApp.Features.Users.UserInfo.DTOs.Request;
 
 namespace ItemTradeApp.Features.CounterOffers.Validators;
 
