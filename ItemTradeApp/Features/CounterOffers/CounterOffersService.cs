@@ -169,6 +169,21 @@ public sealed class CounterOffersService(
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferDto>(offer, user!.ID);
         if (offerValidation is not null)
             return offerValidation;
+        
+        var offerGivesOnlyTokens =
+            offer!.TokensOffered > 0 &&
+            offer.ListingItems.Count == 0;
+
+        var counterOfferGivesOnlyTokens =
+            request.TokensOffered > 0 &&
+            request.Items.Count == 0;
+
+        if (offerGivesOnlyTokens && counterOfferGivesOnlyTokens)
+        {
+            return Result<CounterOfferDto>.BadRequest(
+                "Cant create tokens for tokens trade."
+            );
+        }
 
         var itemIds = request.Items.Select(x => x.ItemId).ToArray();
         if (itemIds.Length != itemIds.Distinct().Count())
@@ -546,6 +561,22 @@ public sealed class CounterOffersService(
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferCostDto>(offer, user!.ID);
         if (offerValidation is not null)
             return offerValidation;
+        
+        var offerGivesOnlyTokens =
+            offer!.TokensOffered > 0 &&
+            offer.ListingItems.Count == 0;
+
+        var counterOfferGivesOnlyTokens =
+            request.TokensOffered > 0 &&
+            request.Items.Count == 0;
+
+        if (offerGivesOnlyTokens && counterOfferGivesOnlyTokens)
+        {
+            return Result<CounterOfferCostDto>.BadRequest(
+                "Can't create tokens for tokens trade."
+            );
+        }
+        
 
         var itemIds = request.Items.Select(x => x.ItemId).ToArray();
         if (itemIds.Length != itemIds.Distinct().Count())
