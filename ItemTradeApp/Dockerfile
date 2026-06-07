@@ -15,6 +15,9 @@ RUN dotnet publish "ItemTradeApp.csproj" \
     -o /app/publish \
     /p:UseAppHost=false
 
+RUN mkdir -p /app/publish/Resources/EmailTemplates \
+    && cp -r Resources/EmailTemplates/. /app/publish/Resources/EmailTemplates/
+
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 
 WORKDIR /app
