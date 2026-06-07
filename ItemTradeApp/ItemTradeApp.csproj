@@ -29,6 +29,7 @@
   <ItemGroup>
     <Content Update="Resources\EmailTemplates\**\*.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="..\.dockerignore">
       <Link>.dockerignore</Link>
