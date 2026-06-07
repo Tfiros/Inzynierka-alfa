@@ -11,7 +11,7 @@ public partial class Item
     [Column("name")]
     public string Name { get; set; } = null!;
     [Column("photo_url")]
-    public string Photo_URL { get; set; } = null!;
+    public string? Photo_URL { get; set; } = null!;
     [Column("is_deleted")] 
     public bool IsDeleted { get; set; }
     [Column("estimated_token_value")] 
