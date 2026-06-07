@@ -9,7 +9,7 @@ public partial class Game
     [Column("name")]
     public string Name { get; set; } = null!;
     [Column("photo_url")]
-    public string Photo_URL { get; set; } = null!;
+    public string? Photo_URL { get; set; } = null!;
     [Column("genre_id")]
     public int Genre_ID { get; set; }
     [Column("is_deleted")] 
