@@ -79,6 +79,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
     }
     
     [HttpGet("items/suggestions")]
+    [Authorize]
     public async Task<ActionResult<Result<List<ItemDTO>>>> ItemSuggestion(string searchText,
         CancellationToken ct = default)
     {
@@ -86,6 +87,7 @@ public class OffersController(IOffersService offerService) : ControllerBase
         return result.ToActionResult();
     }
     [HttpGet("items")]
+    [Authorize]
     public async Task<ActionResult<Result<List<ItemDTO>>>> Items(string searchText, int gameId,
         CancellationToken ct = default)
     {

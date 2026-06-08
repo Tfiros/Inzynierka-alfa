@@ -76,7 +76,6 @@ public sealed class UserInfoService(
 
         var dto = new UserProfileInfoResponse(
             user.ID,
-            user.Experience,
             level,
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
@@ -113,7 +112,6 @@ public sealed class UserInfoService(
 
         var dto = new UserProfileInfoResponse(
             user.ID,
-            user.Experience,
             level,
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
@@ -173,7 +171,6 @@ public sealed class UserInfoService(
 
         var dto = new UserProfileInfoResponse(
             user.ID,
-            user.Experience,
             level,
             user.RegistrationDate,
             user.ProfileInfo.Nickname,
