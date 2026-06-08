@@ -6,8 +6,6 @@ ItemTradeApp to aplikacja webowa umożliwiająca bezpieczną wymianę wirtualnyc
 
 Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST API wykorzystywane przez aplikację frontendową. System wykorzystuje Auth0 do uwierzytelniania użytkowników oraz SignalR do komunikacji w czasie rzeczywistym.
 
----
-
 # Główne funkcjonalności
 
 ## Zarządzanie użytkownikami
@@ -26,8 +24,7 @@ Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST A
 * usuwanie ofert,
 * przeglądanie publicznych ofert,
 * filtrowanie i wyszukiwanie ofert,
-* dodawanie zdjęć do ofert,
-* śledzenie statusu ofert i wymian.
+* śledzenie statusu ofert.
 
 ## Kontroferty
 
@@ -40,12 +37,11 @@ Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST A
 
 * prywatne rozmowy pomiędzy użytkownikami,
 * komunikacja w czasie rzeczywistym z wykorzystaniem SignalR,
-* informacja o statusie online użytkowników,
 * edycja wiadomości,
 * usuwanie wiadomości,
 * licznik nieprzeczytanych wiadomości.
 
-## Zarządzanie przedmiotami
+## Zarządzanie gatunkami, grami, przedmiotami i ich rzadkościami
 
 * zarządzanie grami,
 * zarządzanie gatunkami gier,
@@ -59,7 +55,16 @@ Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST A
 * oznaczanie powiadomień jako przeczytane,
 * liczniki nieprzeczytanych powiadomień.
 
----
+## E-meaile
+
+* generowanie maili na podstawie danych biznesowych i dostępnych templatów
+
+## Wymiany
+
+* przypisywanie pośrednika do wymiany
+* dodawanie zdjęć do wymiany jako dowodów
+* filtrowanie i wyszukiwanie wymian
+* pozytywne zakończenie wymiany lub jej anulacja
 
 # Wykorzystane technologie
 
@@ -152,23 +157,10 @@ Przykładowa konfiguracja:
 }
 ```
 
----
-
 # Przygotowanie bazy danych
 
-W celu utworzenia lub zaktualizowania schematu bazy danych należy wykonać migracje Entity Framework Core:
+W celu utworzenia lub zaktualizowania schematu bazy danych należy wykonać załączone w solucji skrypty SQL.
 
-```bash
-dotnet ef database update
-```
-
-Utworzenie nowej migracji:
-
-```bash
-dotnet ef migrations add NazwaMigracji
-```
-
----
 
 # Uruchomienie aplikacji
 
@@ -264,6 +256,8 @@ Obsługiwane zdarzenia:
 * chat.message.deleted
 * chat.thread.updated
 * chat.thread.read
+* chat.created
+* chat.closed
 
 ---
 
