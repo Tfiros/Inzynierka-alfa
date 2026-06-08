@@ -637,6 +637,8 @@ CREATE INDEX IF NOT EXISTS ix_notifications_unread
 CREATE UNIQUE INDEX uq_trade_offer_id_active
     ON trade(Offer_id) WHERE trade_status_id != 4;
 
+--Alters
+
 ALTER TABLE trade
     ADD counter_offer_id int NULL;
 
