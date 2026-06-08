@@ -656,6 +656,7 @@ public sealed class TradesService(
                 trade.Seller_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                user.ProfileInfo!.Nickname ?? "Unkown",
                 trade,
                 trade.Offer,
                 ct);
@@ -664,6 +665,7 @@ public sealed class TradesService(
                 trade.Customer_ID,
                 trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
                 trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                user.ProfileInfo!.Nickname ?? "Uknown",
                 trade,
                 trade.Offer,
                 ct);

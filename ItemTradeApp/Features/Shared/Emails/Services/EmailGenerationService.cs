@@ -31,6 +31,7 @@ public interface IEmailGenerationService
         int userId,
         string buyerNick,
         string sellerNick,
+        string middlemanNick,
         Trade trade,
         Offer offer,
         CancellationToken ct);
@@ -47,8 +48,7 @@ public interface IEmailGenerationService
 
 public sealed class EmailGenerationService(
     IEmailTemplateRenderer renderer,
-    IEmailDispatcher dispatcher,
-    IEmailsRepository repository) : IEmailGenerationService
+    IEmailDispatcher dispatcher) : IEmailGenerationService
 {
     public async Task SendOfferCreatedAsync(int userId, Offer offer , CancellationToken ct)
     {
@@ -77,10 +77,11 @@ public sealed class EmailGenerationService(
 
     public async Task SendTradeCompletedAsync(int userId, string buyerNick,
         string sellerNick,
+        string middlemanNick,
         Trade trade,
         Offer offer, CancellationToken ct)
     {
-        var emailModel = EmailTemplateMapper.MapToTradeFinishedEmailModel(buyerNick, sellerNick, trade, offer);
+        var emailModel = EmailTemplateMapper.MapToTradeFinishedEmailModel(buyerNick, sellerNick, trade, offer, middlemanNick);
         await SendAsync(userId, "trade-completed", $"Trade completed successfully", emailModel, ct);
     }
 
