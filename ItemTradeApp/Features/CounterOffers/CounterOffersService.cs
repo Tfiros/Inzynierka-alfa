@@ -459,6 +459,7 @@ public sealed class CounterOffersService(
                     caller.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {caller.ID}",
                     createdTrade,
                     offer,
+                    counterOffer,
                     ct);
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
@@ -467,6 +468,7 @@ public sealed class CounterOffersService(
                     caller.ProfileInfo?.Nickname ?? caller.Email,
                     createdTrade,
                     offer,
+                    counterOffer,
                     ct);
             }
             catch (Exception ex)

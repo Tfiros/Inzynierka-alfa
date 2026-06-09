@@ -25,6 +25,7 @@ public interface IEmailGenerationService
         string sellerNick,
         Trade trade,
         Offer offer,
+        CounterOffer counterOffer,
         CancellationToken ct);
 
     Task SendTradeCompletedAsync(
@@ -69,9 +70,9 @@ public sealed class EmailGenerationService(
     public async Task SendTradeFromCounterOfferCreatedAsync(int userId, string buyerNick,
         string sellerNick,
         Trade trade,
-        Offer offer, CancellationToken ct)
+        Offer offer, CounterOffer counterOffer, CancellationToken ct)
     {
-        var emailModel = EmailTemplateMapper.MapToTradeFromCounterOfferCreatedEmailModel(buyerNick, sellerNick, trade,offer);
+        var emailModel = EmailTemplateMapper.MapToTradeFromCounterOfferCreatedEmailModel(buyerNick, sellerNick, trade,offer, counterOffer);
         await SendAsync(userId, "trade-from-counteroffer-created", $"Trade created from counter offer", emailModel, ct);
     }
 
