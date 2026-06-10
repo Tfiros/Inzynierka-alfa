@@ -491,6 +491,11 @@ public sealed class CounterOffersService(
                 )
             );
         }
+        catch (TradeGuardViolationException ex)
+        {
+            await transaction.RollbackAsync(ct);
+            return Result<AcceptCounterOfferResponse>.Conflict(ex.Message);
+        }
         catch
         {
             await transaction.RollbackAsync(ct);

@@ -634,6 +634,11 @@ public class OffersService(
 
             return Result<AcceptOfferResponse>.Success(new AcceptOfferResponse(trade.ID, offer.ID));
         }
+        catch (TradeGuardViolationException ex)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<AcceptOfferResponse>.Conflict(ex.Message);
+        }
         catch
         {
             await tx.RollbackAsync(ct);

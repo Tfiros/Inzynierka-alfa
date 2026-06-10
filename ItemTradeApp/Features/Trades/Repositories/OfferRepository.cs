@@ -1,14 +1,22 @@
-﻿using ItemTradeApp.Persistence;
-using ItemTradeApp.Persistence.Models;
+﻿using ItemTradeApp.Features.Trades.DTOs;
+using ItemTradeApp.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ItemTradeApp.Features.Trades.Repositories;
 public interface IOfferRepository
-{
-    Task<Offer?> GetByIdAsync(int offerId, CancellationToken ct);
+{ 
+    Task<OfferSide?> GetOfferSidesItems(int offerId, CancellationToken ct);
 }
 public sealed class OfferRepository(AppDbContext db) : IOfferRepository
 {
-    public async Task<Offer?> GetByIdAsync(int offerId, CancellationToken ct) =>
-        await db.Offers.FirstOrDefaultAsync(o => o.ID == offerId, ct);
+    public async Task<OfferSide?> GetOfferSidesItems(int offerId, CancellationToken ct)
+        => await db.Offers
+            .AsNoTracking()
+            .Where(o => o.ID == offerId)
+            .Select(o => new OfferSide(
+                o.ListingItems.Any(li => !li.IsWanted),
+                o.ListingItems.Any(li => li.IsWanted),
+                o.TokensOffered,
+                o.TokensWanted))
+            .FirstOrDefaultAsync(ct);
 }
