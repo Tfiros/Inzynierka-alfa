@@ -40,7 +40,7 @@ public sealed class UserInfoService(
             return Result<UserNavbarInfoResponse>.NotFound("user_or_profile_info_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(userRow.Experience);
-        var unreadChatThreadsTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadChatThreadIds = await userInfoRepository.GetChatUnreadIdsAsync(userId, ct);
         var unreadNotificationTotal = await userInfoRepository.GetNumberOfUnreadNotifications(userId, ct);
         var dto = new UserNavbarInfoResponse(
             userRow.Id,
@@ -51,7 +51,7 @@ public sealed class UserInfoService(
             userRow.Experience,
             level,
             userRow.ChatIds,
-            unreadChatThreadsTotal,
+            unreadChatThreadIds,
             unreadNotificationTotal,
             userRow.ImageUrl
         );

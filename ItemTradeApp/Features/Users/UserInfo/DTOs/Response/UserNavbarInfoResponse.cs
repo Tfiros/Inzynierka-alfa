@@ -9,7 +9,7 @@ public sealed record UserNavbarInfoResponse(
     int    Experience,
     int    Level,
     List<int> ChatIds,
-    int ChatUnreadTotal,
+    List<int> ChatUnreadIds,
     int NotificationsUnreadTotal,
     string? ImageUrl
 );
