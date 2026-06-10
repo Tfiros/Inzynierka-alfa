@@ -13,10 +13,10 @@ public static class OfferQueryExtentions
         {
             Offer = o,
             SuccesfulTrades =
-                o.User.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-            CompletedTrades = o.User.OwningTrades.Count(t =>
-                t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                t.TradeStatus_ID == (int)TradeStatuses.Failed),
+                o.User.Offers.Count(t => o.OfferStatus_ID == (int)OfferStatuses.Completed),
+            CompletedTrades = o.User.Offers.Count(t =>
+                t.OfferStatus_ID == (int)OfferStatuses.Completed ||
+                t.OfferStatus_ID == (int)OfferStatuses.Canceled),
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferListingDTO
         (new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate, o.Offer.TokenCost, o.Offer.OfferStatus.ID, o.Offer.IsHighlighted, o.Offer.TokensOffered, o.Offer.TokensWanted),
@@ -64,10 +64,10 @@ public static class OfferQueryExtentions
         {
             Offer = o,
             SuccesfulTrades =
-                o.User.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-            CompletedTrades = o.User.OwningTrades.Count(t =>
-                t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                t.TradeStatus_ID == (int)TradeStatuses.Failed),
+                o.User.Offers.Count(t => t.OfferStatus_ID == (int)OfferStatuses.Completed),
+            CompletedTrades = o.User.Offers.Count(t =>
+                t.OfferStatus_ID == (int)OfferStatuses.Completed ||
+                t.OfferStatus_ID == (int)OfferStatuses.Canceled),
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferDetailsDTO(
             new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate,

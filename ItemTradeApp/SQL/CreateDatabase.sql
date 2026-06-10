@@ -178,7 +178,6 @@ CREATE TABLE Trade (
     Offer_Id int  NOT NULL,
     Customer_Id int  NOT NULL,
     Middleman_User_Id int  NULL,
-    User_Id int  NOT NULL,
     Has_buyers_items boolean  NOT NULL,
     Has_sellers_items boolean  NOT NULL,
     CONSTRAINT Trade_pk PRIMARY KEY (Id)
@@ -490,16 +489,6 @@ ALTER TABLE Trade ADD CONSTRAINT Trade_TradeStatus
 -- Reference: Trade_User (table: Trade)
 ALTER TABLE Trade ADD CONSTRAINT Trade_User
     FOREIGN KEY (Customer_Id)
-    REFERENCES "User" (Id)
-    ON DELETE  RESTRICT 
-    ON UPDATE  CASCADE 
-    NOT DEFERRABLE 
-    INITIALLY IMMEDIATE
-;
-
--- Reference: User_buyer (table: Trade)
-ALTER TABLE Trade ADD CONSTRAINT User_buyer
-    FOREIGN KEY (User_Id)
     REFERENCES "User" (Id)
     ON DELETE  RESTRICT 
     ON UPDATE  CASCADE 

@@ -268,9 +268,7 @@ public partial class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(t => t.AcceptedCounterOffer_ID)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
-                .HasForeignKey(d => d.Seller_ID)
-                .HasConstraintName("user_buyer");
+           
             entity.HasMany(t => t.Urls)
                 .WithOne(u => u.Trade)
                 .HasForeignKey(u => u.TradeId)
