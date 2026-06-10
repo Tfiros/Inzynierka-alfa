@@ -34,6 +34,8 @@ public interface IChatRepository
     Task<IReadOnlyList<(int Id, DateTime ClosedAtUtc, string[] MemberAuth0Ids)>> GetClosedChatsForPublish(int tradeId, CancellationToken ct);
     Task<IReadOnlyList<(int Id, int TradeId, string[] MemberAuth0Ids)>> GetCreatedChatsForPublish(int tradeId, CancellationToken ct);
     Task<bool> IsChatClosedAsync(int chatConversationId, CancellationToken ct);
+    
+    Task<IReadOnlyList<string>> GetConversationPartnersAuth0IdsFromIdAsync(int userId, CancellationToken ct);
 
 }
 
@@ -239,5 +241,15 @@ public sealed class ChatRepository : IChatRepository
             }).ToListAsync(ct);
         return rows.Select(r => (r.Id, r.TradeId, r.MemberAuth0Ids)).ToList();
     }
+
+    public async Task<IReadOnlyList<string>> GetConversationPartnersAuth0IdsFromIdAsync(int userId, CancellationToken ct) =>
+        await _db.ConversationMembers
+            .AsNoTracking()
+            .Where(cm => cm.UserId == userId)
+            .SelectMany(cm => cm.ChatConversation.Members)
+            .Where(cm => cm.UserId != userId && cm.User.Auth0UserID != null)
+            .Select(cm => cm.User.Auth0UserID)
+            .Distinct()
+            .ToListAsync(ct);
 
 }
