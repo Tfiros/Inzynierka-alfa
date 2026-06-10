@@ -169,16 +169,8 @@ public sealed class CounterOffersService(
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferDto>(offer, user!.ID);
         if (offerValidation is not null)
             return offerValidation;
-        
-        var offerGivesOnlyTokens =
-            offer!.TokensOffered > 0 &&
-            offer.ListingItems.Count == 0;
 
-        var counterOfferGivesOnlyTokens =
-            request.TokensOffered > 0 &&
-            request.Items.Count == 0;
-
-        if (offerGivesOnlyTokens && counterOfferGivesOnlyTokens)
+        if (IsTokenForTokenTrade(offer!, request))
         {
             return Result<CounterOfferDto>.BadRequest(
                 "Cant create tokens for tokens trade."
@@ -563,16 +555,8 @@ public sealed class CounterOffersService(
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferCostDto>(offer, user!.ID);
         if (offerValidation is not null)
             return offerValidation;
-        
-        var offerGivesOnlyTokens =
-            offer!.TokensOffered > 0 &&
-            offer.ListingItems.Count == 0;
 
-        var counterOfferGivesOnlyTokens =
-            request.TokensOffered > 0 &&
-            request.Items.Count == 0;
-
-        if (offerGivesOnlyTokens && counterOfferGivesOnlyTokens)
+        if (IsTokenForTokenTrade(offer!, request))
         {
             return Result<CounterOfferCostDto>.BadRequest(
                 "Can't create tokens for tokens trade."
@@ -691,5 +675,19 @@ public sealed class CounterOffersService(
         var hasPending = await repository.HasPendingForOfferAsync(offerId, ct);
 
         return Result<bool>.Success(hasPending);
+    }
+
+    private static bool IsTokenForTokenTrade(Offer offer, CounterOfferDraftRequest request)
+    {
+
+        var offerGivesOnlyTokens =
+            offer!.TokensOffered > 0 &&
+            !offer.ListingItems.Any(li => !li.IsWanted);
+
+        var counterOfferGivesOnlyTokens =
+            request.TokensOffered > 0 &&
+            request.Items.Count == 0;
+
+        return offerGivesOnlyTokens && counterOfferGivesOnlyTokens;
     }
 }
