@@ -529,8 +529,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_user_auth0
 
 -- Selected FK
     --Trade
-CREATE INDEX IF NOT EXISTS ix_trade_user_status
-    ON trade(User_id, Trade_status_id);
+CREATE INDEX IF NOT EXISTS ix_trade_offer_status
+    ON trade(Offer_id, Trade_status_id);
 
 CREATE INDEX IF NOT EXISTS ix_trade_customer
     ON trade(Customer_Id);
