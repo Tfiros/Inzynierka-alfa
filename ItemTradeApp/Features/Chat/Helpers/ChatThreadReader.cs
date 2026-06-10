@@ -81,6 +81,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             })
             .OrderBy(x => x.ClosedAt != null)
             .ThenByDescending(x => x.LastId ?? 0L)
+            .ThenBy(x => x.ChatConversationId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
