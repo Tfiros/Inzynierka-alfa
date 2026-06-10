@@ -50,7 +50,8 @@ public static class EmailTemplateMapper
         string buyerNick, 
         string sellerNick, 
         Trade trade,
-        Offer offer) =>
+        Offer offer,
+        CounterOffer counterOffer) =>
         new TradeFromCounterOfferCreatedEmailModel
         {
             BuyerNickname = buyerNick,
@@ -64,7 +65,7 @@ public static class EmailTemplateMapper
                     Amount = li.Quantity
                 })
                 .ToList(),
-            SellerItems = offer.ListingItems.Where(i => !i.IsWanted)
+            SellerItems = counterOffer.ListingCounterOfferItems
                 .Select(li => new EmailItemModel
                 {
                     Name = li.Item.Name,

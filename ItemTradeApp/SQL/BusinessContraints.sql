@@ -74,10 +74,6 @@ ALTER TABLE Counter_Offer
     ADD CONSTRAINT check_co_tokens
         CHECK (Tokens_Offered >= 0);
 
-ALTER TABLE Counter_Offer
-    ADD CONSTRAINT check_co_creation_date
-        CHECK (creation_date <= now());
-
 ALTER TABLE Notification
     ADD CONSTRAINT check_notification_title
         CHECK (char_length(trim(Title)) > 0);
