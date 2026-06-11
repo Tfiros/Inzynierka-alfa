@@ -43,11 +43,13 @@ public sealed class UserInfoServiceTests
     {
         var user = CreateUserNavbarRow();
 
+        var unreadIds = new List<int> {  1, 2, 3, 4, 5, 6, 7 } ;
+
         _repo.Setup(x => x.GetUserNavbarRowAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _repo.Setup(x => x.GetChatUnreadTotalAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(7);
+        _repo.Setup(x => x.GetChatUnreadIdsAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(unreadIds);
 
         _repo.Setup(x => x.GetNumberOfUnreadNotifications(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
@@ -64,7 +66,7 @@ public sealed class UserInfoServiceTests
         Assert.Equal(100, result.Data.Tokens);
         Assert.Equal(20, result.Data.EscrowedTokens);
         Assert.Equal(150, result.Data.Experience);
-        Assert.Equal(7, result.Data.ChatUnreadTotal);
+        Assert.Equal(unreadIds, result.Data.ChatUnreadIds);
         Assert.Equal(3, result.Data.NotificationsUnreadTotal);
         Assert.Equal("old-url", result.Data.ImageUrl);
     }
