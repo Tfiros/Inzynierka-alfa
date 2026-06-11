@@ -139,10 +139,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     private static IQueryable<Trade> ApplyFilters(IQueryable<Trade> query, TradesQuery q)
     {
         if (q.MinTokenCost is not null)
-            query = query.Where(t => t.Offer.TokensOffered >= q.MinTokenCost.Value);
+            query = query.Where(t => t.Offer.TokenCost >= q.MinTokenCost.Value);
 
         if (q.MaxTokenCost is not null)
-            query = query.Where(t => t.Offer.TokensOffered <= q.MaxTokenCost.Value);
+            query = query.Where(t => t.Offer.TokenCost <= q.MaxTokenCost.Value);
 
         if (q.CreatedFrom is not null)
             query = query.Where(t => t.CreationDate >= q.CreatedFrom.Value);
