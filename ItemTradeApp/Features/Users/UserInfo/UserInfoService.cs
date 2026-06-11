@@ -72,7 +72,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -83,7 +85,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundToTwo(rating),
             successRate
         );
 
@@ -108,7 +110,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -119,7 +123,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundToTwo(rating),
             successRate
         );
 
@@ -167,7 +171,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -178,7 +184,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundToTwo(rating),
             successRate
         );
 
@@ -262,5 +268,15 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
     };
 
     return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
+}
+
+private static float RoundToTwo(decimal value)
+{
+    return (float)Math.Round(value, 2, MidpointRounding.AwayFromZero);
+}
+    
+private static float RoundToTwo(float value)
+{
+    return (float)Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }
 }
