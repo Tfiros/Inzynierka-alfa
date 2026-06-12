@@ -74,7 +74,7 @@ public sealed class UserInfoService(
             
         var successRate = completedTradeCount == 0
             ? 0f
-            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
+            : RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -112,7 +112,7 @@ public sealed class UserInfoService(
             
         var successRate = completedTradeCount == 0
             ? 0f
-            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
+            : RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -173,7 +173,7 @@ public sealed class UserInfoService(
             
         var successRate = completedTradeCount == 0
             ? 0f
-            : RoundToTwo((decimal)successTradeCount / completedTradeCount);
+            : RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -270,10 +270,6 @@ public async Task<Result<PagedResponse<CounterOfferListItemDto>>> GetReceivedCou
     return Result<PagedResponse<CounterOfferListItemDto>>.Success(response);
 }
 
-private static float RoundToTwo(decimal value)
-{
-    return (float)Math.Round(value, 2, MidpointRounding.AwayFromZero);
-}
     
 private static float RoundToTwo(float value)
 {
