@@ -633,6 +633,10 @@ CREATE INDEX IF NOT EXISTS ix_offer_active_token_cost
 CREATE INDEX IF NOT EXISTS ix_notifications_unread
     ON notification (User_id) WHERE read_at IS NULL AND is_deleted = false;
 
+--Rating
+CREATE INDEX IF NOT EXISTS ix_rate_user 
+    ON rate(User_Id, Mark);
+
 --Business index
 CREATE UNIQUE INDEX uq_trade_offer_id_active
     ON trade(Offer_id) WHERE trade_status_id != 4;
