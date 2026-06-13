@@ -12,11 +12,15 @@ public static class OfferQueryExtentions
         => q.Select(o => new
         {
             Offer = o,
-            SuccesfulTrades =
-                o.Trades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-            CompletedTrades = o.Trades.Count(t =>
-                t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                t.TradeStatus_ID == (int)TradeStatuses.Failed),
+            SuccesfulTrades = o.User.Offers
+                .SelectMany(x => x.Trades)
+                .Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
+
+            CompletedTrades = o.User.Offers
+                .SelectMany(x => x.Trades)
+                .Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
+                    t.TradeStatus_ID == (int)TradeStatuses.Failed),
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferListingDTO
         (new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate, o.Offer.TokenCost, o.Offer.OfferStatus.ID, o.Offer.IsHighlighted, o.Offer.TokensOffered, o.Offer.TokensWanted),
@@ -63,11 +67,14 @@ public static class OfferQueryExtentions
         => q.Select(o => new
         {
             Offer = o,
-            SuccesfulTrades =
-                o.Trades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-            CompletedTrades = o.Trades.Count(t =>
-                t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                t.TradeStatus_ID == (int)TradeStatuses.Failed),
+            SuccesfulTrades = o.User.Offers
+                .SelectMany(x => x.Trades)
+                .Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
+            CompletedTrades = o.User.Offers
+                .SelectMany(x => x.Trades)
+                .Count(t =>
+                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
+                    t.TradeStatus_ID == (int)TradeStatuses.Failed),
             Rating = o.User.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
         }).Select(o => new OfferDetailsDTO(
             new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate,
