@@ -651,7 +651,7 @@ ALTER TABLE trade
             REFERENCES counter_offer(id);
 
 ALTER TABLE trade
-    DROP CONSTRAINT User_buyer;
+    DROP CONSTRAINT user_buyer;
          
 ALTER TABLE trade
     DROP COLUMN user_id;
