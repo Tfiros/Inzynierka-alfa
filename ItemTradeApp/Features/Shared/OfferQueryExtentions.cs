@@ -26,10 +26,10 @@ public static class OfferQueryExtentions
                 o.Offer.User.ProfileInfo!.Nickname,
                 o.Offer.User.ProfileInfo!.ImageUrl,
                 o.SuccesfulTrades,
-                RoundToTwo(o.Rating),
+                RoundUp.RoundToTwo(o.Rating),
                 o.CompletedTrades == 0
                     ? 0f
-                    : RoundToTwo((float)o.SuccesfulTrades / o.CompletedTrades)
+                    : RoundUp.RoundToTwo((float)o.SuccesfulTrades / o.CompletedTrades)
             ),
             o.Offer.ListingItems.Where(li => !li.IsWanted && !li.Item.IsDeleted).OrderByDescending(li => li.Item.EstimatedTokenValue).Take(OffersConsts.PagedOffersResponseItemAmount)
                 .Select(li =>
@@ -75,10 +75,10 @@ public static class OfferQueryExtentions
             new OfferCoreDTO(o.Offer.ID, o.Offer.Title, o.Offer.Description, o.Offer.ExpDate, o.Offer.CreationDate,
                 o.Offer.TokenCost, o.Offer.OfferStatus.ID, o.Offer.IsHighlighted, o.Offer.TokensOffered, o.Offer.TokensWanted),
             new OfferUserDTO(o.Offer.User.ID, o.Offer.User.ProfileInfo!.Nickname, o.Offer.User.ProfileInfo.ImageUrl,
-                o.SuccesfulTrades, RoundToTwo(o.Rating),
+                o.SuccesfulTrades, RoundUp.RoundToTwo(o.Rating),
                 o.CompletedTrades == 0
                     ? 0f
-                    : RoundToTwo((float)o.SuccesfulTrades / o.CompletedTrades)),
+                    : RoundUp.RoundToTwo((float)o.SuccesfulTrades / o.CompletedTrades)),
             o.Offer.ListingItems.Where(li => !li.IsWanted && !li.Item.IsDeleted).Select(li =>      new OfferListingItemDTO
             (
                 new ItemDTO(li.Item.ID,li.Item.Name,li.Item.Photo_URL,li.Item.EstimatedTokenValue,
@@ -103,8 +103,4 @@ public static class OfferQueryExtentions
             )).ToList()
         ));
     
-    private static float RoundToTwo(float value)
-    {
-        return (float)Math.Round(value, 2, MidpointRounding.AwayFromZero);
-    }
 }
