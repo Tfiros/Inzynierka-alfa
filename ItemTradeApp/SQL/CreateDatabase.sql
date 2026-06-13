@@ -632,7 +632,8 @@ CREATE INDEX IF NOT EXISTS ix_notifications_unread
     ON notification (User_id) WHERE read_at IS NULL AND is_deleted = false;
 
 --Rating
-CREATE INDEX IF NOT EXISTS ix_rate_user
+
+CREATE INDEX IF NOT EXISTS ix_rate_user 
     ON rate(User_Id, Mark);
 
 --Business index

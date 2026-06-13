@@ -26,7 +26,7 @@ Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST A
 * filtrowanie i wyszukiwanie ofert,
 * śledzenie statusu ofert.
 
-## Kontroferty
+## Zarządzanie Kontrofertami
 
 * składanie kontrofert do istniejących ofert,
 * akceptowanie kontrofert,
@@ -55,7 +55,7 @@ Backend został zaimplementowany w technologii ASP.NET Core i udostępnia REST A
 * oznaczanie powiadomień jako przeczytane,
 * liczniki nieprzeczytanych powiadomień.
 
-## E-meaile
+## E-maile
 
 * generowanie maili na podstawie danych biznesowych i dostępnych templatów
 
@@ -107,10 +107,7 @@ Features/
 ├── Notifications/
 ├── UserManagement/
 ├── UserSettings/
-├── Games/
-├── Genres/
-├── Items/
-└── ItemRarities/
+├── ItemManagement
 ```
 
 Takie podejście zwiększa czytelność kodu oraz ułatwia dalszy rozwój systemu.
@@ -225,9 +222,9 @@ System wykorzystuje Auth0 do obsługi logowania i autoryzacji użytkowników.
 
 Dostęp do chronionych endpointów wymaga przesłania poprawnego tokenu JWT:
 
-```http
 Authorization: Bearer <token>
-```
+
+Po zalogowaniu użytkownika backend korzysta z danych dostarczonych przez Auth0, a następnie dokleja informacje potrzebne w aplikacji, między innymi rolę użytkownika. Rola jest wykorzystywana do kontroli dostępu do wybranych endpointów oraz rozróżniania możliwości zwykłego użytkownika, administratora i pośrednika.
 
 Proces uwierzytelniania wygląda następująco:
 
@@ -241,7 +238,7 @@ Proces uwierzytelniania wygląda następująco:
 
 # Komunikacja w czasie rzeczywistym
 
-System czatu wykorzystuje SignalR.
+System czatu i powiadomień wykorzystuje SignalR.
 
 Endpoint huba:
 
@@ -258,6 +255,15 @@ Obsługiwane zdarzenia:
 * chat.thread.read
 * chat.created
 * chat.closed
+
+Endpoint huba powiadomień:
+```text
+/api/hub/notifications
+```
+
+Obsługiwane zdarzenia:
+
+* notification.created
 
 ---
 

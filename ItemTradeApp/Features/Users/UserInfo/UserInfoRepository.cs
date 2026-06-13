@@ -9,7 +9,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 
 public interface IUserInfoRepository
 {
-    Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct);
+    Task<List<int>> GetChatUnreadIdsAsync(int userId, CancellationToken ct);
     Task<UserNavbarRow?> GetUserNavbarRowAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
@@ -64,7 +64,7 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
     }
-    public async Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct)
+    public async Task<List<int>> GetChatUnreadIdsAsync(int userId, CancellationToken ct)
     {
         var q =
             from cm in dbContext.ConversationMembers.AsNoTracking()
@@ -75,9 +75,9 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
                 m.SenderId != userId &&
                 (cm.LastReadMessageId == null || m.Id > cm.LastReadMessageId)
             )
-            select 1;
+            select cm.ChatConversationId;
 
-        return await q.CountAsync(ct);
+        return await q.ToListAsync(ct);
     }
     public async Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?> GetUserStatsByUserIdAsync(int id, CancellationToken ct)
     {

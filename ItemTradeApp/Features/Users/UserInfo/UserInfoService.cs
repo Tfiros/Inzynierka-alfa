@@ -40,7 +40,7 @@ public sealed class UserInfoService(
             return Result<UserNavbarInfoResponse>.NotFound("user_or_profile_info_not_found: User not found");
         }
         var level    = UserLevelCalculator.CalculateLevel(userRow.Experience);
-        var unreadChatThreadsTotal = await userInfoRepository.GetChatUnreadTotalAsync(userId, ct);
+        var unreadChatThreadIds = await userInfoRepository.GetChatUnreadIdsAsync(userId, ct);
         var unreadNotificationTotal = await userInfoRepository.GetNumberOfUnreadNotifications(userId, ct);
         var dto = new UserNavbarInfoResponse(
             userRow.Id,
@@ -51,7 +51,7 @@ public sealed class UserInfoService(
             userRow.Experience,
             level,
             userRow.ChatIds,
-            unreadChatThreadsTotal,
+            unreadChatThreadIds,
             unreadNotificationTotal,
             userRow.ImageUrl
         );
@@ -72,7 +72,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundUp.RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -83,7 +85,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundUp.RoundToTwo(rating),
             successRate
         );
 
@@ -108,7 +110,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundUp.RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -119,7 +123,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundUp.RoundToTwo(rating),
             successRate
         );
 
@@ -167,7 +171,9 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0 ? 0f : (float)successTradeCount / completedTradeCount;
+        var successRate = completedTradeCount == 0
+            ? 0f
+            : RoundUp.RoundToTwo((float)successTradeCount / completedTradeCount);
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -178,7 +184,7 @@ public sealed class UserInfoService(
             user.ProfileInfo.ImageUrl,
             activeOffersCount,
             successTradeCount,
-            rating,
+            RoundUp.RoundToTwo(rating),
             successRate
         );
 

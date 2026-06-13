@@ -16,6 +16,7 @@ public sealed class OfferRepository(AppDbContext db):IOfferRepository
     public async Task<Offer?> GetOfferAsync(int offerId, CancellationToken ct)
     {
         return await db.Offers
+            .Include(o => o.ListingItems)
             .FirstOrDefaultAsync(o => o.ID == offerId, ct);
     }
     public async Task<int?> GetOfferOwnerIdAsync(int offerId, CancellationToken ct)

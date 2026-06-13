@@ -73,12 +73,15 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             {
                 cm.ChatConversationId,
                 cm.LastReadMessageId,
+                cm.ChatConversation.ClosedAt,
                 LastId = _db.ChatMessages
                     .Where(x => x.ChatConversationId == cm.ChatConversationId && x.DeletedAt == null)
                     .Max(x => (long?)x.Id)
 
             })
-            .OrderBy(x => x.LastId ?? 0L)
+            .OrderBy(x => x.ClosedAt != null)
+            .ThenByDescending(x => x.LastId ?? 0L)
+            .ThenBy(x => x.ChatConversationId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);

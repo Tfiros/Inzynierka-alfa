@@ -44,6 +44,9 @@ public interface IChatService
 
     Task<Result<IReadOnlyList<ChatThreadListItemDto>>> GetChatsForTradeAsync(int tradeId,
         string? auth0UserId, CancellationToken ct);
+
+    public Task<IReadOnlyList<string>> GetConversationPartnersAuth0IdsAsync(string auth0UserId,
+        CancellationToken ct);
 }
 
 public sealed class ChatService : IChatService
@@ -303,5 +306,21 @@ public sealed class ChatService : IChatService
 
         var rows = await _chatThreadsReader.GetChatsForTradeAsync(meTry.User!.ID, tradeId, ct);
         return Result<IReadOnlyList<ChatThreadListItemDto>>.Success(rows,"Successfully retrieved");
+    }
+
+    public async Task<IReadOnlyList<string>> GetConversationPartnersAuth0IdsAsync(string auth0UserId,
+        CancellationToken ct)
+    {
+        var trimmedAuth0Id = Auth0IdHandler.Trim(auth0UserId);
+
+        var userId = await _repo.GetUserIdByAuth0Async(trimmedAuth0Id, ct);
+
+        if (userId is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        return await _repo.GetConversationPartnersAuth0IdsFromIdAsync(userId.Value, ct);
+
     }
 }
