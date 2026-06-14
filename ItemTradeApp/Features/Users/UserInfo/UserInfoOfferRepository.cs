@@ -29,7 +29,21 @@ public class UserInfoOfferRepository(AppDbContext dbContext) : IUserInfoOfferRep
         var offers = await localQuery.OrderByDescending(o => o.CreationDate)
             .ThenByDescending(o => o.ID)
             .Skip((page - 1) * pageSize)
-            .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
+            .Take(pageSize)
+            .SelectOfferListingDto()
+            .ToListAsync(ct);
+
+        offers = offers
+            .Select(offer => offer with
+            {
+                OfferUserDto = offer.OfferUserDto with
+                {
+                    Rating = RoundUp.RoundToTwo(offer.OfferUserDto.Rating),
+                    SuccessRate = RoundUp.RoundToTwo(offer.OfferUserDto.SuccessRate)
+                }
+            })
+            .ToList();
+
         return (offers, totalCount);
 
     }
@@ -44,11 +58,24 @@ public class UserInfoOfferRepository(AppDbContext dbContext) : IUserInfoOfferRep
         localQuery = localQuery.Where(o => o.User.ID == id && (o.OfferStatus_ID == (int)OfferStatuses.Completed || o.OfferStatus_ID == (int)OfferStatuses.Canceled));
 
         var totalCount = await localQuery.CountAsync(ct);
-
         var offers = await localQuery.OrderByDescending(o => o.CreationDate)
             .ThenByDescending(o => o.ID)
             .Skip((page - 1) * pageSize)
-            .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
+            .Take(pageSize)
+            .SelectOfferListingDto()
+            .ToListAsync(ct);
+
+        offers = offers
+            .Select(offer => offer with
+            {
+                OfferUserDto = offer.OfferUserDto with
+                {
+                    Rating = RoundUp.RoundToTwo(offer.OfferUserDto.Rating),
+                    SuccessRate = RoundUp.RoundToTwo(offer.OfferUserDto.SuccessRate)
+                }
+            })
+            .ToList();
+
         return (offers, totalCount);
 
     }

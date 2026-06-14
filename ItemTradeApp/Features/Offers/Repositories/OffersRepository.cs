@@ -36,7 +36,25 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
     public async Task<OfferDetailsDTO?> GetOfferWithDetailsByIdAsync(int id, CancellationToken ct = default)
     {
         
-        return await dbContext.Offers.AsNoTracking().Where(o => o.ID == id).SelectOfferDetailsDto().SingleOrDefaultAsync(ct);
+        var offer = await dbContext.Offers
+            .AsNoTracking()
+            .Where(o => o.ID == id)
+            .SelectOfferDetailsDto()
+            .SingleOrDefaultAsync(ct);
+
+        if (offer is null)
+        {
+            return null;
+        }
+
+        return offer with
+        {
+            OfferUserDto = offer.OfferUserDto with
+            {
+                Rating = RoundUp.RoundToTwo(offer.OfferUserDto.Rating),
+                SuccessRate = RoundUp.RoundToTwo(offer.OfferUserDto.SuccessRate)
+            }
+        };
     }
 
     public void RemoveListingItemsRange(IEnumerable<ListingItems> items)
@@ -74,8 +92,23 @@ public class OffersRepository(AppDbContext dbContext) : IOffersRepository
 
         var totalCount = await localQuery.CountAsync(ct);
 
-        var offers = await localQuery.Skip((page - 1) * pageSize)
-            .Take(pageSize).SelectOfferListingDto().ToListAsync(ct);
+        var offers = await localQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .SelectOfferListingDto()
+            .ToListAsync(ct);
+
+        offers = offers
+            .Select(offer => offer with
+            {
+                OfferUserDto = offer.OfferUserDto with
+                {
+                    Rating = RoundUp.RoundToTwo(offer.OfferUserDto.Rating),
+                    SuccessRate = RoundUp.RoundToTwo(offer.OfferUserDto.SuccessRate)
+                }
+            })
+            .ToList();
+
         return (offers, totalCount);
 
     }

@@ -54,6 +54,17 @@ public class FavouritesRepository(AppDbContext dbContext) : IFavouritesRepositor
             .SelectOfferListingDto()
             .ToListAsync(ct);
 
+        favourites = favourites
+            .Select(offer => offer with
+            {
+                OfferUserDto = offer.OfferUserDto with
+                {
+                    Rating = RoundUp.RoundToTwo(offer.OfferUserDto.Rating),
+                    SuccessRate = RoundUp.RoundToTwo(offer.OfferUserDto.SuccessRate)
+                }
+            })
+            .ToList();
+
         return (favourites, totalCount);
     }
 }
