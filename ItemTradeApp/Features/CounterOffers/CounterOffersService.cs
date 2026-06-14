@@ -403,7 +403,6 @@ public sealed class CounterOffersService(
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
-                SellerId: offer.User_ID,
                 CounterOfferId: counterOffer.ID
             );
 

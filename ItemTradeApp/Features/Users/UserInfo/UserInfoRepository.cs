@@ -85,8 +85,10 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .Select(u => new
             {
                 ActiveOffers = u.Offers.Count(o => o.OfferStatus_ID == (int)OfferStatuses.Active),
-                SuccessTrade = u.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-                CompletedTrade = u.OwningTrades.Count(t =>
+                SuccessTrade = u.Offers
+                    .SelectMany(o => o.Trades)
+                    .Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),          
+                CompletedTrade = u.Offers.SelectMany(o => o.Trades).Count(t =>
                     t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
                     t.TradeStatus_ID == (int)TradeStatuses.Failed),
                 Rating = u.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m

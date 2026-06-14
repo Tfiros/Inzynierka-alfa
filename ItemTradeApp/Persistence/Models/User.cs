@@ -40,8 +40,6 @@ public partial class User
     public virtual ICollection<Trade> TrademiddlemanUsers { get; set; } = new List<Trade>();
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public virtual ICollection<Email> Emails { get; set; } = new List<Email>();
-
-    public virtual ICollection<Trade> OwningTrades { get; set; } = new List<Trade>();
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
     public virtual ICollection<ConversationMember> Chats {get; set; } = new List<ConversationMember>();
 

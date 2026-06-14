@@ -30,7 +30,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
     {
         var query = tradeRepo.QueryNoTracking()
             .Where(t => t.ID == tradeId)
-            .Where(t => t.Customer_ID == callerUserId || t.Seller_ID == callerUserId ||
+            .Where(t => t.Customer_ID == callerUserId || t.Offer.User_ID == callerUserId ||
                         t.MiddlemanUser_ID == callerUserId);
         return await ProjectToListItemDto(query, isMiddleman).SingleOrDefaultAsync(ct);
     }
@@ -54,7 +54,7 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             if (q.OnlyMine)
             {
                 query = query.Where(t =>
-                    t.Seller_ID == userId ||
+                    t.Offer.User_ID == userId ||
                     t.Customer_ID == userId);
             }
             else
@@ -62,18 +62,18 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 query = status == TradeStatuses.New
                     ? query.Where(t =>
                         t.MiddlemanUser_ID == null ||
-                        t.Seller_ID == userId ||
+                        t.Offer.User_ID == userId ||
                         t.Customer_ID == userId)
                     : query.Where(t =>
                         t.MiddlemanUser_ID == userId ||
-                        t.Seller_ID == userId ||
+                        t.Offer.User_ID == userId ||
                         t.Customer_ID == userId);
             }
         }
         else
         {
             query = query.Where(t =>
-                t.Seller_ID == userId ||
+                t.Offer.User_ID == userId ||
                 t.Customer_ID == userId);
         }
 
@@ -120,10 +120,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                             .ToList()
                 ),
                 new InTradeUserDTO(
-                    t.PostingUser.ID,
-                    t.PostingUser.IsDeleted ? $"Deleted User: {t.PostingUser.ProfileInfo.Nickname}" : t.PostingUser.ProfileInfo.Nickname,
-                    isMiddlemanView ? t.PostingUser.IsDeleted ? "User deleted - email unavailable" : t.PostingUser.Email : null,
-                    t.PostingUser.ProfileInfo.ImageUrl,
+                    t.Offer.User_ID,
+                    t.Offer.User.IsDeleted ? $"Deleted User: {t.Offer.User.ProfileInfo.Nickname}" : t.Offer.User.ProfileInfo.Nickname,
+                    isMiddlemanView ? t.Offer.User.IsDeleted ? "User deleted - email unavailable" : t.Offer.User.Email : null,
+                    t.Offer.User.ProfileInfo.ImageUrl,
                     t.Offer.ListingItems
                         .Where(x => !x.IsWanted)
                         .Select(x => new ItemInfoDTO(x.Item.Name, x.Quantity))
@@ -196,10 +196,10 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
                 => query.Where(t => EF.Functions.ILike(t.Customer.Email, pattern, "!")),
 
             TradeSearchBy.PostingUserNickname
-                => query.Where(t => EF.Functions.ILike(t.PostingUser.ProfileInfo.Nickname!, pattern, "!")),
+                => query.Where(t => EF.Functions.ILike(t.Offer.User.ProfileInfo.Nickname!, pattern, "!")),
 
             TradeSearchBy.PostingUserEmail
-                => query.Where(t => EF.Functions.ILike(t.PostingUser.Email, pattern, "!")),
+                => query.Where(t => EF.Functions.ILike(t.Offer.User.Email, pattern, "!")),
 
             _ => query
         };

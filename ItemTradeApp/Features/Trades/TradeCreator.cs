@@ -11,11 +11,6 @@ public sealed class TradeCreator(ITradeRepository tradeRepository, IOfferReposit
     public async Task<Trade> ExecuteAsync(CreateTradeContext context, CancellationToken ct)
     {
 
-        if (context.BuyerId == context.SellerId)
-        {
-            throw new TradeGuardViolationException("trade_buyer_equals_seller");
-        }
-
         var offerSides = await offerRepository.GetOfferSidesItems(context.OfferId, ct);
         if (offerSides is null)
         {
@@ -65,7 +60,6 @@ public sealed class TradeCreator(ITradeRepository tradeRepository, IOfferReposit
             Offer_ID = context.OfferId,
             AcceptedCounterOffer_ID = context.CounterOfferId,
             Customer_ID = context.BuyerId,
-            Seller_ID = context.SellerId,
             CreationDate = DateTime.UtcNow,
             CompletitionDate = null,
             TradeStatus_ID = (int)TradeStatuses.New,

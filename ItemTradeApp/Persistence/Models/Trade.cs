@@ -20,8 +20,6 @@ public partial class Trade
     public int Customer_ID { get; set; }
     [Column("middleman_user_id")]
     public int? MiddlemanUser_ID { get; set; }
-    [Column("user_id")]
-    public int Seller_ID { get; set; }
     [Column("has_buyers_items")]
     public bool HasBuyersItems { get; set; } = false;
 
@@ -35,8 +33,6 @@ public partial class Trade
     public virtual CounterOffer AcceptedCounterOffer { get; set; } = null!;
 
     public virtual TradeStatus TradeStatus { get; set; } = null!;
-    // offer posting user
-    public virtual User PostingUser { get; set; } = null!;
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
     public virtual List<TradeUrl> Urls { get; set; } = new();
 
