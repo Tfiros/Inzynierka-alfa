@@ -41,7 +41,7 @@ public sealed class TradeFromCounterOfferCreatedEmailModel
     public string OfferName { get; set; } = string.Empty;
 
     public List<EmailItemModel>? BuyerItems { get; set; } = new();
-    public List<EmailItemModel> SellerItems { get; set; } = new();
+    public List<EmailItemModel>? SellerItems { get; set; } = new();
 }
 
 public sealed class TradeFinishedEmailModel

@@ -58,7 +58,7 @@ public static class EmailTemplateMapper
             SellerNickname = sellerNick,
             OfferName = offer.Title,
             CreatedAt = trade.CreationDate,
-            SellerItems = offer.ListingItems
+            SellerItems = offer.ListingItems.Where(li => !li.IsWanted)
                 .Select(li => new EmailItemModel
                 {
                     Name = li.Item.Name,

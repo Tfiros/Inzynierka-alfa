@@ -42,7 +42,7 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
             .ThenInclude(co => co!.ListingCounterOfferItems)
             .ThenInclude(i => i.Item)
             .Include(t => t.Rates)
-            .AsSingleQuery()
+            .AsSplitQuery()
             .FirstOrDefaultAsync(ct);
 
     public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct) =>

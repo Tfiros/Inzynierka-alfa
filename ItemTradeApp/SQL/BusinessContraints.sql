@@ -89,10 +89,6 @@ ALTER TABLE Trade
                 OR completition_date >= creation_date
             );
 
-ALTER TABLE Trade
-    ADD CONSTRAINT check_trade_different_user
-        CHECK (customer_id != user_id);
-
 ALTER TABLE Genre
     ADD CONSTRAINT check_genre_name
         CHECK (char_length(trim(name)) > 0);
@@ -132,11 +128,4 @@ ALTER TABLE Trade
         CHECK (
             Middleman_User_Id IS NULL
                 OR Middleman_User_Id != Customer_Id
-            );
-
-ALTER TABLE Trade
-    ADD CONSTRAINT check_middleman_not_user
-        CHECK (
-            Middleman_User_Id IS NULL
-                OR Middleman_User_Id != User_Id
             );
