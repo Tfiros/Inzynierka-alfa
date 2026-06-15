@@ -293,9 +293,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("rate");
 
-            entity.Property(e => e.Mark)
-                .HasColumnType("decimal(3,1)");
-
             entity.Property(e => e.Description)
                 .HasMaxLength(500);
 
