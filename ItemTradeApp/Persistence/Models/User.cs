@@ -43,4 +43,6 @@ public partial class User
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
     public virtual ICollection<ConversationMember> Chats {get; set; } = new List<ConversationMember>();
 
+    public virtual UserTradeStats? TradeStats { get; set; }
+
 }
