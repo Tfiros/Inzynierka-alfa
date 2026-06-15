@@ -1,4 +1,5 @@
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -362,7 +363,7 @@ public sealed class TradesService(
                 ],
                 NotificationsMessages.TradeStatusChanged(
                     trade.Offer.Title,
-                    TradeStatuses.InRealization.ToString()),
+                    TradeStatusName.ToStringName(TradeStatuses.InRealization)),
                 ct);
         }
         catch (Exception e)
@@ -649,7 +650,7 @@ public sealed class TradesService(
                 ],
                 NotificationsMessages.TradeStatusChanged(
                     trade.Offer.Title,
-                    TradeStatuses.SuccesfulRealization.ToString()),
+                    TradeStatusName.ToStringName(TradeStatuses.SuccesfulRealization)),
                 ct);
 
             await emailGenerationService.SendTradeCompletedAsync(
