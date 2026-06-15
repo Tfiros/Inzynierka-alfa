@@ -1,3 +1,5 @@
+--User trade/rating stats triggers
+
 CREATE OR REPLACE FUNCTION trg_update_user_trade_count() RETURNS trigger AS $$
 DECLARE
     seller_id int;
@@ -56,3 +58,24 @@ CREATE TRIGGER update_user_rating_count
     AFTER INSERT ON rate
     FOR EACH ROW EXECUTE FUNCTION trg_update_user_rating_count();
 
+--Trade check triggers
+CREATE OR REPLACE FUNCTION trg_update_trade_check() RETURNS trigger AS $$
+DECLARE seller int;
+BEGIN        
+    SELECT user_id INTO seller FROM offer WHERE id = NEW.offer_id;
+    
+    --Check customer not seller
+    IF NEW.customer_id = seller THEN
+        RAISE EXCEPTION 'customer (id:%) cannot equal offer owner', NEW.customer_id;
+    END IF;
+
+    IF NEW.middleman_user_id = seller THEN
+        RAISE EXCEPTION 'middleman cannot equal offer owner (id:%)', seller;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE  plpgsql;
+
+CREATE TRIGGER update_trade_check
+    BEFORE INSERT OR UPDATE OF customer_id, middleman_user_id, offer_id ON trade
+    FOR EACH ROW EXECUTE FUNCTION trg_update_trade_check();
