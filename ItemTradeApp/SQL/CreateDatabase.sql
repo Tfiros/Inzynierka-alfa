@@ -226,10 +226,10 @@ CREATE TABLE User_favourite_offer (
 
 CREATE TABLE User_trade_stats (
                                   User_id int NOT NULL,
-                                  Successful_trades int NOT NULL,
-                                  Completed_trades int NOT NULL,
-                                  Rating_sum int NOT NULL,
-                                  Rating_count int NOT NULL,
+                                  Successful_trades int NOT NULL DEFAULT 0,
+                                  Completed_trades int NOT NULL DEFAULT 0,
+                                  Rating_sum int NOT NULL DEFAULT 0,
+                                  Rating_count int NOT NULL DEFAULT 0,
                                   CONSTRAINT User_trade_stats_pk PRIMARY KEY(User_id)
 );
 
