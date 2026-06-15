@@ -655,4 +655,7 @@ ALTER TABLE trade
          
 ALTER TABLE trade
     DROP COLUMN user_id;
+
+ALTER TABLE rate
+    ALTER COLUMN mark TYPE integer;
 -- End of file.
