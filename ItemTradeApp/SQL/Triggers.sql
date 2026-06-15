@@ -23,7 +23,7 @@ BEGIN
     WHERE user_id = seller_id;
 
     IF NOT FOUND THEN
-        RAISE WARNING 'user_trade_stats missing for user %', seller_id;
+        RAISE EXCEPTION 'user_trade_stats missing for user %', seller_id;
     END IF;
 
 
@@ -46,7 +46,7 @@ BEGIN
     WHERE user_id = NEW.user_id;
 
     IF NOT FOUND THEN
-        RAISE WARNING 'user_trade_stats missing for user %', NEW.user_id;
+        RAISE EXCEPTION 'user_trade_stats missing for user %', NEW.user_id;
     END IF;
 
     RETURN NEW;
