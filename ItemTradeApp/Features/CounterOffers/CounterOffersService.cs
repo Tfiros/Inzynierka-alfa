@@ -170,6 +170,13 @@ public sealed class CounterOffersService(
         if (offerValidation is not null)
             return offerValidation;
 
+        if (IsTokenForTokenTrade(offer!, request))
+        {
+            return Result<CounterOfferDto>.BadRequest(
+                "Cant create tokens for tokens trade."
+            );
+        }
+
         var itemIds = request.Items.Select(x => x.ItemId).ToArray();
         if (itemIds.Length != itemIds.Distinct().Count())
             return Result<CounterOfferDto>.BadRequest("Przedmioty w kontrofercie muszą być unikalne");
@@ -241,7 +248,7 @@ public sealed class CounterOffersService(
                 await notificationSender.SendAsync(
                     offer.User_ID,
                     NotificationsMessages.ReceivedCounterOfferMessage(
-                        user.ProfileInfo?.Nickname!,
+                        user.ProfileInfo.Nickname,
                         offer.Title),
                     ct);
             }
@@ -396,7 +403,6 @@ public sealed class CounterOffersService(
             var context = new CreateTradeContext(
                 OfferId: offer.ID,
                 BuyerId: counterOffer.User_ID,
-                SellerId: offer.User_ID,
                 CounterOfferId: counterOffer.ID
             );
 
@@ -455,18 +461,20 @@ public sealed class CounterOffersService(
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
                     counterOffer.User_ID,
-                    counterOffer.User.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {counterOffer.User.Email}",
-                    caller.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {caller.ID}",
+                    counterOffer.User.ProfileInfo.Nickname,
+                    caller.ProfileInfo.Nickname,
                     createdTrade,
                     offer,
+                    counterOffer,
                     ct);
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
                     offer.User_ID,
-                    counterOffer.User.ProfileInfo?.Nickname ?? counterOffer.User.Email,
-                    caller.ProfileInfo?.Nickname ?? caller.Email,
+                    counterOffer.User.ProfileInfo.Nickname,
+                    caller.ProfileInfo.Nickname,
                     createdTrade,
                     offer,
+                    counterOffer,
                     ct);
             }
             catch (Exception ex)
@@ -481,6 +489,11 @@ public sealed class CounterOffersService(
                     AcceptedCounterOfferId: counterOffer.ID
                 )
             );
+        }
+        catch (TradeGuardViolationException ex)
+        {
+            await transaction.RollbackAsync(ct);
+            return Result<AcceptCounterOfferResponse>.Conflict(ex.Message);
         }
         catch
         {
@@ -546,6 +559,14 @@ public sealed class CounterOffersService(
         var offerValidation = ValidateOfferForCounterOffer<CounterOfferCostDto>(offer, user!.ID);
         if (offerValidation is not null)
             return offerValidation;
+
+        if (IsTokenForTokenTrade(offer!, request))
+        {
+            return Result<CounterOfferCostDto>.BadRequest(
+                "Can't create tokens for tokens trade."
+            );
+        }
+        
 
         var itemIds = request.Items.Select(x => x.ItemId).ToArray();
         if (itemIds.Length != itemIds.Distinct().Count())
@@ -658,5 +679,19 @@ public sealed class CounterOffersService(
         var hasPending = await repository.HasPendingForOfferAsync(offerId, ct);
 
         return Result<bool>.Success(hasPending);
+    }
+
+    private static bool IsTokenForTokenTrade(Offer offer, CounterOfferDraftRequest request)
+    {
+
+        var offerGivesOnlyTokens =
+            offer!.TokensOffered > 0 &&
+            !offer.ListingItems.Any(li => !li.IsWanted);
+
+        var counterOfferGivesOnlyTokens =
+            request.TokensOffered > 0 &&
+            request.Items.Count == 0;
+
+        return offerGivesOnlyTokens && counterOfferGivesOnlyTokens;
     }
 }

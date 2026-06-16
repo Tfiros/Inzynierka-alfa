@@ -12,8 +12,8 @@ public partial class Rate
     [Column("trade_id")]
     public int TradeId { get; set; }
 
-    [Column("mark", TypeName = "decimal(3,1)")]
-    public decimal Mark { get; set; }
+    [Column("mark")]
+    public int Mark { get; set; }
 
     [Column("description")]
     [StringLength(500)]

@@ -30,11 +30,7 @@ public sealed class ChatHub : Hub
             var changed = _presence.UserConnected(auth0);
             if (changed)
             {
-                await Clients.All.SendAsync("presence.changed", new
-                {
-                    auth0UserId = auth0,
-                    isOnline = true
-                });
+                await PublishPresenceAsync(auth0, true, Context.ConnectionAborted);
             }
         }
 
@@ -49,11 +45,7 @@ public sealed class ChatHub : Hub
             var changed = _presence.UserDisconnected(auth0);
             if (changed)
             {
-                await Clients.All.SendAsync("presence.changed", new
-                {
-                    auth0UserId = auth0,
-                    isOnline = false
-                });
+                await PublishPresenceAsync(auth0, false, CancellationToken.None);
             }
         }
 
@@ -98,5 +90,22 @@ public sealed class ChatHub : Hub
 
         await Clients.Group($"chat:{chatConversationId}")
             .SendAsync("message.new", dto, Context.ConnectionAborted);
+    }
+
+    private async Task PublishPresenceAsync(string auth0, bool isOnline, CancellationToken ct)
+    {
+        var partners = await _chatService.GetConversationPartnersAuth0IdsAsync(auth0, ct);
+        if (partners.Count == 0)
+        {
+            return;
+        }
+
+        await Clients.Groups(partners.Select(p => $"user:{p}").ToList())
+            .SendAsync("presence.changed", new
+            {
+                auth0UserId = auth0,
+                isOnline
+            }, ct);
+
     }
 }

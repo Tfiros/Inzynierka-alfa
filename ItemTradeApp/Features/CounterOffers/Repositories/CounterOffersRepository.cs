@@ -39,7 +39,9 @@ public sealed class CounterOffersRepository(AppDbContext db) : ICounterOffersRep
             .ThenInclude(u => u.ProfileInfo)
             .Include(co => co.Offer)
             .ThenInclude(o => o.ListingItems)
+            .ThenInclude(li => li.Item)
             .Include(co => co.ListingCounterOfferItems)
+            .ThenInclude(li => li.Item)
             .FirstOrDefaultAsync(co => co.ID == counterOfferId, ct);
     }
     public void AddCounterOffer(CounterOffer counterOffer)

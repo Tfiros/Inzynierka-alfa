@@ -579,7 +579,7 @@ public class OffersService(
             }
 
             var trade = await tradeCreation.ExecuteAsync(
-                new CreateTradeContext(offer.ID, userState.Id, offer.User_ID), ct);
+                new CreateTradeContext(offer.ID, userState.Id), ct);
 
             var seller = await userRepository
                 .GetNotificationDataByIdAsync(offer.User_ID, ct);
@@ -633,6 +633,11 @@ public class OffersService(
             }
 
             return Result<AcceptOfferResponse>.Success(new AcceptOfferResponse(trade.ID, offer.ID));
+        }
+        catch (TradeGuardViolationException ex)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<AcceptOfferResponse>.Conflict(ex.Message);
         }
         catch
         {

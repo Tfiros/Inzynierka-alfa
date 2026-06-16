@@ -4,15 +4,15 @@ using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 
-public interface IAuth0ManagementTokenProvider
+public interface IAuthZeroManagementTokenProvider
 {
     Task<Result<string>> GetTokenAsync(CancellationToken ct = default);
 }
 
-public sealed class Auth0ManagementTokenProvider(
+public sealed class AuthZeroManagementTokenProvider(
     IHttpClientFactory httpFactory,
     IOptions<AuthZeroOptions> options,
-    ILogger<Auth0ManagementTokenProvider> logger) : IAuth0ManagementTokenProvider
+    ILogger<AuthZeroManagementTokenProvider> logger) : IAuthZeroManagementTokenProvider
 {
     private readonly AuthZeroOptions _options = options.Value;
     private readonly SemaphoreSlim _lock = new(1, 1);

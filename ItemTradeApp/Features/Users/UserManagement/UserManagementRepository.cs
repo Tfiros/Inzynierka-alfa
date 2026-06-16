@@ -83,7 +83,7 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         return dbContext.Trades
             .Where(t =>
                 (t.Customer_ID == userId ||
-                 t.Seller_ID == userId ||
+                 t.Offer.User_ID == userId ||
                  t.MiddlemanUser_ID == userId) &&
                 currentStatuses.Contains(t.TradeStatus_ID))
             .ExecuteUpdateAsync(
@@ -197,12 +197,12 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
         CancellationToken ct = default)
         => dbContext.Trades
             .AsNoTracking()
-            .Where(t => (t.Seller_ID == userId || t.Customer_ID == userId) &&
+            .Where(t => (t.Offer.User_ID == userId || t.Customer_ID == userId) &&
                         (t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
                          t.TradeStatus_ID == (int)TradeStatuses.New))
             .Select(t => new DeleteUserTradeRefund(
                 t.Customer_ID,
-                t.Seller_ID,
+                t.Offer.User_ID,
                 t.Offer.TokensOffered,
                 t.Offer.TokensWanted))
             .ToListAsync(ct);

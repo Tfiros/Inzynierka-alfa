@@ -27,13 +27,13 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
 
     private readonly IHttpClientFactory _httpFactory;
     private readonly AuthZeroOptions _options;
-    private readonly IAuth0ManagementTokenProvider _tokenProvider;
+    private readonly IAuthZeroManagementTokenProvider _tokenProvider;
     private readonly ILogger<AuthZeroAPIManagement> _logger;
 
     public AuthZeroAPIManagement(
         IHttpClientFactory httpFactory,
         IOptions<AuthZeroOptions> options,
-        IAuth0ManagementTokenProvider tokenProvider,
+        IAuthZeroManagementTokenProvider tokenProvider,
         ILogger<AuthZeroAPIManagement> logger)
     {
         _httpFactory = httpFactory;

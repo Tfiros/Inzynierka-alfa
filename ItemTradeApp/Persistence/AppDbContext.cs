@@ -45,6 +45,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<ConversationMember> ConversationMembers { get; set; } = null!;
 
     public virtual DbSet<ChatConversation> ChatConversations { get; set; } = null!;
+    
+    public virtual DbSet<UserTradeStats> UserTradeStats { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -268,9 +270,7 @@ public partial class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(t => t.AcceptedCounterOffer_ID)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(d => d.PostingUser).WithMany(p => p.OwningTrades)
-                .HasForeignKey(d => d.Seller_ID)
-                .HasConstraintName("user_buyer");
+           
             entity.HasMany(t => t.Urls)
                 .WithOne(u => u.Trade)
                 .HasForeignKey(u => u.TradeId)
@@ -294,9 +294,6 @@ public partial class AppDbContext : DbContext
                 .HasName("PK_Rate");
 
             entity.ToTable("rate");
-
-            entity.Property(e => e.Mark)
-                .HasColumnType("decimal(3,1)");
 
             entity.Property(e => e.Description)
                 .HasMaxLength(500);
@@ -427,6 +424,22 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => x.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+
+        modelBuilder.Entity<UserTradeStats>(entity =>
+            {
+                entity.ToTable("user_trade_stats");
+
+                entity.HasKey(e => e.UserId);
+                entity.Property(e => e.UserId).ValueGeneratedNever();
+
+                entity.HasOne(e => e.User)
+                    .WithOne(u => u.TradeStats)
+                    .HasForeignKey<UserTradeStats>(e => e.UserId);
+            }
+        );
+        
+        
         OnModelCreatingPartial(modelBuilder);
     }
 

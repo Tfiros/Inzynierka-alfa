@@ -74,10 +74,6 @@ ALTER TABLE Counter_Offer
     ADD CONSTRAINT check_co_tokens
         CHECK (Tokens_Offered >= 0);
 
-ALTER TABLE Counter_Offer
-    ADD CONSTRAINT check_co_creation_date
-        CHECK (creation_date <= now());
-
 ALTER TABLE Notification
     ADD CONSTRAINT check_notification_title
         CHECK (char_length(trim(Title)) > 0);
@@ -92,10 +88,6 @@ ALTER TABLE Trade
             completition_date IS NULL
                 OR completition_date >= creation_date
             );
-
-ALTER TABLE Trade
-    ADD CONSTRAINT check_trade_different_user
-        CHECK (customer_id != user_id);
 
 ALTER TABLE Genre
     ADD CONSTRAINT check_genre_name
@@ -138,9 +130,10 @@ ALTER TABLE Trade
                 OR Middleman_User_Id != Customer_Id
             );
 
-ALTER TABLE Trade
-    ADD CONSTRAINT check_middleman_not_user
-        CHECK (
-            Middleman_User_Id IS NULL
-                OR Middleman_User_Id != User_Id
-            );
+ALTER TABLE User_trade_stats
+    ADD CONSTRAINT User_trade_stats_checks CHECK (
+        successful_trades >= 0
+            AND completed_trades >= successful_trades
+            AND rating_sum >= 0
+            AND rating_count >= 0
+        );

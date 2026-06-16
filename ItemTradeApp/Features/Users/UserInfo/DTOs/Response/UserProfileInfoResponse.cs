@@ -2,7 +2,6 @@
 
 public sealed record UserProfileInfoResponse(
     int Id,
-    int Experience,
     int Level,
     DateOnly RegistrationDate,
     string Nickname,

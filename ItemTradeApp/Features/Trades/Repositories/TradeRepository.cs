@@ -32,21 +32,23 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         => await db.Trades
             .Where(t => t.ID == tradeId)
             .Include(t => t.Offer)
+            .ThenInclude(o => o.User).ThenInclude(u => u.ProfileInfo)
+            .Include(t => t.Offer)
             .ThenInclude(o => o.ListingItems)
             .ThenInclude(li => li.Item)
             .Include(t => t.Customer)
-            .ThenInclude(u => u.ProfileInfo)
-            .Include(t => t.PostingUser)
             .ThenInclude(u => u.ProfileInfo)
             .Include(t => t.AcceptedCounterOffer)
             .ThenInclude(co => co!.ListingCounterOfferItems)
             .ThenInclude(i => i.Item)
             .Include(t => t.Rates)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(ct);
 
     public async Task<Trade?> GetTradeWithOfferByIdAsync(int tradeId, CancellationToken ct) =>
         await db.Trades.Where(t => t.ID == tradeId)
             .Include(t => t.Offer)
+            .ThenInclude(o => o.User)
             .FirstOrDefaultAsync(ct);
     public async Task AddAsync(Trade trade, CancellationToken ct)
         => await db.Trades.AddAsync(trade, ct).AsTask();
@@ -58,7 +60,10 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         => await db.Trades.FirstOrDefaultAsync(t => t.ID == tradeId, ct);
 
     public async Task<Trade?> GetByIdWithUrlsAsync(int tradeId, CancellationToken ct)
-        => await db.Trades.Include(t => t.Urls).FirstOrDefaultAsync(t => t.ID == tradeId, ct);
+        => await db.Trades
+            .Include(t => t.Offer)
+            .Include(t => t.Urls)
+            .FirstOrDefaultAsync(t => t.ID == tradeId, ct);
 
     public async Task<bool> ExistsActiveForOfferAsync(int offerId, CancellationToken ct)
         => await db.Trades.AnyAsync(t =>
@@ -70,7 +75,7 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
         => await db.Trades
             .AsNoTracking()
             .Include(t => t.Customer).ThenInclude(u => u.ProfileInfo)
-            .Include(t => t.PostingUser).ThenInclude(u => u.ProfileInfo)
+            .Include(t => t.Offer).ThenInclude(o => o.User).ThenInclude(u => u.ProfileInfo)
             .Include(t => t.Urls)
             .FirstOrDefaultAsync(t => t.ID == tradeId, ct);
 
@@ -104,7 +109,7 @@ public sealed class TradeRepository(AppDbContext db) : ITradeRepository
     {
         var raw = await db.Trades
             .AsNoTracking()
-            .Where(t => t.Seller_ID == userId || t.Customer_ID == userId)
+            .Where(t => t.Offer.User_ID == userId || t.Customer_ID == userId)
             .GroupBy(_ => 1)
             .Select(g => new
             {

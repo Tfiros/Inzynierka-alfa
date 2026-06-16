@@ -1,4 +1,5 @@
 using ItemTradeApp.ApiResultHandling;
+using ItemTradeApp.Features.Shared;
 using ItemTradeApp.Features.Shared.TokenEscrow;
 using ItemTradeApp.Features.Shared.Chat;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -274,7 +275,7 @@ public sealed class TradesService(
             return Result<TradeDetailsResponse>.Forbidden("You are not assigned to this trade.");
 
         var buyer = trade.Customer;
-        var seller = trade.PostingUser;
+        var seller = trade.Offer.User;
 
         var buyerPhotos = trade.Urls
             .Where(u => u.IsBuyers && !string.IsNullOrWhiteSpace(u.PhotoUrl))
@@ -291,13 +292,13 @@ public sealed class TradesService(
             HasSellersItems: trade.HasSellersItems,
             BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
-                buyer.ProfileInfo?.Nickname ?? "",
+                buyer.ProfileInfo.Nickname,
                 buyer.Email,
                 buyerPhotos
             ),
             SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
-                seller.ProfileInfo?.Nickname ?? "",
+                seller.ProfileInfo.Nickname,
                 seller.Email,
                 sellerPhotos
             )
@@ -341,7 +342,7 @@ public sealed class TradesService(
             trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
 
             await chatOperations.CreateChatsForTradeAsync(
-                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.Seller_ID, user.ID), ct);
+                new CreateChatsForTradeContext(trade.ID, trade.Customer_ID, trade.Offer.User_ID, user.ID), ct);
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         }
@@ -357,12 +358,12 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.Seller_ID,
+                    trade.Offer.User_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeStatusChanged(
                     trade.Offer.Title,
-                    TradeStatuses.InRealization.ToString()),
+                    TradeStatusName.ToStringName(TradeStatuses.InRealization)),
                 ct);
         }
         catch (Exception e)
@@ -452,7 +453,7 @@ public sealed class TradesService(
             {
                 if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
                         trade.Customer_ID,
-                        trade.Seller_ID,
+                        trade.Offer.User_ID,
                         sellerTokens,
                         ct))
                 {
@@ -464,7 +465,7 @@ public sealed class TradesService(
             if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryRefundEscrowToOtherAsync(
-                        trade.Seller_ID,
+                        trade.Offer.User_ID,
                         trade.Customer_ID,
                         buyerTokens,
                         ct))
@@ -481,7 +482,7 @@ public sealed class TradesService(
             }
             if (trade.Offer.TokensOffered > 0)
             {
-                if (!await tokenEscrow.TryLockOwnTokensAsync(trade.Seller_ID, trade.Offer.TokensOffered, ct))
+                if (!await tokenEscrow.TryLockOwnTokensAsync(trade.Offer.User_ID, trade.Offer.TokensOffered, ct))
                 {
                     trade.Offer.OfferStatus_ID = (int)OfferStatuses.Canceled;
                     await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
@@ -507,7 +508,7 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.Seller_ID,
+                    trade.Offer.User_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeCancelled(
@@ -515,19 +516,19 @@ public sealed class TradesService(
                 ct);
 
             await emailGenerationService.SendTradeCancelledAsync(
-                trade.Seller_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                user.ProfileInfo?.Nickname ?? user.Email,
+                trade.Offer.User_ID,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname ,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
 
             await emailGenerationService.SendTradeCancelledAsync(
                 trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
-                user.ProfileInfo?.Nickname ?? user.Email,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
@@ -590,7 +591,7 @@ public sealed class TradesService(
             var sellersRate = new Rate
             {
                 TradeId = trade.ID,
-                UserId = trade.Seller_ID,
+                UserId = trade.Offer.User_ID,
                 Mark = request.SellersGrade,
                 Description = request.SellersDescription
             };
@@ -617,7 +618,7 @@ public sealed class TradesService(
             if (buyerTokens > 0)
             {
                 if (!await tokenEscrow.TryReleaseOwnEscrowAsync(
-                        trade.Seller_ID,
+                        trade.Offer.User_ID,
                         buyerTokens,
                         ct))
                 {
@@ -627,7 +628,7 @@ public sealed class TradesService(
             }
 
             trade.Customer.Experience += CalculateExperience(request.BuyersGrade);
-            trade.PostingUser.Experience += CalculateExperience(request.SellersGrade);
+            trade.Offer.User.Experience += CalculateExperience(request.SellersGrade);
             
             await chatOperations.CloseChatsForTradeAsync(trade.ID, ct);
             await unitOfWork.SaveChangesAsync(ct);
@@ -644,26 +645,28 @@ public sealed class TradesService(
         {
             await notificationsSender.SendManyAsync(
                 [
-                    trade.Seller_ID,
+                    trade.Offer.User_ID,
                     trade.Customer_ID
                 ],
                 NotificationsMessages.TradeStatusChanged(
                     trade.Offer.Title,
-                    TradeStatuses.SuccesfulRealization.ToString()),
+                    TradeStatusName.ToStringName(TradeStatuses.SuccesfulRealization)),
                 ct);
 
             await emailGenerationService.SendTradeCompletedAsync(
-                trade.Seller_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                trade.Offer.User_ID,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
 
             await emailGenerationService.SendTradeCompletedAsync(
                 trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.PostingUser.ProfileInfo?.Nickname ?? trade.PostingUser.Email,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
@@ -698,7 +701,7 @@ public sealed class TradesService(
     
     private static bool IsInTrade(Trade trade, int userId)
     {
-        return trade.Seller_ID == userId || trade.Customer_ID == userId;
+        return trade.Offer.User_ID == userId || trade.Customer_ID == userId;
     }
 
     private static int CalculateExperience(int rate)

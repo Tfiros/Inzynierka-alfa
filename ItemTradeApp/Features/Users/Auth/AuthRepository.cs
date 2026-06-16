@@ -34,7 +34,8 @@ public class AuthRepository(AppDbContext dbContext) : IAuthRepository
                 Nickname = request.Username,
                 Description = string.Empty,
                 ImageUrl = string.Empty
-            }
+            },
+            TradeStats = new UserTradeStats()
         };
 
         dbContext.Users.Add(user);

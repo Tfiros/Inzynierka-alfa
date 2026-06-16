@@ -73,12 +73,15 @@ public sealed class ChatThreadsReader : IChatThreadsReader
             {
                 cm.ChatConversationId,
                 cm.LastReadMessageId,
+                cm.ChatConversation.ClosedAt,
                 LastId = _db.ChatMessages
                     .Where(x => x.ChatConversationId == cm.ChatConversationId && x.DeletedAt == null)
                     .Max(x => (long?)x.Id)
 
             })
-            .OrderBy(x => x.LastId ?? 0L)
+            .OrderBy(x => x.ClosedAt != null)
+            .ThenByDescending(x => x.LastId ?? 0L)
+            .ThenBy(x => x.ChatConversationId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
@@ -140,7 +143,7 @@ public sealed class ChatThreadsReader : IChatThreadsReader
                 TradeId = c.TradeId,
                 ClosedAt = c.ClosedAt,
                 BuyerUserId = c.Trade.Customer_ID,
-                SellerUserId = c.Trade.Seller_ID,
+                SellerUserId = c.Trade.Offer.User_ID,
                 MiddlemanUserId = c.Trade.MiddlemanUser_ID,
                 Members = c.Members.Select(m => new ConversationMemberProjection
                 {

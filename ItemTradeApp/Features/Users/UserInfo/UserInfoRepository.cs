@@ -9,7 +9,7 @@ namespace ItemTradeApp.Features.Users.UserInfo;
 
 public interface IUserInfoRepository
 {
-    Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct);
+    Task<List<int>> GetChatUnreadIdsAsync(int userId, CancellationToken ct);
     Task<UserNavbarRow?> GetUserNavbarRowAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileInfoByUserIdAsync(int id, CancellationToken ct);
     Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct);
@@ -64,7 +64,7 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .SingleOrDefaultAsync(u => u.ID == id, ct);
         return user;
     }
-    public async Task<int> GetChatUnreadTotalAsync(int userId, CancellationToken ct)
+    public async Task<List<int>> GetChatUnreadIdsAsync(int userId, CancellationToken ct)
     {
         var q =
             from cm in dbContext.ConversationMembers.AsNoTracking()
@@ -75,9 +75,9 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
                 m.SenderId != userId &&
                 (cm.LastReadMessageId == null || m.Id > cm.LastReadMessageId)
             )
-            select 1;
+            select cm.ChatConversationId;
 
-        return await q.CountAsync(ct);
+        return await q.ToListAsync(ct);
     }
     public async Task<(int activeOffersCount, int successTradeCount, int completedTradeCount, float rating )?> GetUserStatsByUserIdAsync(int id, CancellationToken ct)
     {
@@ -85,15 +85,13 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .Select(u => new
             {
                 ActiveOffers = u.Offers.Count(o => o.OfferStatus_ID == (int)OfferStatuses.Active),
-                SuccessTrade = u.OwningTrades.Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),
-                CompletedTrade = u.OwningTrades.Count(t =>
-                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                    t.TradeStatus_ID == (int)TradeStatuses.Failed),
-                Rating = u.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
+                SuccessTrades = u.TradeStats!.SuccessfulTrades,
+                CompletedTrades = u.TradeStats.CompletedTrades,
+                Rating = u.TradeStats.RatingCount > 0 ? (float)u.TradeStats.RatingSum/u.TradeStats.RatingCount : 0,
 
             }).SingleOrDefaultAsync(ct);
         if (res is null) return null;
-        return (res.ActiveOffers,res.SuccessTrade,res.CompletedTrade,(float)res.Rating);
+        return (res.ActiveOffers,res.SuccessTrades,res.CompletedTrades,(float)res.Rating);
     }
 
     public async Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct)
