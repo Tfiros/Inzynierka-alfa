@@ -131,24 +131,44 @@ public class TradesServiceTest
 
     private static Trade ValidTradeInRealization()
     {
+        var seller = new User
+        {
+            ID = 1,
+            Email = "seller@test.com",
+            Experience = 0,
+            ProfileInfo = new ProfileInfo { Nickname = "Seller" }
+        };
+
+        var buyer = new User
+        {
+            ID = 2,
+            Email = "buyer@test.com",
+            Experience = 0,
+            ProfileInfo = new ProfileInfo { Nickname = "Buyer" }
+        };
+
         return new Trade
         {
             ID = 1,
-            Customer_ID = 2,
+            Customer_ID = buyer.ID,
+            Customer = buyer,
             MiddlemanUser_ID = 99,
             TradeStatus_ID = (int)TradeStatuses.InRealization,
-            Offer = ValidOffer(sellerId: 1),
-            Customer = new User
+            HasBuyersItems = false,
+            HasSellersItems = false,
+            Offer = new Offer
             {
-                ID = 2,
-                Email = "buyer@test.com",
-                Experience = 0,
-                ProfileInfo = new ProfileInfo
-                {
-                    Nickname = "Buyer"
-                }
+                ID = 1,
+                Title = "Test offer",
+                User_ID = seller.ID,
+                User = seller,
+                OfferStatus_ID = (int)OfferStatuses.Active,
+                TokensOffered = 0,
+                TokensWanted = 0,
+                ExpDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
             },
-            Rates = new List<Rate>()
+            Rates = new List<Rate>(),
+            Urls = new List<TradeUrl>()
         };
     }
 
@@ -393,16 +413,14 @@ public class TradesServiceTest
     {
         SetupMiddleman(id: 1);
 
+        var trade = ValidTradeInRealization();
+        trade.TradeStatus_ID = (int)TradeStatuses.New;
+        trade.MiddlemanUser_ID = null;
+        trade.Offer.User_ID = 1;
+        trade.Offer.User.ID = 1;
         _tradeRepo
             .Setup(x => x.GetTradeWithOfferByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Trade
-            {
-                ID = 1,
-                Customer_ID = 2,
-                TradeStatus_ID = (int)TradeStatuses.New,
-                Offer = ValidOffer(sellerId: 1)
-            });
-
+            .ReturnsAsync(trade);
         var result = await _service.AssignMiddlemanAsync(
             new AssignMiddlemanRequest(1),
             "899696890",
@@ -469,17 +487,12 @@ public class TradesServiceTest
     {
         SetupMiddleman(id: 99);
 
+        var trade = ValidTradeInRealization();
+        trade.TradeStatus_ID = (int)TradeStatuses.New;
+        trade.MiddlemanUser_ID = 99;
         _tradeRepo
             .Setup(x => x.GetByIdWithUrlsAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Trade
-            {
-                ID = 1,
-                Customer_ID = 2,
-                MiddlemanUser_ID = 99,
-                TradeStatus_ID = (int)TradeStatuses.New,
-                Offer = ValidOffer(sellerId: 1)
-            });
-
+            .ReturnsAsync(trade);
         var result = await _service.UpdateTradeByMiddlemanAsync(
             1,
             new UpdateTradeRequest(true, true),
@@ -495,16 +508,11 @@ public class TradesServiceTest
     {
         SetupMiddleman(id: 99);
 
-        var trade = new Trade
-        {
-            ID = 1,
-            Customer_ID = 2,
-            MiddlemanUser_ID = 99,
-            TradeStatus_ID = (int)TradeStatuses.InRealization,
-            HasBuyersItems = false,
-            HasSellersItems = false,
-            Offer = ValidOffer(sellerId: 1)
-        };
+        var trade = ValidTradeInRealization();
+        trade.MiddlemanUser_ID = 99;
+        trade.TradeStatus_ID = (int)TradeStatuses.InRealization;
+        trade.HasBuyersItems = false;
+        trade.HasSellersItems = false;
 
         _tradeRepo
             .Setup(x => x.GetByIdWithUrlsAsync(1, It.IsAny<CancellationToken>()))

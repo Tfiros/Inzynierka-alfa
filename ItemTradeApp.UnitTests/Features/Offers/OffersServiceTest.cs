@@ -2057,7 +2057,7 @@ public class OffersServiceTest
         Assert.Equal(99, res.Data!.TradeId);
         Assert.Equal(7, res.Data!.OfferId);
         Assert.Equal((int)CounterOfferStatuses.Denied, pendingCo.CounterOfferStatus_Id);
-        _tradeCreation.Verify(x => x.ExecuteAsync(It.Is<CreateTradeContext>(c => c.OfferId ==7 && c.BuyerId == 1 && c.SellerId == 2), It.IsAny<CancellationToken>()), Times.Once);
+        _tradeCreation.Verify(x => x.ExecuteAsync(It.Is<CreateTradeContext>(c => c.OfferId ==7 && c.BuyerId == 1 && c.CounterOfferId == null), It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         tx.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);
         tx.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -2098,7 +2098,7 @@ public class OffersServiceTest
         Assert.True(res.IsSuccess);
         Assert.Equal(99, res.Data!.TradeId);
         Assert.Equal(7, res.Data!.OfferId);
-        _tradeCreation.Verify(x => x.ExecuteAsync(It.Is<CreateTradeContext>(c => c.OfferId ==7 && c.BuyerId == 1 && c.SellerId == 2), It.IsAny<CancellationToken>()), Times.Once);
+        _tradeCreation.Verify(x => x.ExecuteAsync(It.Is<CreateTradeContext>(c => c.OfferId ==7 && c.BuyerId == 1 && c.CounterOfferId == null), It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         tx.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);
         tx.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
