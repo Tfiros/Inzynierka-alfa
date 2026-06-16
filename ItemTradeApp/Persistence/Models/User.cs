@@ -33,7 +33,7 @@ public partial class User
     
     public virtual ICollection<UserFavouriteOffer> FavouriteOffers { get; set; } = new List<UserFavouriteOffer>();
 
-    public virtual ProfileInfo? ProfileInfo { get; set; }
+    public virtual ProfileInfo ProfileInfo { get; set; } = null!;
 
     public virtual ICollection<Trade> CustomerTrades { get; set; } = new List<Trade>();
 
@@ -43,6 +43,6 @@ public partial class User
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();
     public virtual ICollection<ConversationMember> Chats {get; set; } = new List<ConversationMember>();
 
-    public virtual UserTradeStats? TradeStats { get; set; }
+    public virtual UserTradeStats TradeStats { get; set; } = null!;
 
 }
