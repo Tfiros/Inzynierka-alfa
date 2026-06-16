@@ -49,7 +49,7 @@ public static class DI
 
         serviceCollection.AddScoped<IAuthZeroAPIClient, AuthZeroAPIClient>();
         serviceCollection.AddScoped<IAuthZeroManagementClient, AuthZeroAPIManagement>(); 
-        serviceCollection.AddSingleton<IAuth0ManagementTokenProvider, Auth0ManagementTokenProvider>();
+        serviceCollection.AddSingleton<IAuthZeroManagementTokenProvider, AuthZeroManagementTokenProvider>();
         
         serviceCollection.AddScoped<IAuthService, AuthService>();
         serviceCollection.AddScoped<IAuthRepository, AuthRepository>();
