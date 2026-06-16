@@ -248,7 +248,7 @@ public sealed class CounterOffersService(
                 await notificationSender.SendAsync(
                     offer.User_ID,
                     NotificationsMessages.ReceivedCounterOfferMessage(
-                        user.ProfileInfo?.Nickname!,
+                        user.ProfileInfo.Nickname,
                         offer.Title),
                     ct);
             }
@@ -461,8 +461,8 @@ public sealed class CounterOffersService(
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
                     counterOffer.User_ID,
-                    counterOffer.User.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {counterOffer.User.Email}",
-                    caller.ProfileInfo?.Nickname ?? $"User nickname not set. User ID: {caller.ID}",
+                    counterOffer.User.ProfileInfo.Nickname,
+                    caller.ProfileInfo.Nickname,
                     createdTrade,
                     offer,
                     counterOffer,
@@ -470,8 +470,8 @@ public sealed class CounterOffersService(
 
                 await emailGenerationService.SendTradeFromCounterOfferCreatedAsync(
                     offer.User_ID,
-                    counterOffer.User.ProfileInfo?.Nickname ?? counterOffer.User.Email,
-                    caller.ProfileInfo?.Nickname ?? caller.Email,
+                    counterOffer.User.ProfileInfo.Nickname,
+                    caller.ProfileInfo.Nickname,
                     createdTrade,
                     offer,
                     counterOffer,

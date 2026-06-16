@@ -72,9 +72,7 @@ public sealed class UserInfoService(
         if (stats is null) return Result<UserProfileInfoResponse>.NotFound("user_statistics_not_found");
         var (activeOffersCount, successTradeCount, completedTradeCount, rating) = stats.Value;
             
-        var successRate = completedTradeCount == 0
-            ? 0f
-            : RoundUp.RoundToTwo((float)successTradeCount / completedTradeCount);
+        
 
         var dto = new UserProfileInfoResponse(
             user.ID,
@@ -86,7 +84,7 @@ public sealed class UserInfoService(
             activeOffersCount,
             successTradeCount,
             RoundUp.RoundToTwo(rating),
-            successRate
+            RoundUp.CalculateSuccessRate(successTradeCount, completedTradeCount)
         );
 
         return Result<UserProfileInfoResponse>.Success(dto);

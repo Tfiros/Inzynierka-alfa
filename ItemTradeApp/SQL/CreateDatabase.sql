@@ -224,6 +224,17 @@ CREATE TABLE User_favourite_offer (
                                       CONSTRAINT User_favourite_offer_pk PRIMARY KEY (Offer_Id,User_Id)
 );
 
+CREATE TABLE User_trade_stats (
+                                  User_id int NOT NULL,
+                                  Successful_trades int NOT NULL DEFAULT 0,
+                                  Completed_trades int NOT NULL DEFAULT 0,
+                                  Rating_sum int NOT NULL DEFAULT 0,
+                                  Rating_count int NOT NULL DEFAULT 0,
+                                  CONSTRAINT User_trade_stats_pk PRIMARY KEY(User_id)
+);
+
+
+
 -- foreign keys
 -- Reference: Chat_conversation_Trade (table: Chat_conversation)
 ALTER TABLE Chat_conversation ADD CONSTRAINT Chat_conversation_Trade
@@ -511,6 +522,15 @@ ALTER TABLE Trade ADD CONSTRAINT User_buyer
 ALTER TABLE Emails ADD CONSTRAINT User_emails_User
     FOREIGN KEY (User_Id)
         REFERENCES "User" (Id)
+        NOT DEFERRABLE
+            INITIALLY IMMEDIATE
+;
+
+ALTER TABLE User_trade_stats ADD CONSTRAINT User_trade_stats_User
+    FOREIGN KEY (User_ID)
+        REFERENCES "User" (Id)
+        ON DELETE  RESTRICT
+        ON UPDATE  CASCADE
         NOT DEFERRABLE
             INITIALLY IMMEDIATE
 ;

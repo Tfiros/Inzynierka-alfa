@@ -85,17 +85,13 @@ public class UserInfoRepository(AppDbContext dbContext) : IUserInfoRepository
             .Select(u => new
             {
                 ActiveOffers = u.Offers.Count(o => o.OfferStatus_ID == (int)OfferStatuses.Active),
-                SuccessTrade = u.Offers
-                    .SelectMany(o => o.Trades)
-                    .Count(t => t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization),          
-                CompletedTrade = u.Offers.SelectMany(o => o.Trades).Count(t =>
-                    t.TradeStatus_ID == (int)TradeStatuses.SuccesfulRealization ||
-                    t.TradeStatus_ID == (int)TradeStatuses.Failed),
-                Rating = u.Rates.Select(r => (decimal?)r.Mark).Average() ?? 0m
+                SuccessTrades = u.TradeStats!.SuccessfulTrades,
+                CompletedTrades = u.TradeStats.CompletedTrades,
+                Rating = u.TradeStats.RatingCount > 0 ? (float)u.TradeStats.RatingSum/u.TradeStats.RatingCount : 0,
 
             }).SingleOrDefaultAsync(ct);
         if (res is null) return null;
-        return (res.ActiveOffers,res.SuccessTrade,res.CompletedTrade,(float)res.Rating);
+        return (res.ActiveOffers,res.SuccessTrades,res.CompletedTrades,(float)res.Rating);
     }
 
     public async Task<User?> GetUserWithProfileByAuth0IdAsync(string authZeroUserId, CancellationToken ct)

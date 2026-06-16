@@ -129,3 +129,11 @@ ALTER TABLE Trade
             Middleman_User_Id IS NULL
                 OR Middleman_User_Id != Customer_Id
             );
+
+ALTER TABLE User_trade_stats
+    ADD CONSTRAINT User_trade_stats_checks CHECK (
+        successful_trades >= 0
+            AND completed_trades >= successful_trades
+            AND rating_sum >= 0
+            AND rating_count >= 0
+        );

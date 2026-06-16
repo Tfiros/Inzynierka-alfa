@@ -292,13 +292,13 @@ public sealed class TradesService(
             HasSellersItems: trade.HasSellersItems,
             BuyingUserPhotos: new InTradeUserPhotos(
                 buyer.ID,
-                buyer.ProfileInfo?.Nickname ?? "",
+                buyer.ProfileInfo.Nickname,
                 buyer.Email,
                 buyerPhotos
             ),
             SellingUserPhotos: new InTradeUserPhotos(
                 seller.ID,
-                seller.ProfileInfo?.Nickname ?? "",
+                seller.ProfileInfo.Nickname,
                 seller.Email,
                 sellerPhotos
             )
@@ -517,18 +517,18 @@ public sealed class TradesService(
 
             await emailGenerationService.SendTradeCancelledAsync(
                 trade.Offer.User_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.Offer.User.ProfileInfo?.Nickname ?? trade.Offer.User.Email,
-                user.ProfileInfo?.Nickname ?? user.Email,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname ,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
 
             await emailGenerationService.SendTradeCancelledAsync(
                 trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.Offer.User.ProfileInfo?.Nickname ?? trade.Offer.User.Email,
-                user.ProfileInfo?.Nickname ?? user.Email,
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
@@ -655,18 +655,18 @@ public sealed class TradesService(
 
             await emailGenerationService.SendTradeCompletedAsync(
                 trade.Offer.User_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.Offer.User.ProfileInfo?.Nickname ?? trade.Offer.User.Email,
-                user.ProfileInfo!.Nickname ?? "Unkown",
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);
 
             await emailGenerationService.SendTradeCompletedAsync(
                 trade.Customer_ID,
-                trade.Customer.ProfileInfo?.Nickname ?? trade.Customer.Email,
-                trade.Offer.User.ProfileInfo?.Nickname ?? trade.Offer.User.Email,
-                user.ProfileInfo!.Nickname ?? "Uknown",
+                trade.Customer.ProfileInfo.Nickname,
+                trade.Offer.User.ProfileInfo.Nickname,
+                user.ProfileInfo.Nickname,
                 trade,
                 trade.Offer,
                 ct);

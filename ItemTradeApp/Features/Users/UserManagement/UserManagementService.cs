@@ -66,7 +66,7 @@ public sealed class UserManagementService(
             request.ProfileDescription is not null &&
             !string.Equals(
                 request.ProfileDescription,
-                user.ProfileInfo?.Description,
+                user.ProfileInfo.Description,
                 StringComparison.Ordinal);
 
         var hasRolesChange = request.Roles is not null;

@@ -45,6 +45,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<ConversationMember> ConversationMembers { get; set; } = null!;
 
     public virtual DbSet<ChatConversation> ChatConversations { get; set; } = null!;
+    
+    public virtual DbSet<UserTradeStats> UserTradeStats { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -422,6 +424,22 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(x => x.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+
+        modelBuilder.Entity<UserTradeStats>(entity =>
+            {
+                entity.ToTable("user_trade_stats");
+
+                entity.HasKey(e => e.UserId);
+                entity.Property(e => e.UserId).ValueGeneratedNever();
+
+                entity.HasOne(e => e.User)
+                    .WithOne(u => u.TradeStats)
+                    .HasForeignKey<UserTradeStats>(e => e.UserId);
+            }
+        );
+        
+        
         OnModelCreatingPartial(modelBuilder);
     }
 
