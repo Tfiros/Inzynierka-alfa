@@ -175,31 +175,51 @@ public sealed class TradeListQueryService(ITradeRepository tradeRepo) : ITradeLi
             return query;
 
         var s = q.SearchText.Trim();
-
-        if (s.Length < 2)
-            return query;
-
         var pattern = $"%{EscapePattern.Escape(s)}%";
 
         return q.SearchBy.Value switch
         {
-            TradeSearchBy.TradeId when int.TryParse(s, out var tradeId)
-                => query.Where(t => t.ID == tradeId),
+            TradeSearchBy.TradeId => int.TryParse(s, out var tradeId)
+                ? query.Where(t => t.ID == tradeId)
+                : query.Where(t => false),
 
-            TradeSearchBy.OfferId when int.TryParse(s, out var offerId)
-                => query.Where(t => t.Offer_ID == offerId),
+            TradeSearchBy.OfferId => int.TryParse(s, out var offerId)
+                ? query.Where(t => t.Offer_ID == offerId)
+                : query.Where(t => false),
 
-            TradeSearchBy.CustomerNickname
-                => query.Where(t => EF.Functions.ILike(t.Customer.ProfileInfo.Nickname!, pattern, "!")),
+            TradeSearchBy.CustomerNickname when s.Length >= 2
+                => query.Where(t => EF.Functions.ILike(
+                    t.Customer.ProfileInfo.Nickname!,
+                    pattern,
+                    "!"
+                )),
 
-            TradeSearchBy.CustomerEmail
-                => query.Where(t => EF.Functions.ILike(t.Customer.Email, pattern, "!")),
+            TradeSearchBy.CustomerEmail when s.Length >= 2
+                => query.Where(t => EF.Functions.ILike(
+                    t.Customer.Email,
+                    pattern,
+                    "!"
+                )),
 
-            TradeSearchBy.PostingUserNickname
-                => query.Where(t => EF.Functions.ILike(t.Offer.User.ProfileInfo.Nickname!, pattern, "!")),
+            TradeSearchBy.PostingUserNickname when s.Length >= 2
+                => query.Where(t => EF.Functions.ILike(
+                    t.Offer.User.ProfileInfo.Nickname!,
+                    pattern,
+                    "!"
+                )),
 
-            TradeSearchBy.PostingUserEmail
-                => query.Where(t => EF.Functions.ILike(t.Offer.User.Email, pattern, "!")),
+            TradeSearchBy.PostingUserEmail when s.Length >= 2
+                => query.Where(t => EF.Functions.ILike(
+                    t.Offer.User.Email,
+                    pattern,
+                    "!"
+                )),
+
+            TradeSearchBy.CustomerNickname or
+                TradeSearchBy.CustomerEmail or
+                TradeSearchBy.PostingUserNickname or
+                TradeSearchBy.PostingUserEmail
+                => query.Where(t => false),
 
             _ => query
         };
