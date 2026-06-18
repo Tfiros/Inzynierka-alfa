@@ -5,6 +5,7 @@ DECLARE
     seller_id int;
     success_count int := 0;
     completed_count int := 0;
+    affectedRows int :=0;
 BEGIN
 
     IF NEW.trade_status_id = 3 AND OLD.trade_status_id = 2 THEN
@@ -20,10 +21,12 @@ BEGIN
     UPDATE user_trade_stats
     SET successful_trades = successful_trades + success_count,
         completed_trades = completed_trades + completed_count
-    WHERE user_id = seller_id;
+    WHERE user_id = seller_id OR user_id = NEW.customer_id;
 
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'user_trade_stats missing for user %', seller_id;
+    GET DIAGNOSTICS affectedRows = ROW_COUNT;
+    
+    IF affectedRows != 2 THEN
+        RAISE EXCEPTION 'user_trade_stats update failed for seller % or customer %', seller_id, NEW.customer_id;
     END IF;
 
 
