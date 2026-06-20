@@ -81,7 +81,7 @@ public sealed class UserManagementService(
             return Result<string>.NoContent("no_changes");
         }
         
-        var fullAuth0UserId = Auth0IdHandler.CheckIfAuth0WithPrefix(request.AuthZeroUserId);
+        var fullAuth0UserId = Auth0IdHandler.EnsureAuth0WithPrefix(request.AuthZeroUserId);
 
         if (hasEmailChange || hasPasswordChange || hasNicknameChange)
         {
@@ -187,17 +187,11 @@ public sealed class UserManagementService(
             return Result<string>.BadRequest("auth0_user_id_required");
         
         var trimmedAuth0UserId = Auth0IdHandler.Trim(auth0UserId);
-        var fullAuth0UserId = Auth0IdHandler.CheckIfAuth0WithPrefix(auth0UserId);
+        var fullAuth0UserId = Auth0IdHandler.EnsureAuth0WithPrefix(auth0UserId);
 
         var user = await userManagementRepository.GetUserByAuth0IdAsync(trimmedAuth0UserId, ct);
         if (user is null)
             return Result<string>.NotFound("user_not_found_local_db");
-
-        
-
-        var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuth0UserId, ct);
-        if (!auth0Result.IsSuccess)
-            return new Result<string>(false, auth0Result.Status, default, auth0Result.Message ?? "auth0_admin_delete_user_failed");
 
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
 
@@ -283,7 +277,9 @@ public sealed class UserManagementService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-
+            var auth0Result = await authZeroManagementClient.DeleteUserAsync(fullAuth0UserId, ct);
+            if (!auth0Result.IsSuccess)
+                return new Result<string>(false, auth0Result.Status, default, auth0Result.Message ?? "auth0_admin_delete_user_failed");
             return Result<string>.NoContent("user_deleted");
         }
         catch
@@ -357,7 +353,7 @@ public sealed class UserManagementService(
             return Result<UserDetailsResponse>.NotFound("user_not_found");
 
         var rolesRes = await authZeroManagementClient
-            .GetUserRolesAsync(Auth0IdHandler.CheckIfAuth0WithPrefix(auth0UserId), ct);
+            .GetUserRolesAsync(Auth0IdHandler.EnsureAuth0WithPrefix(auth0UserId), ct);
 
         if (!rolesRes.IsSuccess || rolesRes.Data is null)
         {

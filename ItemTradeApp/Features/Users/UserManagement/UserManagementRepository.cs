@@ -193,18 +193,22 @@ public class UserManagementRepository(AppDbContext dbContext) : IUserManagementR
                          co.TokensOffered > 0)
             .Select(co => new DeleteUserCounterOfferRefund( co.User_ID, co.TokensOffered)).ToListAsync(ct);
 
-    public Task<List<DeleteUserTradeRefund>> GetTradesInProgressForRefundAsync(int userId,
+    public Task<List<DeleteUserTradeRefund>> GetTradesInProgressForRefundAsync(
+        int userId,
         CancellationToken ct = default)
         => dbContext.Trades
             .AsNoTracking()
-            .Where(t => (t.Offer.User_ID == userId || t.Customer_ID == userId) &&
-                        (t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
-                         t.TradeStatus_ID == (int)TradeStatuses.New))
+            .Where(t =>
+                (t.Offer.User_ID == userId || t.Customer_ID == userId) &&
+                (t.TradeStatus_ID == (int)TradeStatuses.InRealization ||
+                 t.TradeStatus_ID == (int)TradeStatuses.New))
             .Select(t => new DeleteUserTradeRefund(
                 t.Customer_ID,
                 t.Offer.User_ID,
                 t.Offer.TokensOffered,
-                t.Offer.TokensWanted))
+                t.AcceptedCounterOffer != null
+                    ? t.AcceptedCounterOffer.TokensOffered
+                    : t.Offer.TokensWanted))
             .ToListAsync(ct);
 
     public Task<int> DenyReceivedUserCounterOffersForRefundAsync(int userId, CancellationToken ct = default)

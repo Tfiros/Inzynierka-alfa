@@ -43,9 +43,6 @@ public static class AntiforgeryConfiguration
                 path.StartsWith("/api/Auth/forgot-password", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/api/Auth/refresh", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/api/Auth/csrf", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("/api/Auth/logout", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("/api/Notifications", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("/api/Contact", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/api/hubs", StringComparison.OrdinalIgnoreCase);
 
             if (!skip)
