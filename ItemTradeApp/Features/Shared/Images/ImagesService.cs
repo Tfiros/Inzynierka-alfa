@@ -51,12 +51,13 @@ public sealed class ImageService : IImageService
         if (file.Length > maxFileSize)
             throw new ArgumentException("File size exceeded.");
 
-        if (!ImageExtensionValidator.IsValidImage(file))
+        if (!ImageExtensionValidator.IsImageValid(
+                file,
+                out var extension,
+                out var contentType))
+        {
             throw new ArgumentException("Nieprawidłowy plik obrazu.", nameof(file));
-
-        var extension = Path
-            .GetExtension(file.FileName)
-            .ToLowerInvariant();
+        }
 
         var key =
             $"{folder.Trim('/')}/{Guid.NewGuid():N}{extension}";
@@ -68,7 +69,7 @@ public sealed class ImageService : IImageService
             BucketName = config.BucketName,
             Key = key,
             InputStream = stream,
-            ContentType = file.ContentType
+            ContentType = contentType
         };
 
         await s3.PutObjectAsync(request, ct);
@@ -97,11 +98,23 @@ public sealed class ImageService : IImageService
             $"https://{config.BucketName}.s3.{config.Region}.amazonaws.com/{key}";
     }
 
-    private static string ExtractKeyFromUrl(string url)
+    private string ExtractKeyFromUrl(string url)
     {
-        var uri = new Uri(url);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            throw new ArgumentException("Nieprawidłowy adres pliku.", nameof(url));
 
-        return uri.AbsolutePath.TrimStart('/');
+        var expectedHost =
+            $"{config.BucketName}.s3.{config.Region}.amazonaws.com";
+
+        if (!string.Equals(uri.Host, expectedHost, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Adres pliku nie należy do skonfigurowanego bucketu.", nameof(url));
+
+        var key = uri.AbsolutePath.TrimStart('/');
+
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Nieprawidłowy klucz pliku.", nameof(url));
+
+        return Uri.UnescapeDataString(key);
     }
     
     
