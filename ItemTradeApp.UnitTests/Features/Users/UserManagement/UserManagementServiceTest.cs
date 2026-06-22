@@ -8,6 +8,7 @@ using ItemTradeApp.Features.Users.UserManagement.DTOs.Request;
 using ItemTradeApp.Features.Users.UserManagement.DTOs.Response;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
+using ItemTradeApp.Features.Shared;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -177,38 +178,115 @@ public sealed class UserManagementServiceTests
     }
 
     [Fact]
-    public async Task DeleteUserAsync_WhenAuth0DeleteFails_ReturnsFailure_AndDoesNotStartTransaction()
+    public async Task DeleteUserAsync_WhenAuth0DeleteFails_ReturnsFailure_AfterLocalSoftDeleteCommit()
     {
         var user = CreateUser();
+        var tx = SetupTransaction();
 
         _repo.Setup(x => x.GetUserByAuth0IdAsync("abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _auth0.Setup(x => x.DeleteUserAsync("auth0|abc", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthZeroBodyResponse>.BadRequest("auth0_failed"));
+        SetupEmptyDeleteUserRefunds(user.ID);
+
+        _repo.Setup(x => x.UpdateOfferStatusesForUserAsync(
+                user.ID,
+                It.IsAny<IReadOnlyCollection<int>>(),
+                (int)OfferStatuses.Canceled,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        _repo.Setup(x => x.UpdateTradeStatusesForUserAsync(
+                user.ID,
+                It.IsAny<IReadOnlyCollection<int>>(),
+                (int)TradeStatuses.Failed,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        _repo.Setup(x => x.UpdateCounterOfferStatusesForUserAsync(
+                user.ID,
+                (int)CounterOfferStatuses.Denied,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        _repo.Setup(x => x.DenyReceivedUserCounterOffersForRefundAsync(
+                user.ID,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        _auth0.Setup(x => x.DeleteUserAsync(
+                "auth0|abc",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<AuthZeroBodyResponse>.InternalServerError("auth0_admin_delete_user_failed"));
+
         var service = CreateService();
 
-        var result = await service.DeleteUserAsync("abc");
+        var result = await service.DeleteUserAsync("auth0|abc");
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("auth0_failed", result.Message);
+        Assert.Equal("auth0_admin_delete_user_failed", result.Message);
 
-        _uow.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        tx.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        tx.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);
+
+        _repo.Verify(x => x.SoftDeleteUser(user), Times.Once);
+    }
+    private Mock<IDbContextTransaction> SetupTransaction()
+    {
+        var tx = new Mock<IDbContextTransaction>();
+
+        tx.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        tx.Setup(x => x.RollbackAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        tx.Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _uow.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tx.Object);
+
+        _uow.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        return tx;
     }
 
+    private void SetupEmptyDeleteUserRefunds(int userId)
+    {
+        _repo.Setup(x => x.GetActiveUserOffersForRefundAsync(
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserOfferRefund>());
+
+        _repo.Setup(x => x.GetOwnUserCounterOffersForRefundAsync(
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserCounterOfferRefund>());
+
+        _repo.Setup(x => x.GetReceivedUserCounterOffersForRefundAsync(
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserCounterOfferRefund>());
+
+        _repo.Setup(x => x.GetTradesInProgressForRefundAsync(
+                userId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserTradeRefund>());
+    }
     [Fact]
     public async Task DeleteUserAsync_WhenEverythingIsValid_RefundsTokens_UpdatesStatuses_SoftDeletes_AndCommits()
     {
         var user = CreateUser();
-        var tx = new Mock<IDbContextTransaction>();
-
+        var tx = SetupTransaction();
         _repo.Setup(x => x.GetUserByAuth0IdAsync("abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _auth0.Setup(x => x.DeleteUserAsync("auth0|abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(new AuthZeroBodyResponse(), "ok"));
-        _uow.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(tx.Object);
 
         _repo.Setup(x => x.GetActiveUserOffersForRefundAsync(user.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DeleteUserOfferRefund>
@@ -264,22 +342,26 @@ public sealed class UserManagementServiceTests
     public async Task DeleteUserAsync_WhenOfferEscrowReleaseFails_RollsBack_AndReturnsBadRequest()
     {
         var user = CreateUser();
-        var tx = new Mock<IDbContextTransaction>();
-
+        var tx = SetupTransaction();
         _repo.Setup(x => x.GetUserByAuth0IdAsync("abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _auth0.Setup(x => x.DeleteUserAsync("auth0|abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(new AuthZeroBodyResponse(), "ok"));
-        _uow.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(tx.Object);
 
         _repo.Setup(x => x.GetActiveUserOffersForRefundAsync(user.ID, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DeleteUserOfferRefund>
             {
                 new(10)
             });
+        _repo.Setup(x => x.GetOwnUserCounterOffersForRefundAsync(user.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserCounterOfferRefund>());
 
+        _repo.Setup(x => x.GetReceivedUserCounterOffersForRefundAsync(user.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserCounterOfferRefund>());
+
+        _repo.Setup(x => x.GetTradesInProgressForRefundAsync(user.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeleteUserTradeRefund>());
         _escrow.Setup(x => x.TryReleaseOwnEscrowAsync(user.ID, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
