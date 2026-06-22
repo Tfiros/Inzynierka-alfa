@@ -28,37 +28,65 @@ public class TokenEscrow(AppDbContext dbContext) : ITokenEscrow
                 .SetProperty(u => u.Tokens, u => u.Tokens + amount), ct) == 1;
 
     public async Task<bool> TryEscrowToOtherAsync(int fromUserId, int toUserId, int amount, CancellationToken ct)
-    {
-        var deducted = await dbContext.Users
-            .Where(u => u.ID == fromUserId && !u.IsDeleted && u.Tokens >= amount)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Tokens, u => u.Tokens - amount)
-                , ct) == 1;
-        if (!deducted) return false;
-        var added = await dbContext.Users
-            .Where(u => u.ID == toUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens + amount)
-                , ct) == 1;
-        return added;
-    }
+        => await AtomicTokenEscrowOperation(async () =>
+        {
+            var deducted = await dbContext.Users
+                .Where(u => u.ID == fromUserId && !u.IsDeleted && u.Tokens >= amount)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.Tokens, u => u.Tokens - amount)
+                    , ct) == 1;
+            if (!deducted) return false;
+            var added = await dbContext.Users
+                .Where(u => u.ID == toUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens + amount)
+                    , ct) == 1;
+            return added;
+        }, ct);
 
     public async Task<bool> TryRefundEscrowToOtherAsync(int escrowHolderId, int originalSenderId, int amount,
         CancellationToken ct)
-    {
-        var deducted = await dbContext.Users.Where(u => u.ID == escrowHolderId && u.EscrowedTokens >= amount)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens - amount), ct) == 1;
-        if (!deducted) return false;
-        var added = await dbContext.Users.Where(u => u.ID == originalSenderId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.Tokens, u => u.Tokens + amount), ct) == 1;
-        return added;
-    }
+        => await AtomicTokenEscrowOperation(async () =>  {
+            var deducted = await dbContext.Users.Where(u => u.ID == escrowHolderId && u.EscrowedTokens >= amount)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens - amount), ct) == 1;
+            if (!deducted) return false;
+            var added = await dbContext.Users.Where(u => u.ID == originalSenderId)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.Tokens, u => u.Tokens + amount), ct) == 1;
+            return added;
+        }, ct);
+   
 
     public async Task<bool> TryTransferEscrowAsync(int fromUserId, int toUserId, int amount, CancellationToken ct)
+        => await AtomicTokenEscrowOperation(async () =>
+        {
+            var deducted = await dbContext.Users.Where(u => u.ID == fromUserId && u.EscrowedTokens >= amount)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens - amount), ct) == 1;
+            if (!deducted) return false;
+            var added = await dbContext.Users.Where(u => u.ID == toUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens + amount), ct) == 1;
+            return added;
+        }, ct);
+
+    private async Task<bool> AtomicTokenEscrowOperation(Func<Task<bool>> tokenEscrowFunc, CancellationToken ct)
     {
-        var deducted = await dbContext.Users.Where(u => u.ID == fromUserId && u.EscrowedTokens >= amount)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens - amount), ct) == 1;
-        if (!deducted) return false;
-        var added = await dbContext.Users.Where(u => u.ID == toUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EscrowedTokens, u => u.EscrowedTokens + amount), ct) == 1;
-        return added;
+        var tx = dbContext.Database.CurrentTransaction;
+        if (tx is null)
+        {
+            throw new InvalidOperationException("Token Escrow Method must be run inside a transaction.");
+        }
+
+        await tx.CreateSavepointAsync("tokenEscrow", ct);
+        try
+        {
+            var result = await tokenEscrowFunc();
+            if (!result)
+            {
+                await tx.RollbackToSavepointAsync("tokenEscrow", ct);
+            }
+            return result;
+        }
+        catch
+        {
+            await tx.RollbackToSavepointAsync("tokenEscrow", ct);
+            throw;
+        }
     }
 }
