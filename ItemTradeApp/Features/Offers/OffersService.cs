@@ -359,7 +359,12 @@ public class OffersService(
                 }
             }
 
-            await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);
+            if (!await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct))
+            {
+                await tx.RollbackAsync(ct);
+                return Result<string>.Conflict("counteroffer_refund_failed");
+
+            }
 
             await unitOfWork.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -554,7 +559,12 @@ public class OffersService(
                 return Result<AcceptOfferResponse>.Conflict("update_offer_status_failed");
             }
 
-            await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct);
+            if (!await RefundAndDenyPendingCounterOffersAsync(offer.ID, ct))
+            {
+                await tx.RollbackAsync(ct);
+                return Result<AcceptOfferResponse>.Conflict("counteroffer_refund_failed");
+
+            }
 
             if (offer.TokensOffered > 0)
             {
@@ -649,18 +659,26 @@ public class OffersService(
 
     #region OfferServiceHelpers
 
-    private async Task RefundAndDenyPendingCounterOffersAsync(int offerId, CancellationToken ct)
+    private async Task<bool> RefundAndDenyPendingCounterOffersAsync(int offerId, CancellationToken ct)
     {
         var pending = await counterOfferRepository.GetAllPendingForOfferAsync(offerId, ct);
         foreach (var co in pending)
         {
             if (co.TokensOffered > 0)
-            {
-                await tokenEscrow.TryReleaseOwnEscrowAsync(co.User_ID, co.TokensOffered, ct);
+            { 
+                var released = await tokenEscrow.TryReleaseOwnEscrowAsync(co.User_ID, co.TokensOffered, ct);
+                if (!released)
+                {
+                    return false;
+                }
             }
 
-            co.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+            if (!await counterOfferRepository.DenyAsync(co.ID, ct))
+            {
+                return false;
+            }
         }
+        return true;
     }
 
     private void ApplyListingItemsUpdate(Offer offer, Dictionary<int, DictItemQuantity> offered, Dictionary<int, DictItemQuantity> wanted)
