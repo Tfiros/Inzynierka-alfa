@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Threading.RateLimiting;
 using ItemTradeApp.Features.Shared;
 
@@ -36,6 +35,27 @@ public static class RateLimiterExtensions
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = limit,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
+            });
+
+            options.AddPolicy("limiterChat", ctx =>
+            {
+                var userId = Auth0IdHandler.GetUserId(ctx.User);
+
+                var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                var key = !string.IsNullOrWhiteSpace(userId)
+                    ? $"chat:user:{userId}"
+                    : $"chat:ip:{ip}";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: key,
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0

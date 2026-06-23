@@ -22,7 +22,8 @@ public static class SignalRConfiguration
         app.MapHub<NotificationsHub>("/api/hubs/notifications")
             .RequireRateLimiting("limiterGlobal");
 
-        app.MapHub<ChatHub>("/api/hubs/chat");
+        app.MapHub<ChatHub>("/api/hubs/chat")
+            .RequireRateLimiting("limiterChat");
 
         return app;
     }
