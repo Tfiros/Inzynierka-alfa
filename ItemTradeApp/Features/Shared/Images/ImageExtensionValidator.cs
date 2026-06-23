@@ -2,46 +2,85 @@ namespace ItemTradeApp.Features.Shared.Images;
 
 public static class ImageExtensionValidator
 {
-    private static readonly Dictionary<string, List<byte[]>> Signatures = new()
+    private static readonly Dictionary<string, byte[]> FileSignatures = new()
     {
-        [".png"] =
-        [
-            new byte[] { 0x89, 0x50, 0x4E, 0x47 }
-        ],
-
-        [".jpg"] =
-        [
-            new byte[] { 0xFF, 0xD8, 0xFF }
-        ],
-
-        [".jpeg"] =
-        [
-            new byte[] { 0xFF, 0xD8, 0xFF }
-        ],
-
-        [".webp"] =
-        [
-            new byte[] { 0x52, 0x49, 0x46, 0x46 }
-        ]
+        [".png"] = [0x89, 0x50, 0x4E, 0x47],
+        [".jpg"] = [0xFF, 0xD8, 0xFF],
+        [".jpeg"] = [0xFF, 0xD8, 0xFF],
+        [".webp"] = [0x52, 0x49, 0x46, 0x46]
     };
 
-    public static bool IsValidImage(IFormFile file)
+    private static readonly Dictionary<string, string> ContentTypes = new()
     {
-        var extension = Path
+        [".png"] = "image/png",
+        [".jpg"] = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".webp"] = "image/webp"
+    };
+
+    public static bool IsValidImage(
+        IFormFile file,
+        out string extension,
+        out string contentType)
+    {
+        extension = string.Empty;
+        contentType = string.Empty;
+
+        if (file is null || file.Length == 0)
+            return false;
+
+        extension = Path
             .GetExtension(file.FileName)
             .ToLowerInvariant();
 
-        if (!Signatures.TryGetValue(extension, out var signatures))
+        if (!FileSignatures.TryGetValue(extension, out var expectedSignature))
             return false;
 
-        using var stream = file.OpenReadStream();
+        if (!ContentTypes.TryGetValue(extension, out var expectedContentType))
+            return false;
+
+        if (!string.Equals(
+                file.ContentType,
+                expectedContentType,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
 
         var header = new byte[12];
 
-        stream.Read(header, 0, header.Length);
+        using var stream = file.OpenReadStream();
 
-        return signatures.Any(signature =>
-            header.Take(signature.Length)
-                .SequenceEqual(signature));
+        var read = stream.Read(header, 0, header.Length);
+
+        if (read < expectedSignature.Length)
+            return false;
+
+        var signatureMatches = header
+            .Take(expectedSignature.Length)
+            .SequenceEqual(expectedSignature);
+
+        if (!signatureMatches)
+            return false;
+
+        if (extension == ".webp" && !IsWebp(header, read))
+            return false;
+
+        contentType = expectedContentType;
+
+        return true;
+    }
+
+    private static bool IsWebp(
+        byte[] header,
+        int read)
+    {
+        if (read < 12)
+            return false;
+
+        return header[8] == 0x57 &&
+               header[9] == 0x45 &&
+               header[10] == 0x42 &&
+               header[11] == 0x50;
     }
 }

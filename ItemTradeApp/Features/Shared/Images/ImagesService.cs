@@ -51,12 +51,13 @@ public sealed class ImageService : IImageService
         if (file.Length > maxFileSize)
             throw new ArgumentException("File size exceeded.");
 
-        if (!ImageExtensionValidator.IsValidImage(file))
+        if (!ImageExtensionValidator.IsValidImage(
+                file,
+                out var extension,
+                out var contentType))
+        {
             throw new ArgumentException("Nieprawidłowy plik obrazu.", nameof(file));
-
-        var extension = Path
-            .GetExtension(file.FileName)
-            .ToLowerInvariant();
+        }
 
         var key =
             $"{folder.Trim('/')}/{Guid.NewGuid():N}{extension}";
