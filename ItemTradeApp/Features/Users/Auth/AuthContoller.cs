@@ -53,7 +53,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
         IssueAntiforgeryToken();
 
-        var dto = new LoginResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
+        var dto = new LoginResponse(ok.Id, ok.ExpiresIn);
         return Result<LoginResponse>.Success(dto).ToActionResult();
     }
 
@@ -89,7 +89,7 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
         SetAccessCookie(ok.AccessToken!, ok.ExpiresIn);
         IssueAntiforgeryToken();
 
-        var dto = new RefreshResponse(ok.Id, ok.ExpiresIn, ok.IdToken);
+        var dto = new RefreshResponse(ok.Id, ok.ExpiresIn);
         return Result<RefreshResponse>.Success(dto).ToActionResult();
     }
 

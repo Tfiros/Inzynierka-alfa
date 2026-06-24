@@ -7,6 +7,7 @@ using ItemTradeApp.Features.Users.Auth.DTOs.ResponseDtos;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 using ItemTradeApp.Features.Users.Shared.AuthZeroIntegration.DTOs.Response;
 using ItemTradeApp.Features.Users.Shared.DTOs;
+using ItemTradeApp.Persistence;
 using Microsoft.Extensions.Options;
 
 namespace ItemTradeApp.Features.Users.Auth;
@@ -25,80 +26,135 @@ public class AuthService(
     IOptions<AuthZeroOptions> config,
     IAuthZeroAPIClient apiClient,
     IAuthRepository authRepository,
+    IAuthZeroManagementClient managementClient,
+    IUnitOfWork unitOfWork,
     ILogger<AuthService> logger) : IAuthService
 {
     private readonly AuthZeroOptions _config = config.Value;
 
-    public async Task<Result<AuthZeroBodyResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct = default)
+ public async Task<Result<AuthZeroBodyResponse>> RegisterAsync(
+    RegisterRequest req,
+    CancellationToken ct = default)
+{
+    ArgumentNullException.ThrowIfNull(req);
+
+    var res = await managementClient.CreateUserAsync(
+        email: req.Email,
+        password: req.Password,
+        connection: _config.Realm,
+        nickname: req.Username,
+        ct);
+
+    if (!res.IsSuccess || res.Data?.Details.RawResponse is null)
     {
-        ArgumentNullException.ThrowIfNull(req);
+        logger.LogWarning(
+            "Registration in Auth0 failed. Email: {Email}, Status: {Status}, ProviderError: {ProviderError}",
+            req.Email,
+            res.Status,
+            GetProviderError(res));
 
-        var res = await apiClient.SignupAsync(
-            email: req.Email,
-            password: req.Password,
-            connection: _config.Realm,
-            clientId: _config.ClientId,
-            name: req.Username,
-            ct);
-
-        if (!res.IsSuccess || res.Data?.Details.RawResponse is null)
+        return res.Status switch
         {
-            logger.LogWarning(
-                "Registration in Auth0 failed. Email: {Email}, Status: {Status}, ProviderError: {ProviderError}",
-                req.Email,
-                res.Status,
-                GetProviderError(res));
+            ResultStatus.Conflict =>
+                Result<AuthZeroBodyResponse>.Conflict("User with this email already exists."),
 
-            return res.Status switch
-            {
-                ResultStatus.Conflict =>
-                    Result<AuthZeroBodyResponse>.Conflict("User with this email already exists."),
+            ResultStatus.BadRequest =>
+                Result<AuthZeroBodyResponse>.BadRequest("Registration failed. User with such email already exists."),
 
-                ResultStatus.BadRequest =>
-                    Result<AuthZeroBodyResponse>.BadRequest("Registration failed. User with such email already exists."),
+            ResultStatus.Unauthorized =>
+                Result<AuthZeroBodyResponse>.Unauthorized("Registration failed."),
 
-                ResultStatus.Unauthorized =>
-                    Result<AuthZeroBodyResponse>.Unauthorized("Registration failed."),
+            ResultStatus.NotFound =>
+                Result<AuthZeroBodyResponse>.NotFound("Registration service unavailable."),
 
-                ResultStatus.NotFound =>
-                    Result<AuthZeroBodyResponse>.NotFound("Registration service unavailable."),
+            ResultStatus.InternalServerError =>
+                Result<AuthZeroBodyResponse>.InternalServerError("Registration service unavailable."),
 
-                ResultStatus.InternalServerError =>
-                    Result<AuthZeroBodyResponse>.InternalServerError("Registration service unavailable."),
-
-                _ =>
-                    Result<AuthZeroBodyResponse>.BadRequest("Registration failed.")
-            };
-        }
-
-        string auth0Id;
-
-        try
-        {
-            using var doc = JsonDocument.Parse(res.Data.Details.RawResponse);
-
-            auth0Id = doc.RootElement.TryGetProperty("_id", out var idElement)
-                ? idElement.GetString() ?? string.Empty
-                : string.Empty;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Invalid Auth0 registration response. Email: {Email}", req.Email);
-            return Result<AuthZeroBodyResponse>.InternalServerError("Registration response was invalid.");
-        }
-
-        if (string.IsNullOrWhiteSpace(auth0Id))
-        {
-            logger.LogError("Auth0 registration response did not contain _id. Email: {Email}", req.Email);
-            return Result<AuthZeroBodyResponse>.InternalServerError("Registration response was invalid.");
-        }
-
-        await authRepository.Register(req, auth0Id);
-
-        res.Message = "Registration successful";
-        return res;
+            _ =>
+                Result<AuthZeroBodyResponse>.BadRequest("Registration failed.")
+        };
     }
 
+    string fullAuth0Id;
+
+    try
+    {
+        using var doc = JsonDocument.Parse(res.Data.Details.RawResponse);
+
+        fullAuth0Id = doc.RootElement.TryGetProperty("user_id", out var idElement)
+            ? idElement.GetString() ?? string.Empty
+            : string.Empty;
+    }
+    catch (JsonException ex)
+    {
+        logger.LogError(ex, "Invalid Auth0 registration response. Email: {Email}", req.Email);
+        return Result<AuthZeroBodyResponse>.InternalServerError("Registration response was invalid.");
+    }
+
+    if (string.IsNullOrWhiteSpace(fullAuth0Id))
+    {
+        logger.LogError(
+            "Auth0 registration response did not contain user_id. Email: {Email}",
+            req.Email);
+
+        return Result<AuthZeroBodyResponse>.InternalServerError("Registration response was invalid.");
+    }
+
+    fullAuth0Id = Auth0IdHandler.EnsureAuth0WithPrefix(fullAuth0Id);
+    var trimmedAuth0Id = Auth0IdHandler.Trim(fullAuth0Id);
+
+    try
+    {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
+
+        await authRepository.Register(req, trimmedAuth0Id);
+
+        await unitOfWork.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(
+            ex,
+            "Local registration failed after Auth0 user creation. Rolling back Auth0 user. Auth0UserId: {Auth0UserId}, Email: {Email}",
+            fullAuth0Id,
+            req.Email);
+
+        var deleteRes = await managementClient.DeleteUserAsync(fullAuth0Id, ct);
+
+        if (!deleteRes.IsSuccess)
+        {
+            logger.LogError(
+                "Auth0 rollback failed. Auth0UserId: {Auth0UserId}, Status: {Status}, Message: {Message}",
+                fullAuth0Id,
+                deleteRes.Status,
+                deleteRes.Message);
+        }
+
+        return Result<AuthZeroBodyResponse>.InternalServerError("Registration failed.");
+    }
+
+    var emailRes = await managementClient.SendVerificationEmailAsync(fullAuth0Id, ct);
+
+    if (!emailRes.IsSuccess)
+    {
+        logger.LogWarning(
+            "Verification email could not be sent. Auth0UserId: {Auth0UserId}, Email: {Email}, Status: {Status}, Message: {Message}",
+            fullAuth0Id,
+            req.Email,
+            emailRes.Status,
+            emailRes.Message);
+
+        return new Result<AuthZeroBodyResponse>(
+            false,
+            emailRes.Status,
+            res.Data,
+            emailRes.Message ?? "verification_email_failed");
+    }
+
+    res.Message = "Registration successful";
+    return res;
+}
     public async Task<Result<LoginResponse>> LoginAsync(LoginRequest req, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(req);
@@ -169,7 +225,6 @@ public class AuthService(
         var dto = new LoginResponse(
             user.ID,
             tokenPayload.ExpiresIn,
-            tokenPayload.IdToken,
             tokenPayload.AccessToken,
             tokenPayload.RefreshToken);
 
@@ -309,7 +364,6 @@ public class AuthService(
         var dto = new RefreshResponse(
             user.ID,
             tokenPayload.ExpiresIn,
-            tokenPayload.IdToken,
             tokenPayload.AccessToken,
             tokenPayload.RefreshToken);
 

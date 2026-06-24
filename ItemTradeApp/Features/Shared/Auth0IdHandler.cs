@@ -10,7 +10,7 @@ public static class Auth0IdHandler
         => auth0UserId.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ? auth0UserId.Substring(Prefix.Length)
             : auth0UserId;
 
-    public static string CheckIfAuth0WithPrefix(string auth0UserId)
+    public static string EnsureAuth0WithPrefix(string auth0UserId)
         => auth0UserId.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ? auth0UserId : Prefix + auth0UserId;
 
     public static string? GetUserId(ClaimsPrincipal user) 
