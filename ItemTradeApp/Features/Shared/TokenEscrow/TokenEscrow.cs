@@ -14,7 +14,7 @@ public interface ITokenEscrow
 
 }
 
-public class TokenEscrow(AppDbContext dbContext) : ITokenEscrow
+public class TokenEscrow(AppDbContext dbContext, IUnitOfWork unitOfWork) : ITokenEscrow
 {
     public async Task<bool> TryLockOwnTokensAsync(int userId, int amount, CancellationToken ct)
         => await dbContext.Users.Where(u => u.ID == userId && !u.IsDeleted && u.Tokens >= amount)
@@ -66,27 +66,5 @@ public class TokenEscrow(AppDbContext dbContext) : ITokenEscrow
         }, ct);
 
     private async Task<bool> AtomicTokenEscrowOperation(Func<Task<bool>> tokenEscrowFunc, CancellationToken ct)
-    {
-        var tx = dbContext.Database.CurrentTransaction;
-        if (tx is null)
-        {
-            throw new InvalidOperationException("Token Escrow Method must be run inside a transaction.");
-        }
-
-        await tx.CreateSavepointAsync("tokenEscrow", ct);
-        try
-        {
-            var result = await tokenEscrowFunc();
-            if (!result)
-            {
-                await tx.RollbackToSavepointAsync("tokenEscrow", ct);
-            }
-            return result;
-        }
-        catch
-        {
-            await tx.RollbackToSavepointAsync("tokenEscrow", ct);
-            throw;
-        }
-    }
+        => await unitOfWork.RunInSavepointAsync("tokenEscrow", tokenEscrowFunc, ct);
 }
