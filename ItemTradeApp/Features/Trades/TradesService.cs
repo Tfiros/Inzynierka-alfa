@@ -574,6 +574,9 @@ public sealed class TradesService(
         if (!trade.HasBuyersItems || !trade.HasSellersItems)
             return Result<string>.BadRequest("Cannot set trade as realised as users items are still in your possession.");
         
+        if (trade.TradeStatus_ID != (int)TradeStatuses.InRealization)
+            return Result<string>.BadRequest("Trade is not in InRealization status.");
+        
         await using var tx = await unitOfWork.BeginTransactionAsync(ct);
         try
         {
