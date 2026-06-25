@@ -40,14 +40,30 @@ public sealed class OfferExpirationService(
                 }
 
                 var pendingCounterOffers = await counterOfferRepository.GetAllPendingForOfferAsync(expiredOffer.ID, ct);
+                var releasedCOs = true;
+                var deniedCOs = true;
                 foreach (var counterOffer in pendingCounterOffers)
                 {
                     if (counterOffer.TokensOffered > 0)
                     {
-                        await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.User_ID, counterOffer.TokensOffered, ct);
+                        releasedCOs = await tokenEscrow.TryReleaseOwnEscrowAsync(counterOffer.User_ID, counterOffer.TokensOffered, ct);
+                        if (!releasedCOs)
+                        {
+                            break; 
+                        }
                     }
 
-                    counterOffer.CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied;
+                    deniedCOs = await counterOfferRepository.DenyAsync(counterOffer.ID, ct);
+                    if (!deniedCOs)
+                    {
+                        break;
+                    }
+                }
+
+                if (!releasedCOs || !deniedCOs)
+                {
+                    await tx.RollbackAsync(ct);
+                    continue;
                 }
 
                 var expired = await offersRepository.SetOfferExpiredAsync(expiredOffer.ID, ct);
@@ -56,8 +72,6 @@ public sealed class OfferExpirationService(
                     await tx.RollbackAsync(ct);
                     continue;
                 }
-
-                await unitOfWork.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
 
                 count++;
