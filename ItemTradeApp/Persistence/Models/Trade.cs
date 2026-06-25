@@ -30,7 +30,7 @@ public partial class Trade
     public virtual User? MiddlemanUser { get; set; } = null!;
 
     public virtual Offer Offer { get; set; } = null!;
-    public virtual CounterOffer AcceptedCounterOffer { get; set; } = null!;
+    public virtual CounterOffer? AcceptedCounterOffer { get; set; } = null!;
 
     public virtual TradeStatus TradeStatus { get; set; } = null!;
     public virtual ICollection<Rate> Rates { get; set; } = new List<Rate>();

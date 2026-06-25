@@ -990,14 +990,18 @@ public class OffersServiceTest
             .ReturnsAsync(true);
         _tokenEscrow.Setup(x => x.TryReleaseOwnEscrowAsync(1, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        _tokenEscrow.Setup(x => x.TryReleaseOwnEscrowAsync(pendingCounterOffer.User_ID, pendingCounterOffer.TokensOffered, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         _counterOffersRepo.Setup(x => x.GetAllPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<CounterOffer> { pendingCounterOffer });
+        _counterOffersRepo.Setup(x => x.DenyAsync(pendingCounterOffer.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         var res = await _offersService.CancelOfferAsync("auth0|abc", 7);
         
         Assert.True(res.IsSuccess);
         Assert.Equal("offer_cancelled", res.Data);
-        Assert.Equal((int)CounterOfferStatuses.Denied, pendingCounterOffer.CounterOfferStatus_Id);
+        _counterOffersRepo.Verify(co => co.DenyAsync(pendingCounterOffer.ID, It.IsAny<CancellationToken>()), Times.Once);
         _tokenEscrow.Verify(x => x.TryReleaseOwnEscrowAsync(1, 50, It.IsAny<CancellationToken>()), Times.Once);
         _tokenEscrow.Verify(x => x.TryReleaseOwnEscrowAsync(99, 30, It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -1098,12 +1102,15 @@ public class OffersServiceTest
             .ReturnsAsync(true);
         _counterOffersRepo.Setup(x => x.GetAllPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<CounterOffer>{pendingCounterOffer});
+        _counterOffersRepo.Setup(x => x.DenyAsync(pendingCounterOffer.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         var res = await _offersService.CancelOfferAsync("auth0|abc", 7);
         
         Assert.True(res.IsSuccess);
-        Assert.Equal((int)CounterOfferStatuses.Denied, pendingCounterOffer.CounterOfferStatus_Id);
         _tokenEscrow.Verify(x => x.TryReleaseOwnEscrowAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _counterOffersRepo.Verify(co => co.DenyAsync(pendingCounterOffer.ID, It.IsAny<CancellationToken>()), Times.Once);
+        _tokenEscrow.Verify(t => t.TryReleaseOwnEscrowAsync(pendingCounterOffer.User_ID, pendingCounterOffer.TokensOffered, It.IsAny<CancellationToken>()), Times.Never);
         tx.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
 
     }
@@ -2042,9 +2049,13 @@ public class OffersServiceTest
         _offersRepo.Setup(x => x.SetOfferInRealizationAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _counterOffersRepo.Setup(x => x.GetAllPendingForOfferAsync(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<CounterOffer>{pendingCo});
+        _counterOffersRepo.Setup(x => x.DenyAsync(pendingCo.ID, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         _tokenEscrow.Setup(x => x.TryTransferEscrowAsync(2, 1, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _tokenEscrow.Setup(x => x.TryEscrowToOtherAsync(1, 2, 30, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _tokenEscrow.Setup(x => x.TryReleaseOwnEscrowAsync(pendingCo.User_ID, pendingCo.TokensOffered, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _tradeCreation.Setup(x => x.ExecuteAsync(It.IsAny<CreateTradeContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Trade { ID = 99 });
@@ -2056,7 +2067,7 @@ public class OffersServiceTest
         Assert.True(res.IsSuccess);
         Assert.Equal(99, res.Data!.TradeId);
         Assert.Equal(7, res.Data!.OfferId);
-        Assert.Equal((int)CounterOfferStatuses.Denied, pendingCo.CounterOfferStatus_Id);
+        _counterOffersRepo.Verify(co => co.DenyAsync(pendingCo.ID, It.IsAny<CancellationToken>()), Times.Once);
         _tradeCreation.Verify(x => x.ExecuteAsync(It.Is<CreateTradeContext>(c => c.OfferId ==7 && c.BuyerId == 1 && c.CounterOfferId == null), It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         tx.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);

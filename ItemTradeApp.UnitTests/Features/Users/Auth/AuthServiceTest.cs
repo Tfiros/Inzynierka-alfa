@@ -11,6 +11,8 @@ using ItemTradeApp.Persistence.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ItemTradeApp.Persistence;
+using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 
 namespace ItemTradeApp.UnitTests.Features.Users.Auth;
@@ -21,7 +23,8 @@ public class AuthServiceTest
     private readonly Mock<IAuthZeroAPIClient> _apiClient = new();
     private readonly Mock<IAuthRepository> _authRepository = new();
     private readonly Mock<ILogger<AuthService>> _logger = new();
-
+    private readonly Mock<IAuthZeroManagementClient> _managementClient = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly AuthService _service;
 
     public AuthServiceTest()
@@ -38,9 +41,30 @@ public class AuthServiceTest
             options,
             _apiClient.Object,
             _authRepository.Object,
+            _managementClient.Object,
+            _unitOfWork.Object,
             _logger.Object);
     }
+    private void SetupSuccessfulTransaction()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
 
+        transaction
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        transaction
+            .Setup(x => x.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _unitOfWork
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+    }
     [Fact]
     public async Task LoginAsync_WhenRequestIsNull_ThrowsArgumentNullException()
     {
@@ -190,7 +214,6 @@ public class AuthServiceTest
         Assert.Equal(3600, result.Data.ExpiresIn);
         Assert.Equal("access-token", result.Data.AccessToken);
         Assert.Equal("refresh-token", result.Data.RefreshToken);
-        Assert.Equal("id-token", result.Data.IdToken);
     }
 
     [Fact]
@@ -303,7 +326,6 @@ public class AuthServiceTest
         Assert.Equal(3600, result.Data.ExpiresIn);
         Assert.Equal(accessToken, result.Data.AccessToken);
         Assert.Equal("new-refresh-token", result.Data.RefreshToken);
-        Assert.Equal("id-token", result.Data.IdToken);
     }
 
     [Fact]
@@ -400,7 +422,7 @@ public class AuthServiceTest
         Assert.Equal("Reset email sent", result.Message);
     }
 
-    [Fact]
+   [Fact]
     public async Task RegisterAsync_WhenRequestIsNull_ThrowsArgumentNullException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -410,92 +432,205 @@ public class AuthServiceTest
     [Fact]
     public async Task RegisterAsync_WhenAuth0ReturnsConflict_ReturnsUserAlreadyExists()
     {
-        var req = new RegisterRequest(
-            Email: "test@test.com",
-            Password: "Password123!",
-            DateTime.Now, 
-            Username: "test");
+    var req = new RegisterRequest(
+        Email: "test@test.com",
+        Password: "Password123!",
+        DateTime.Now,
+        Username: "test");
 
-        _apiClient
-            .Setup(x => x.SignupAsync(
-                req.Email,
-                req.Password,
-                "Username-Password-Authentication",
-                "client-id",
-                req.Username,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthZeroBodyResponse>.Conflict("provider error"));
+    _managementClient
+        .Setup(x => x.CreateUserAsync(
+            req.Email,
+            req.Password,
+            "Username-Password-Authentication",
+            req.Username,
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Conflict("provider error"));
 
-        var result = await _service.RegisterAsync(req, CancellationToken.None);
+    var result = await _service.RegisterAsync(req, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal("User with this email already exists.", result.Message);
+    Assert.False(result.IsSuccess);
+    Assert.Equal("User with this email already exists.", result.Message);
 
-        _authRepository.Verify(x => x.Register(
-            It.IsAny<RegisterRequest>(),
-            It.IsAny<string>()), Times.Never);
+    _authRepository.Verify(x => x.Register(
+        It.IsAny<RegisterRequest>(),
+        It.IsAny<string>()), Times.Never);
+
+    _unitOfWork.Verify(x => x.BeginTransactionAsync(
+        It.IsAny<CancellationToken>()), Times.Never);
+}
+
+    [Fact]
+    public async Task RegisterAsync_WhenRawResponseDoesNotContainUserId_ReturnsInternalServerError()
+    {
+    var req = new RegisterRequest(
+        Email: "test@test.com",
+        Password: "Password123!",
+        DateTime.Now,
+        Username: "test");
+
+    _managementClient
+        .Setup(x => x.CreateUserAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
+            Auth0ResponseWithRaw("""{"email":"test@test.com"}""")));
+
+    var result = await _service.RegisterAsync(req, CancellationToken.None);
+
+    Assert.False(result.IsSuccess);
+    Assert.Equal("Registration response was invalid.", result.Message);
+
+    _authRepository.Verify(x => x.Register(
+        It.IsAny<RegisterRequest>(),
+        It.IsAny<string>()), Times.Never);
+
+    _unitOfWork.Verify(x => x.BeginTransactionAsync(
+        It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenRawResponseDoesNotContainId_ReturnsInternalServerError()
+    public async Task RegisterAsync_WhenValid_RegistersLocalUserSendsVerificationEmailAndReturnsSuccess()
     {
-        var req = new RegisterRequest(
-            Email: "test@test.com",
-            Password: "Password123!",
-            DateTime.Now, 
-            Username: "test");
+    var req = new RegisterRequest(
+        "test@test.com",
+        "Password123!",
+        DateTime.Now,
+        "test");
 
-        _apiClient
-            .Setup(x => x.SignupAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
-                Auth0ResponseWithRaw("""{"email":"test@test.com"}""")));
+    SetupSuccessfulTransaction();
 
-        var result = await _service.RegisterAsync(req, CancellationToken.None);
+    _managementClient
+        .Setup(x => x.CreateUserAsync(
+            req.Email,
+            req.Password,
+            "Username-Password-Authentication",
+            req.Username,
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
+            Auth0ResponseWithRaw("""{"user_id":"auth0|abc"}""")));
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal("Registration response was invalid.", result.Message);
+    _managementClient
+        .Setup(x => x.SendVerificationEmailAsync(
+            "auth0|abc",
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(new AuthZeroBodyResponse()));
 
-        _authRepository.Verify(x => x.Register(
-            It.IsAny<RegisterRequest>(),
-            It.IsAny<string>()), Times.Never);
+    var result = await _service.RegisterAsync(req, CancellationToken.None);
+
+    Assert.True(result.IsSuccess);
+    Assert.Equal("Registration successful", result.Message);
+
+    _authRepository.Verify(x => x.Register(
+        req,
+        "abc"), Times.Once);
+
+    _unitOfWork.Verify(x => x.BeginTransactionAsync(
+        It.IsAny<CancellationToken>()), Times.Once);
+
+    _unitOfWork.Verify(x => x.SaveChangesAsync(
+        It.IsAny<CancellationToken>()), Times.Once);
+
+    _managementClient.Verify(x => x.SendVerificationEmailAsync(
+        "auth0|abc",
+        It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenValid_RegistersLocalUserAndReturnsSuccess()
+    public async Task RegisterAsync_WhenVerificationEmailFails_ReturnsFailure()
     {
-        var req = new RegisterRequest(
-            "test@test.com",
-            "Password123!",
-            DateTime.Now, 
-            "test");
+    var req = new RegisterRequest(
+        "test@test.com",
+        "Password123!",
+        DateTime.Now,
+        "test");
 
-        _apiClient
-            .Setup(x => x.SignupAsync(
-                req.Email,
-                req.Password,
-                "Username-Password-Authentication",
-                "client-id",
-                req.Username,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
-                Auth0ResponseWithRaw("""{"_id":"auth0|abc"}""")));
+    SetupSuccessfulTransaction();
 
-        var result = await _service.RegisterAsync(req, CancellationToken.None);
+    _managementClient
+        .Setup(x => x.CreateUserAsync(
+            req.Email,
+            req.Password,
+            "Username-Password-Authentication",
+            req.Username,
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
+            Auth0ResponseWithRaw("""{"user_id":"auth0|abc"}""")));
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal("Registration successful", result.Message);
+    _managementClient
+        .Setup(x => x.SendVerificationEmailAsync(
+            "auth0|abc",
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.InternalServerError("verification_email_failed"));
 
-        _authRepository.Verify(x => x.Register(
-            req,
-            "auth0|abc"), Times.Once);
+    var result = await _service.RegisterAsync(req, CancellationToken.None);
+
+    Assert.False(result.IsSuccess);
+    Assert.Equal("verification_email_failed", result.Message);
+
+    _authRepository.Verify(x => x.Register(
+        req,
+        "abc"), Times.Once);
+
+    _unitOfWork.Verify(x => x.SaveChangesAsync(
+        It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task RegisterAsync_WhenLocalRegistrationFails_DeletesAuth0UserAndReturnsInternalServerError()
+    {
+    var req = new RegisterRequest(
+        "test@test.com",
+        "Password123!",
+        DateTime.Now,
+        "test");
+
+    var transaction = new Mock<IDbContextTransaction>();
+
+    transaction
+        .Setup(x => x.DisposeAsync())
+        .Returns(ValueTask.CompletedTask);
+
+    _unitOfWork
+        .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+        .ReturnsAsync(transaction.Object);
+
+    _managementClient
+        .Setup(x => x.CreateUserAsync(
+            req.Email,
+            req.Password,
+            "Username-Password-Authentication",
+            req.Username,
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(
+            Auth0ResponseWithRaw("""{"user_id":"auth0|abc"}""")));
+
+    _authRepository
+        .Setup(x => x.Register(req, "abc"))
+        .ThrowsAsync(new InvalidOperationException("db error"));
+
+    _managementClient
+        .Setup(x => x.DeleteUserAsync(
+            "auth0|abc",
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(Result<AuthZeroBodyResponse>.Success(new AuthZeroBodyResponse()));
+
+    var result = await _service.RegisterAsync(req, CancellationToken.None);
+
+    Assert.False(result.IsSuccess);
+    Assert.Equal("Registration failed.", result.Message);
+
+    _managementClient.Verify(x => x.DeleteUserAsync(
+        "auth0|abc",
+        It.IsAny<CancellationToken>()), Times.Once);
+
+    _managementClient.Verify(x => x.SendVerificationEmailAsync(
+        It.IsAny<string>(),
+        It.IsAny<CancellationToken>()), Times.Never);
+    }
     [Fact]
     public async Task GetUserIdAsync_WhenAuth0IdIsMissing_ReturnsBadRequest()
     {

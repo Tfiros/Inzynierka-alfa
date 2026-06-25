@@ -23,12 +23,15 @@ builder.Services.AddAppCors(builder.Configuration);
 
 builder.Services.AddFeatures(builder.Configuration);
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.UseSwaggerDocumentation();
 
 app.UseForwardedHeaders();
 app.UseGlobalExceptionHandling();
+app.MapHealthChecks("/health");
 
 if (!app.Environment.IsProduction())
 {

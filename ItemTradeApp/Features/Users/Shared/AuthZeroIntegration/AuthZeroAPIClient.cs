@@ -11,14 +11,6 @@ namespace ItemTradeApp.Features.Users.Shared.AuthZeroIntegration;
 
 public interface IAuthZeroAPIClient
 {
-    Task<Result<AuthZeroBodyResponse>> SignupAsync(
-        string email,
-        string password,
-        string connection,
-        string clientId,
-        string? name,
-        CancellationToken ct = default);
-
     Task<Result<AuthZeroBodyResponse>> PasswordRealmTokenAsync(
         string username,
         string password,
@@ -74,26 +66,7 @@ public class AuthZeroAPIClient : IAuthZeroAPIClient
             ? domain
             : $"https://{domain}";
     }
-
-    public Task<Result<AuthZeroBodyResponse>> SignupAsync(
-        string email,
-        string password,
-        string connection,
-        string clientId,
-        string? name,
-        CancellationToken ct = default)
-    {
-        var payload = new
-        {
-            client_id = clientId,
-            email,
-            password,
-            connection,
-            name
-        };
-        return PostJsonAsync("/dbconnections/signup", payload, "auth0_signup", ct);
-    }
-
+    
     public Task<Result<AuthZeroBodyResponse>> PasswordRealmTokenAsync(
         string username,
         string password,

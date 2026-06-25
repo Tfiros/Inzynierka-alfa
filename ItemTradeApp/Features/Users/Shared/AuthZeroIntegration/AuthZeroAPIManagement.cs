@@ -12,10 +12,15 @@ public interface IAuthZeroManagementClient
     Task<Result<AuthZeroBodyResponse>> PatchUserAsync(string auth0UserId, object payload, CancellationToken ct = default);
     Task<Result<AuthZeroBodyResponse>> DeleteUserAsync(string auth0UserId, CancellationToken ct = default);
     Task<Result<List<AuthZeroUserSlim>>> GetUsersInRoleAsync(string roleId, CancellationToken ct = default);
-
+    Task<Result<AuthZeroBodyResponse>> SendVerificationEmailAsync(string auth0UserId, CancellationToken ct = default);
     Task<Result<string>> AssignRolesToUserAsync(string auth0UserId, IReadOnlyCollection<string> roleIds, CancellationToken ct = default);
     Task<Result<string>> RemoveRolesFromUserAsync(string auth0UserId, IReadOnlyCollection<string> roleIds, CancellationToken ct = default);
-
+    Task<Result<AuthZeroBodyResponse>> CreateUserAsync(
+        string email,
+        string password,
+        string connection,
+        string? nickname,
+        CancellationToken ct = default);
     Task<Result<List<AuthZeroRoleResponse>>> GetRolesAsync(CancellationToken ct = default);
     Task<Result<List<AuthZeroRoleResponse>>> GetUserRolesAsync(string auth0UserId, CancellationToken ct = default);
 }
@@ -292,6 +297,83 @@ public sealed class AuthZeroAPIManagement : IAuthZeroManagementClient
         return Result<string>.NoContent("auth0_roles_removed");
     }
 
+    public async Task<Result<AuthZeroBodyResponse>> SendVerificationEmailAsync(string auth0UserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return Result<AuthZeroBodyResponse>.BadRequest("auth0_user_id_required");
+
+        var tokenRes = await _tokenProvider.GetTokenAsync(ct);
+        if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
+            return Result<AuthZeroBodyResponse>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
+
+        var httpClient = CreateAuthorizedClient(tokenRes.Data);
+        var url = $"{ManagementBaseUrl}/jobs/verification-email";
+
+        using var response = await httpClient.PostAsJsonAsync(url, new
+        {
+            user_id = auth0UserId
+        }, ct);
+        var responseContent = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return MapAuth0ManagementError<AuthZeroBodyResponse>(
+                response.StatusCode,
+                responseContent,
+                "send_verification_email",
+                auth0UserId);
+        }
+
+        var mappedDetails = AuthZeroDetailsMapper.Build("send_verification_email_success", responseContent);
+        return Result<AuthZeroBodyResponse>.Success(mappedDetails, "verification_email_sent");
+    }
+    public async Task<Result<AuthZeroBodyResponse>> CreateUserAsync(
+        string email,
+        string password,
+        string connection,
+        string? nickname,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return Result<AuthZeroBodyResponse>.BadRequest("email_required");
+
+        if (string.IsNullOrWhiteSpace(password))
+            return Result<AuthZeroBodyResponse>.BadRequest("password_required");
+
+        if (string.IsNullOrWhiteSpace(connection))
+            return Result<AuthZeroBodyResponse>.BadRequest("connection_required");
+
+        var tokenRes = await _tokenProvider.GetTokenAsync(ct);
+        if (!tokenRes.IsSuccess || string.IsNullOrWhiteSpace(tokenRes.Data))
+            return Result<AuthZeroBodyResponse>.Unauthorized(tokenRes.Message ?? "auth0_mgmt_token_error");
+
+        var httpClient = CreateAuthorizedClient(tokenRes.Data);
+        var url = $"{ManagementBaseUrl}/users";
+
+        using var response = await httpClient.PostAsJsonAsync(url, new
+        {
+            email,
+            password,
+            connection,
+            nickname,
+            name = nickname,
+            email_verified = false,
+            verify_email = false
+        }, ct);
+
+        var responseContent = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return MapAuth0ManagementError<AuthZeroBodyResponse>(
+                response.StatusCode,
+                responseContent,
+                "create_user");
+        }
+
+        var mappedDetails = AuthZeroDetailsMapper.Build("create_user_success", responseContent);
+        return Result<AuthZeroBodyResponse>.Success(mappedDetails, "auth0_user_created");
+    }
     private string ManagementBaseUrl => $"https://{_options.Domain}/api/v2";
 
     private HttpClient CreateAuthorizedClient(string token)

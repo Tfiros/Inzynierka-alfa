@@ -1,4 +1,5 @@
 using ItemTradeApp.Features.CounterOffers;
+using ItemTradeApp.Features.CounterOffers.DTOs;
 using ItemTradeApp.Features.CounterOffers.DTOs.RequestDTOs;
 using ItemTradeApp.Features.CounterOffers.Repositories;
 using ItemTradeApp.Features.Shared.DTOs;
@@ -9,6 +10,7 @@ using ItemTradeApp.Features.Shared.TradeCreation;
 using ItemTradeApp.Persistence;
 using ItemTradeApp.Persistence.Models;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 
 namespace ItemTradeApp.UnitTests.Features.CounterOffers;
@@ -558,6 +560,338 @@ public class CounterOffersServiceTest
         Assert.False(result.IsSuccess, result.Message);
     }
 
+        [Fact]
+    public async Task CancelCounterOfferAsync_PendingCounterOfferWithoutTokens()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "testowy@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 1,
+                Offer_Id = 10,
+                TokensOffered = 0,
+                CreationDate = DateTime.UtcNow,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Pending,
+                ListingCounterOfferItems = new List<ListingCounterOfferItem>
+                {
+                    new()
+                    {
+                        Item_ID = 1,
+                        Quantity = 1
+                    }
+                }
+            });
+
+        var result = await _service.CancelCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Message);
+        Assert.NotNull(result.Data);
+        Assert.Equal((int)CounterOfferStatuses.Denied, result.Data.CounterOfferStatusId);
+
+        _unitOfWork.Verify(
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelCounterOfferAsync_NotPending()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "testowy@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 1,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Accepted
+            });
+
+        var result = await _service.CancelCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Kontroferta nie jest oczekująca", result.Message);
+
+        _unitOfWork.Verify(
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_InvalidCounterOfferId()
+    {
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            0,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Niepoprawne ID KO", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_OfferMissing()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "owner@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 2,
+                Offer = null
+            });
+
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Oferta nie znaleziona", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_CounterOffer_NotPending()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "owner@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 2,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Denied,
+                Offer = new Offer
+                {
+                    ID = 10,
+                    User_ID = 1,
+                    OfferStatus_ID = (int)OfferStatuses.Active,
+                    ExpDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
+                }
+            });
+
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Niepoprawny status kontroferty", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_Offer_NotActive()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "owner@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 2,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Pending,
+                Offer = new Offer
+                {
+                    ID = 10,
+                    User_ID = 1,
+                    OfferStatus_ID = (int)OfferStatuses.Canceled,
+                    ExpDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
+                }
+            });
+
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Oferta nie jest aktywna", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_Offer_Expired()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "owner@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 2,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Pending,
+                Offer = new Offer
+                {
+                    ID = 10,
+                    User_ID = 1,
+                    OfferStatus_ID = (int)OfferStatuses.Active,
+                    ExpDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))
+                }
+            });
+
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Oferta jest przeterminowana", result.Message);
+    }
+
+    [Fact]
+    public async Task AcceptCounterOfferAsync_TradeExists()
+    {
+        var transaction = new Mock<IDbContextTransaction>();
+
+        _unitOfWork
+            .Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(transaction.Object);
+
+        _userRepo
+            .Setup(x => x.GetUserInfo(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                ID = 1,
+                Tokens = 10000,
+                Email = "owner@test.com"
+            });
+
+        _counterOfferRepo
+            .Setup(x => x.GetCounterOfferWithOfferAndItemsAsync(
+                1,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CounterOffer
+            {
+                ID = 1,
+                User_ID = 2,
+                CounterOfferStatus_Id = (int)CounterOfferStatuses.Pending,
+                Offer = new Offer
+                {
+                    ID = 10,
+                    User_ID = 1,
+                    OfferStatus_ID = (int)OfferStatuses.Active,
+                    ExpDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
+                }
+            });
+
+        _tradeRepo
+            .Setup(x => x.TradeExistsForOfferAsync(
+                10,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.AcceptCounterOfferAsync(
+            "user",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Trade już istnieje", result.Message);
+    }
+    
     private static CounterOfferDraftRequest ValidRequest(int tokensOffered = 100)
     {
         return new CounterOfferDraftRequest(
