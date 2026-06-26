@@ -26,7 +26,6 @@ public interface IGamesService
 public sealed class GamesService(
     IGamesRepository gamesRepo,
     IGenresRepository genresRepo,
-    IItemRarityRepository itemRarityRepo,
     IImageService imageService,
     IOptions<S3Folders> foldersOptions
 ) : IGamesService
@@ -165,14 +164,16 @@ public sealed class GamesService(
 
     public async Task<Result<string>> SoftDeleteAsync(int id, CancellationToken ct)
     {
-        var entity = await gamesRepo.GetByIdWithNoTrackAsync(id, ct);
-        if (entity is null || entity.IsDeleted)
+        if (id <= 0)
+            return Result<string>.BadRequest("Id is zero or a negative number.");
+
+        var oldPhotoUrl = await gamesRepo.SoftDeleteCascadeAsync(id, ct);
+
+        if (oldPhotoUrl is null)
             return Result<string>.NoContent();
 
-        entity.IsDeleted = true;
-        if (!string.IsNullOrWhiteSpace(entity.Photo_URL))
-            await imageService.DeleteAsync(entity.Photo_URL, ct);
-        await gamesRepo.SaveChangesAsync(ct);
+        if (!string.IsNullOrWhiteSpace(oldPhotoUrl))
+            await imageService.DeleteAsync(oldPhotoUrl, ct);
 
         return Result<string>.NoContent("Game deleted.");
     }

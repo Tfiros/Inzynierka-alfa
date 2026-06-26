@@ -16,8 +16,7 @@ public interface IGamesRepository
         Game game,
         IReadOnlyCollection<ItemRarity> rarities,
         CancellationToken ct);
-    Task SoftDeleteCascadeAsync(int gameId, CancellationToken ct);
-
+    Task<string?> SoftDeleteCascadeAsync(int gameId, CancellationToken ct);
     Task<List<Game>> GetGamesForDropdown(string? searchText, CancellationToken ct);
 
 }
@@ -95,7 +94,7 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
         return game;
     }
 
-    public async Task SoftDeleteCascadeAsync(int gameId, CancellationToken ct)
+    public async Task<string?> SoftDeleteCascadeAsync(int gameId, CancellationToken ct)
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
@@ -106,20 +105,28 @@ public sealed class GamesRepository(AppDbContext db) : IGamesRepository
             .FirstOrDefaultAsync(g => g.ID == gameId, ct);
 
         if (game is null || game.IsDeleted)
-            return;
+            return null;
 
         game.IsDeleted = true;
 
         foreach (var item in game.Items)
+        {
             if (!item.IsDeleted)
                 item.IsDeleted = true;
+        }
 
         foreach (var rarity in game.ItemRarities)
+        {
             if (!rarity.IsDeleted)
                 rarity.IsDeleted = true;
+        }
+
+        var oldPhotoUrl = game.Photo_URL;
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+
+        return oldPhotoUrl;
     }
 
     public async Task<Game?> GetByNameAsync(string name, CancellationToken ct)
