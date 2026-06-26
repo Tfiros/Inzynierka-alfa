@@ -33,7 +33,6 @@ public class GamesServiceTest
         _service = new GamesService(
             _gamesRepo.Object,
             _genresRepo.Object,
-            _rarityRepo.Object,
             _imageService.Object,
             folders);
     }
@@ -438,24 +437,27 @@ public class GamesServiceTest
     }
 
     [Fact]
-    public async Task SoftDeleteAsync_WhenGameExists_MarksDeletedDeletesImageAndSaves()
+    public async Task SoftDeleteAsync_WhenGameExists_CallsCascadeDeletesImageAndReturnsNoContent()
     {
-        var entity = ExistingGame();
-        entity.Photo_URL = "photo-url";
-
         _gamesRepo
-            .Setup(x => x.GetByIdWithNoTrackAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(entity);
+            .Setup(x => x.SoftDeleteCascadeAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("photo-url");
 
         var result = await _service.SoftDeleteAsync(1, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.True(entity.IsDeleted);
 
-        _imageService.Verify(x => x.DeleteAsync("photo-url", It.IsAny<CancellationToken>()), Times.Once);
-        _gamesRepo.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _gamesRepo.Verify(x => x.SoftDeleteCascadeAsync(
+            1,
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _imageService.Verify(x => x.DeleteAsync(
+            "photo-url",
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _gamesRepo.Verify(x => x.SaveChangesAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
     }
-
     [Fact]
     public async Task GetPagedAsync_WhenGenreIdIsInvalid_ReturnsBadRequest()
     {
